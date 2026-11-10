@@ -532,13 +532,11 @@ function allocated_rating_curve_flow(
     (; level_difference_threshold) = p.p_independent
     inflow_link = tabulated_rating_curve.inflow_link[node_id.idx]
     outflow_data = tabulated_rating_curve.outflow_data[node_id.idx]
-    @assert !outflow_data.to_pass_down "PassDown nodes in allocation subnetworks not supported yet, see issue #3322"
 
     inflow_id = inflow_link.link[1]
-    downstream_id = outflow_id(outflow_data)
 
     h_a = get_level(s_a, p, inflow_id, t)
-    h_b = get_level(s_b, p, downstream_id, t)
+    h_b = get_level(s_b, p, outflow_data, t)
     Δh = h_a - h_b
 
     factor = get_low_storage_factor(s_a, p, inflow_id)

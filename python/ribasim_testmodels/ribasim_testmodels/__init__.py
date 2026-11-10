@@ -83,8 +83,10 @@ from ribasim_testmodels.invalid import (
     invalid_pass_down_missing_fractions_model,
     invalid_pass_down_multiple_user_demands_model,
     invalid_pass_down_only_user_demand_model,
+    invalid_pass_down_subnetwork_boundary_model,
     invalid_pass_down_user_demand_and_other_model,
     invalid_qh_model,
+    invalid_subnetwork_to_primary_model,
     invalid_unstable_model,
     invalid_user_demand_missing_min_level_model,
 )
@@ -93,7 +95,11 @@ from ribasim_testmodels.junction import (
     junction_combined,
 )
 from ribasim_testmodels.observation import observation_model
-from ribasim_testmodels.pass_down import pass_down_model, pass_down_tracer_model
+from ribasim_testmodels.pass_down import (
+    pass_down_allocation_model,
+    pass_down_model,
+    pass_down_tracer_model,
+)
 from ribasim_testmodels.pid_control import (
     discrete_control_of_pid_control_model,
     pid_control_model,
@@ -152,8 +158,10 @@ __all__ = [
     "invalid_pass_down_missing_fractions_model",
     "invalid_pass_down_multiple_user_demands_model",
     "invalid_pass_down_only_user_demand_model",
+    "invalid_pass_down_subnetwork_boundary_model",
     "invalid_pass_down_user_demand_and_other_model",
     "invalid_qh_model",
+    "invalid_subnetwork_to_primary_model",
     "invalid_unstable_model",
     "invalid_user_demand_missing_min_level_model",
     "junction_chained",
@@ -180,6 +188,7 @@ __all__ = [
     "outlet_allocation_discrete_control_model",
     "outlet_continuous_control_model",
     "outlet_model",
+    "pass_down_allocation_model",
     "pass_down_equation_model",
     "pass_down_model",
     "pass_down_tracer_model",

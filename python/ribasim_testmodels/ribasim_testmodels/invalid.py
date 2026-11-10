@@ -1,7 +1,7 @@
 from datetime import datetime
 
 import numpy as np
-from ribasim.config import Solver
+from ribasim.config import Allocation, Experimental, Solver
 from ribasim.geometry.node import Node
 from ribasim.input_base import NodeData
 from ribasim.model import Model
@@ -375,4 +375,57 @@ def invalid_user_demand_missing_min_level_model() -> Model:
     trm = model.terminal.add(Node(3, Point(2, 0)))
     model.link.add(bsn, ud)
     model.link.add(ud, trm)
+    return model
+
+
+def _invalid_subnetwork_model() -> Model:
+    """Create an empty model with allocation, to connect the primary network and subnetworks in."""
+    return Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
+        crs="EPSG:28992",
+        allocation=Allocation(),
+        experimental=Experimental(allocation=True),
+    )
+
+
+def _invalid_subnetwork_basin_tables() -> list:
+    return [
+        basin.State(level=[1.0]),
+        basin.Profile(level=[0.0, 2.0], area=[100.0, 200.0]),
+    ]
+
+
+def invalid_pass_down_subnetwork_boundary_model() -> Model:
+    """PassDown node at the boundary between the primary network and a subnetwork."""
+    model = _invalid_subnetwork_model()
+    bsn1 = model.basin.add(Node(1, Point(0, 0)), _invalid_subnetwork_basin_tables())
+    pmp = model.pump.add(
+        Node(2, Point(1, 0)),
+        [pump.Static(flow_rate=[1e-3], allocation_controlled=[True])],
+    )
+    pd = model.pass_down.add(
+        Node(3, Point(2, 0), subnetwork_id=2), [pass_down.Static(fraction=[1.0])]
+    )
+    bsn2 = model.basin.add(
+        Node(4, Point(3, 0), subnetwork_id=2), _invalid_subnetwork_basin_tables()
+    )
+    model.link.add(bsn1, pmp)
+    model.link.add(pmp, pd)
+    model.link.add(pd, bsn2)
+    return model
+
+
+def invalid_subnetwork_to_primary_model() -> Model:
+    """Flow from a subnetwork into the primary network."""
+    model = _invalid_subnetwork_model()
+    bsn1 = model.basin.add(
+        Node(1, Point(0, 0), subnetwork_id=2), _invalid_subnetwork_basin_tables()
+    )
+    pmp = model.pump.add(
+        Node(2, Point(1, 0), subnetwork_id=2), [pump.Static(flow_rate=[1e-3])]
+    )
+    bsn2 = model.basin.add(Node(3, Point(2, 0)), _invalid_subnetwork_basin_tables())
+    model.link.add(bsn1, pmp)
+    model.link.add(pmp, bsn2)
     return model

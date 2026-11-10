@@ -114,3 +114,56 @@ end
     @test all(isapprox.(initial + flow_boundary, 1.0))
     @test last(flow_boundary) > 0
 end
+
+@testitem "PassDown at subnetwork boundary" setup = [PassDownValidation] begin
+    messages = PassDownValidation.error_messages(
+        "invalid_pass_down_subnetwork_boundary",
+        "Errors detected in connections between primary network and subnetworks."
+    )
+    @test messages == ["PassDown nodes at the boundary between subnetworks are not supported."]
+end
+
+@testitem "Subnetwork flows into primary network" setup = [PassDownValidation] begin
+    messages = PassDownValidation.error_messages(
+        "invalid_subnetwork_to_primary",
+        "Errors detected in connections between primary network and subnetworks."
+    )
+    @test messages ==
+        ["This node flows from a subnetwork into the primary network, which is not supported."]
+end
+
+@testitem "PassDown allocation" begin
+    using DataFrames: DataFrame
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/pass_down_allocation/ribasim.toml")
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    allocation_flow_data = Ribasim.allocation_flow_data(model) |> DataFrame
+    flow_data = Ribasim.flow_data(model) |> DataFrame
+    mean_flow_rate(df, from_node_id, to_node_id) = begin
+        rates = filter(row -> row.from_node_id == from_node_id && row.to_node_id == to_node_id, df).flow_rate
+        sum(rates) / length(rates)
+    end
+
+    # FlowBoundary #3 (3e-3 m³/s) and Pump #2 (2e-3 m³/s) flow into PassDown #4. UserDemand #5
+    # abstracts its full demand of 4e-3 m³/s, and the remaining 1e-3 m³/s is divided 70% / 30%
+    # over PassDown #6 and #7. Half of the abstraction returns via PassDown #10
+    expected = Dict(
+        (2, 4) => 2.0e-3,
+        (3, 4) => 3.0e-3,
+        (4, 5) => 4.0e-3,
+        (4, 6) => 0.7e-3,
+        (4, 7) => 0.3e-3,
+        (6, 8) => 0.7e-3,
+        (7, 9) => 0.3e-3,
+        (5, 10) => 2.0e-3,
+        (10, 11) => 2.0e-3,
+    )
+    for ((from_node_id, to_node_id), flow_rate) in expected
+        # The allocation problem
+        @test mean_flow_rate(allocation_flow_data, from_node_id, to_node_id) ≈ flow_rate rtol = 1.0e-5
+        # The physical layer, which follows the allocated UserDemand flow
+        @test mean_flow_rate(flow_data, from_node_id, to_node_id) ≈ flow_rate rtol = 1.0e-5
+    end
+end

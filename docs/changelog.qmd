@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Warn on rapidly oscillating DiscreteControl states with the configurable `solver.min_discrete_control_interval`. [#3237](https://github.com/Deltares/Ribasim/pull/3237)
 - Report rejected timesteps by cause and the mean solver order in `results/solver_stats.nc`. [#3269](https://github.com/Deltares/Ribasim/pull/3269)
 - Evaluate DiscreteControl only at a fixed interval with `solver.discrete_control_interval`, which can make models with many DiscreteControl nodes much faster.
-- PassDown node: a node without storage that passes the flow of its upstream node on to its downstream nodes, optionally divided over multiple PassDown nodes with fractions, and with a UserDemand that can abstract from it. Flow travels instantaneously over chains of PassDown nodes. The PassDown flows are part of the reduced linear solve of the implicit solver. PassDown nodes are not supported yet together with allocation subnetworks.
+- PassDown node: a node without storage that passes the flow of its upstream node on to its downstream nodes, optionally divided over multiple PassDown nodes with fractions, and with a UserDemand that can abstract from it. Flow travels instantaneously over chains of PassDown nodes. The PassDown flows are part of the reduced linear solve of the implicit solver. PassDown nodes are not supported the boundary between the primary network and a subnetwork when allocation is active.
 - Lossy compression of results with `results.significant_bits`, which makes the files about 4 times smaller.
 
 ### Changed
@@ -42,6 +42,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - UserDemand `return_factor` and `min_level` must be the same for all demand priorities of a node (at the same time). [#3316](https://github.com/Deltares/Ribasim/pull/3316)
 - UserDemand nodes that abstract from Basin(s) now require a `min_level`, a missing `min_level` is no longer silently accepted. A UserDemand node has either one or more Basin inflow links, or exactly one PassDown inflow link, in which case `min_level` is not used.
 - Allocation: for all demand nodes (UserDemand, LevelDemand and FlowDemand) omitting the `demand_priority` is now allowed, also if allocation is active. It defaults to 1.
+- Allocation: a link from a subnetwork into the primary network is now an error, since it is not supported by the allocation algorithm. Before this was not detected.
 - Python (breaking): `model.node.df`, `model.link.df`, `NodeTable.filter` and `model.<node_type>.node` are never `None`, but empty tables when there are no nodes or links. Assigning `None` to the Node or Link table is an error. The data tables, like `model.basin.time.df`, are unchanged. [#3347](https://github.com/Deltares/Ribasim/pull/3347)
 
 ### Fixed
