@@ -930,7 +930,7 @@ function aggregate_flows!(
                 for (basin_idx, routing_weight) in routed_basins_boundary[idx]
                     aggregate[basin_idx] += routing_weight * boundary_flow[idx]
                 end
-            else
+            elseif downstream_id.is_basin
                 aggregate[downstream_id.idx] += boundary_flow[idx]
             end
         end

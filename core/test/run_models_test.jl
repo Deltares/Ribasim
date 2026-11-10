@@ -955,6 +955,23 @@ end
     @test all(x -> abs(x) < 1.0e-5, basin_table.infiltration)
 end
 
+@testitem "FlowBoundary into Terminal" begin
+    using DataFrames: DataFrame
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/flow_boundary_terminal/ribasim.toml")
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    # The boundary flow and its tracer leave the model, and don't end up in Basin #3
+    flow_data = DataFrame(Ribasim.flow_data(model))
+    @test all(≈(1.0), filter(row -> row.from_node_id == 1, flow_data).flow_rate)
+    @test all(≈(1000.0), DataFrame(Ribasim.basin_data(model)).storage)
+    (; substances) = model.integrator.p.p_independent.basin.concentration_data
+    (; concentration) = Ribasim.concentration_data(model; table = false)
+    @test all(iszero, concentration[1, findfirst(==(:FlowBoundary), collect(substances)), :])
+end
+
 @testitem "FlowBoundary interpolation type" begin
     using DataInterpolations: LinearInterpolation, ConstantInterpolation
     using DataFrames

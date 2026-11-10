@@ -181,7 +181,7 @@ function set_current_storage!(
                 for (basin_idx, weight) in p_independent.routed_basins_boundary[idx]
                     storage[basin_idx] += weight * cumulative_flow
                 end
-            else
+            elseif downstream_id.is_basin
                 storage[downstream_id.idx] += cumulative_flow
             end
         end
