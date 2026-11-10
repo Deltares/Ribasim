@@ -267,3 +267,66 @@ Because it is an absolute volume it does not scale with the model, so a large mo
 raise it to $10^{-2}\ \text{m}^3$ for a substantial speedup at no measurable loss of accuracy,
 while the same setting on a small model is roughly two orders of magnitude less accurate.
 If you raise it, verify against a run with a tighter tolerance.
+
+# Substance transport {#sec-tracer-numerics}
+
+The [mass balance of a substance](/concept/equations.qmd#sec-tracer-equations) in Basin $i$ is
+$$
+\frac{\text{d}}{\text{d}t} \left( S_i C_i \right) = \sum_j q_{ji} C_j - q_{\text{out},i} C_i + f_i.
+$$
+It is solved after each timestep of the water balance, using the flows of that timestep.
+Integrating it over a timestep from $t_n$ to $t_{n+1}$ gives
+
+$$
+S_i^{n+1} C_i^{n+1} - S_i^n C_i^n = \sum_j \int_{t_n}^{t_{n+1}} q_{ji} C_j \,\text{d}t - \int_{t_n}^{t_{n+1}} q_{\text{out},i} C_i \,\text{d}t + F_i,
+$$
+
+where the superscripts denote the time and $F_i$ is the mass from the other sources over the timestep.
+
+How the integrals over the flows are approximated determines the numerical scheme.
+The water balance gives the volumes $V_{ji}$ and $V_{\text{out},i}$ that flowed over the timestep.
+Ribasim combines these with one concentration per Basin for the entire timestep, a weighted average of its concentrations at the start and the end of the timestep:
+
+$$
+\int_{t_n}^{t_{n+1}} q_{ji} C_j \,\text{d}t \approx V_{ji} \left( \theta_j C_j^{n+1} + (1 - \theta_j) C_j^n \right).
+$$
+
+Using this for all flows and moving the unknown concentrations to the left hand side gives a linear system for the concentrations of all Basins at the end of the timestep:
+
+$$
+\left( S_i^{n+1} + \theta_i V_{\text{out},i} \right) C_i^{n+1} - \sum_j \theta_j V_{ji} C_j^{n+1} =
+\left( S_i^n - (1 - \theta_i) V_{\text{out},i} \right) C_i^n + \sum_j (1 - \theta_j) V_{ji} C_j^n + F_i.
+$$ {#eq-tracer-scheme}
+
+The weights that Ribasim uses are determined per Basin and per timestep:
+
+$$
+\theta_i = \max\left( \frac{1}{2}, 1 - \frac{S_i^n}{V_{\text{out},i}} \right).
+$$
+
+The weight is $\theta_i = 1/2$ wherever possible, as this is the trapezoidal rule, which is second order accurate.
+The concentrations can however only be guaranteed to stay non-negative if the coefficient of $C_i^n$ in @eq-tracer-scheme is non-negative, which requires $\theta_i \geq 1 - S_i^n / V_{\text{out},i}$.
+So where more water flows out of a Basin within one timestep than twice its storage, the weight increases towards 1, using the smallest value that keeps the concentrations non-negative.
+
+With these weights the matrix of @eq-tracer-scheme has non-positive off-diagonal entries and is strictly diagonally dominant by column, since a Basin keeps a small positive storage.
+The system therefore always has a unique and non-negative solution, regardless of the size of the timestep.
+The mass that leaves one Basin over a flow is the mass that enters the other, so the scheme conserves mass, and a substance can travel through any number of Basins within one timestep.
+All substances share the same sparse matrix, which is factorized once per timestep.
+
+If all Basins would use the same weight, the scheme reduces to these well known methods:
+
+| $\theta$ | Method | Delwaq scheme | Properties |
+|----------|--------|---------------|------------|
+| $0$ | Forward Euler (explicit upwind) | 1 | First order. Needs no linear system. Non-negative if $V_{\text{out},i} \leq S_i^n$. A substance travels at most one Basin per timestep. |
+| $1/2$ | Trapezoidal rule (Crank-Nicolson) | | Second order. Non-negative if $V_{\text{out},i} \leq 2 S_i^n$. |
+| $1$ | Backward Euler (implicit upwind) | 15 | First order, with more numerical dispersion. Non-negative for any timestep. |
+
+The [Delwaq coupling](/guide/coupling.qmd#sec-waterquality) uses scheme 15.
+Adjusting the weight per Basin is also the idea of the local-theta schemes 21 and 22 of Delwaq, which however use $\theta_i = 0$ wherever that is stable, and limit the fluxes to avoid new extremes.
+With instantaneously mixed Basins $\theta_i = 1/2$ is more accurate, since an explicit step in which the full storage of a Basin flows out moves all of its water to the next Basin without mixing.
+
+The ResidenceTime tracer has the integral of the storage over the timestep as a source in $F_i$, which also uses the trapezoidal rule.
+The UserDemand return flows are part of $F_i$ as well, with the concentrations of the Basins they came from at the start of the timestep.
+
+Only the volume of a flow over a timestep is used, in its net direction, so effectively flows are constant over a timestep.
+The concentrations and loads from the input are constant over a timestep as well, since the solver stops at each time they change, so a pulse in one of these is followed exactly.
