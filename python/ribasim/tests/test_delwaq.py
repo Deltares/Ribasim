@@ -1,5 +1,6 @@
 import os
 import re
+import shutil
 from pathlib import Path
 
 import numpy as np
@@ -129,6 +130,43 @@ def test_offline_delwaq_coupling_evaporate_mass(tmp_path):
     assert all(np.isclose(df[df.substance == "UserDemand"].concentration, 0.0))
 
     model.write(tmp_path / "basic/ribasim.toml")
+
+
+@pytest.mark.skipif(
+    not (
+        ("D3D_HOME" in os.environ)
+        and (
+            delwaq_dir.parents[2]
+            / "generated_testmodels/tracer_user_demand/results/flow.nc"
+        ).is_file()
+    ),
+    reason="Requires Delwaq to be installed and tracer_user_demand model results.",
+)
+def test_offline_delwaq_coupling_user_demand(tmp_path):
+    """UserDemand return flows carry the concentrations of the abstracted water."""
+    repo_dir = delwaq_dir.parents[2]
+    # Copy the model, since parse overwrites the results
+    shutil.copytree(
+        repo_dir / "generated_testmodels/tracer_user_demand", tmp_path / "model"
+    )
+    model = Model.read(tmp_path / "model/ribasim.toml")
+    model_dir = tmp_path / "delwaq"
+
+    generate(model, model_dir)
+    run_delwaq(model_dir)
+    model = parse(model, model_dir, to_input=True)
+
+    df = model.basin.concentration_external.df
+    assert df is not None
+    df = df.pivot_table(
+        index=["time", "node_id"], columns="substance", values="concentration"
+    )
+    assert np.allclose(df["Continuity"], 1.0)
+    assert np.allclose(df["FlowBoundary"] + df["Initial"], 1.0)
+    # UserDemand #3 adds Cl to its return flow into Basin #2, which reaches Basin #6
+    # through the return flow of UserDemand #7
+    final = df.loc[df.index.get_level_values("time").max()]
+    assert np.allclose(final["Cl"], 2.5, rtol=0.05)
 
 
 @pytest.mark.parametrize("name", ["Foo;123", "π", 'Double"Quote'])

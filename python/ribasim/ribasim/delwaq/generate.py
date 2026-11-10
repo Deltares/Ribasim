@@ -105,7 +105,11 @@ def _make_boundary(data, boundary_type, values="concentration"):
         "name": bid,
         "substances": list(map(_quote, piv.columns[1:])),
         "df": piv.to_string(
-            formatters={"time": _quote}, header=False, index=False, na_rep=-999
+            formatters={"time": _quote},
+            float_format="{:.9g}".format,
+            header=False,
+            index=False,
+            na_rep=-999,
         ),
     }
     substances = data.substance.unique()
@@ -200,25 +204,34 @@ def _setup_graph(nodes, link, evaporate_mass=True):
     for node_id in remove_nodes:
         G.remove_node(node_id)
 
-    # Due to the simplification, we can end up with cycles of length 2.
-    # This happens when a UserDemand is connected to and from a Basin,
-    # but can also happen in other cases (rivers with a outlet and pump),
-    # for which we do nothing. We merge these UserDemand cycles links to
-    # a single link, and later merge the flows.
-    merge_links = []
-    for loop in nx.simple_cycles(G, length_bound=2):
-        if len(loop) == 2:
-            node_a = G.nodes[loop[0]]
-            node_b = G.nodes[loop[1]]
-            if node_a["type"] != "UserDemand" and node_b["type"] != "UserDemand":
-                logger.debug(
-                    f"Found non UserDemand cycle between {node_a['type']} #{loop[0]} and {node_b['type']} #{loop[1]}."
-                )
+    # The return flow of a UserDemand carries the concentrations of the water it
+    # abstracted. Instead of entering from the UserDemand boundary, the return flow
+    # goes over a link from each source of the UserDemand to the receiving Basin, so
+    # the UserDemand boundary only receives the consumed water. A return to a source
+    # needs no link, it reduces the flow to the UserDemand boundary. Only a return
+    # flow larger than the abstraction (return_factor > 1) enters from the
+    # UserDemand boundary. The flows of these links are set by `_user_demand_flows`,
+    # so they get no Ribasim link IDs.
+    user_demand_ids = [n for n, t in G.nodes(data="type") if t == "UserDemand"]
+    returns = {}
+    for node_id in user_demand_ids:
+        returns[node_id] = {}
+        for to_id in list(G.succ[node_id]):
+            if G.nodes[to_id]["type"] == "Basin":
+                returns[node_id][to_id] = G.edges[node_id, to_id]["id"]
+                G.edges[node_id, to_id]["id"] = []
             else:
-                link_ids = G.edges[loop]["id"]
-                G.edges[reversed(loop)]["id"].extend(link_ids)
-                merge_links.extend(link_ids)
-                G.remove_edge(*loop)
+                G.remove_edge(node_id, to_id)
+    user_demands = []
+    for node_id in user_demand_ids:
+        sources = {}
+        for from_id in list(G.pred[node_id]):
+            sources[from_id] = G.edges[from_id, node_id]["id"]
+            G.edges[from_id, node_id]["id"] = []
+            for to_id in returns[node_id]:
+                if from_id != to_id and not G.has_edge(from_id, to_id):
+                    G.add_edge(from_id, to_id, id=[])
+        user_demands.append((node_id, sources, returns[node_id]))
 
     # Remove boundary to boundary links
     remove_double_boundary = []
@@ -358,7 +371,98 @@ def _setup_graph(nodes, link, evaporate_mass=True):
 
     assert len(basin_mapping) == basin_id
 
-    return G, merge_links, node_mapping, link_mapping, basin_mapping
+    return G, node_mapping, link_mapping, basin_mapping, user_demands
+
+
+def _user_demand_flows(wide, user_demands, node_mapping, G):
+    """Set the flows of the links that `_setup_graph` made for the UserDemands.
+
+    Like in the core, each source delivers the share of the return flow that
+    corresponds to its share of the abstraction, and the rest goes to the UserDemand
+    boundary. A return flow larger than the abstraction comes from the UserDemand
+    boundary. Takes the Ribasim flows with a column per link, and returns a list of
+    flows in long format with the Delwaq link index as link_id.
+    """
+    link_index = {link: i for i, link in enumerate(G.edges())}
+    dfs = []
+
+    def add(from_id, to_id, flow_rate):
+        link = (node_mapping.get(from_id), node_mapping.get(to_id))
+        if link in link_index:
+            dfs.append(
+                pd.DataFrame(
+                    {
+                        "time": wide.index,
+                        "link_id": link_index[link],
+                        "flow_rate": flow_rate.to_numpy(),
+                    }
+                )
+            )
+
+    for node_id, sources, returns in user_demands:
+        inflows = {
+            from_id: wide[link_ids].sum(axis=1) for from_id, link_ids in sources.items()
+        }
+        return_flows = {
+            to_id: wide[link_ids].sum(axis=1) for to_id, link_ids in returns.items()
+        }
+        total_inflow = sum(inflows.values(), pd.Series(0.0, index=wide.index))
+        total_return = sum(return_flows.values(), pd.Series(0.0, index=wide.index))
+        # The part of the return flow that is abstracted water
+        passed = np.minimum(total_inflow, total_return)
+        passed_fraction = (passed / total_return).where(total_return > 0, 0.0)
+        for from_id, inflow in inflows.items():
+            fraction = (inflow / total_inflow).where(total_inflow > 0, 1 / len(inflows))
+            add(from_id, node_id, inflow - fraction * passed)
+            for to_id, return_flow in return_flows.items():
+                if from_id != to_id:
+                    add(from_id, to_id, fraction * passed_fraction * return_flow)
+        for to_id, return_flow in return_flows.items():
+            add(node_id, to_id, (1 - passed_fraction) * return_flow)
+
+    return dfs
+
+
+def _user_demand_loads(model, wide, user_demands, basin_mapping):
+    """Add the UserDemand concentrations to the return flows as mass loads.
+
+    Like in the core, the return flow of a UserDemand carries the concentrations of
+    its source water plus the concentrations set in its concentration table.
+    The UserDemand tracer is set to 1 by default.
+    Unlike in the core, the UserDemand tracer of the source water is not excluded,
+    so it counts how many times water passed a UserDemand, and can exceed 1.
+    """
+    table = model.user_demand.concentration.df
+
+    loads = []
+    substances = set()
+    for node_id, _, returns in user_demands:
+        concentration = pd.DataFrame({"UserDemand": 1.0}, index=wide.index)
+        if table is not None and node_id in table.node_id.to_numpy():
+            node_table = table[table.node_id == node_id].pivot_table(
+                index="time", columns="substance", values="concentration"
+            )
+            node_table = (
+                node_table.reindex(node_table.index.union(wide.index))
+                .ffill()
+                .bfill()
+                .reindex(wide.index)
+            )
+            concentration[node_table.columns] = node_table
+        for to_id, link_ids in returns.items():
+            load = concentration.mul(wide[link_ids].sum(axis=1), axis=0)
+            rows = load.reset_index().melt(
+                id_vars="time", var_name="substance", value_name="load"
+            )
+            rows["node_id"] = node_id
+            boundary, substance = _make_boundary(rows, "UserDemand", "load")
+            if len(returns) > 1:
+                boundary["name"] += f"_{to_id}"
+            boundary["node_id"] = basin_mapping[to_id]
+            loads.append(boundary)
+            substances.update(substance)
+
+    return loads, substances
 
 
 def _setup_boundaries(model, node_mapping):
@@ -375,12 +479,6 @@ def _setup_boundaries(model, node_mapping):
     if model.flow_boundary.concentration.df is not None:
         for _, rows in model.flow_boundary.concentration.df.groupby("node_id"):
             boundary, substance = _make_boundary(rows, "FlowBoundary")
-            concentrations.append(boundary)
-            substances.update(substance)
-
-    if model.user_demand.concentration.df is not None:
-        for _, rows in model.user_demand.concentration.df.groupby("node_id"):
-            boundary, substance = _make_boundary(rows, "UserDemand")
             concentrations.append(boundary)
             substances.update(substance)
 
@@ -445,7 +543,7 @@ def generate(
     include_path.mkdir(exist_ok=True)
 
     # Setup flow network
-    G, merge_links, node_mapping, link_mapping, basin_mapping = _setup_graph(
+    G, node_mapping, link_mapping, basin_mapping, user_demands = _setup_graph(
         model.node, model.link, evaporate_mass=evaporate_mass
     )
 
@@ -500,6 +598,18 @@ def generate(
     dataset[grid_name].attrs["node_id"] = grid.node_dimension
     dataset[grid_name].attrs["node_long_name"] = "Node dimension of 1D network"
 
+    wide = flows.pivot_table(index="time", columns="link_id", values="flow_rate")
+    user_demand_flows = _user_demand_flows(wide, user_demands, node_mapping, G)
+    user_demand_loads, user_demand_substances = _user_demand_loads(
+        model, wide, user_demands, basin_mapping
+    )
+
+    # Map link_id to the new link_id and merge any duplicate flows
+    flows["link_id"] = flows["link_id"].map(link_mapping)
+    flows.dropna(subset=["link_id"], inplace=True)
+    flows = _concat([flows, *user_demand_flows], ignore_index=True)
+    flows["link_id"] = flows["link_id"].astype("int32")
+
     # Generate area and flows
     # File format is int32, float32 based
     # Time is internal clock, not real time!
@@ -509,17 +619,7 @@ def generate(
     basins["time"] = (
         (basins["time"] - basins["time"].iloc[0]).dt.total_seconds().astype("int32")
     )
-
-    # Invert flows for half-link of cycles so later summing is correct
-    m = flows.link_id.isin(merge_links)
-    flows.loc[m, "flow_rate"] = flows.loc[m, "flow_rate"] * -1
-
-    # Map link_id to the new link_id and merge any duplicate flows
-    flows["riba_link_id"] = flows["link_id"]
-    flows["link_id"] = flows["link_id"].map(link_mapping)
-    flows.dropna(subset=["link_id"], inplace=True)
-    flows["link_id"] = flows["link_id"].astype("int32")
-    nflows = flows.groupby(["time", "link_id"]).sum().reset_index()
+    nflows = flows.groupby(["time", "link_id"])["flow_rate"].sum().reset_index()
 
     # Add basin boundaries to flows
     # Map all boundary node_ids to link_ids (unique per boundary type)
@@ -549,10 +649,8 @@ def generate(
     # Save flows to Delwaq format
     nflows.sort_values(by=["time", "link_id"], inplace=True)
     # nflows.to_csv(output_path / "flows.csv", index=False)  # not needed
-    nflows.drop(
-        columns=["link_id", "riba_link_id"],
-        inplace=True,
-    )
+    assert (nflows.groupby("time").size() == total_exchanges).all()
+    nflows.drop(columns=["link_id"], inplace=True)
     write_flows(output_path / "ribasim.flo", nflows, timestep)
     write_flows(
         output_path / "ribasim.are", nflows, timestep
@@ -578,6 +676,8 @@ def generate(
 
     # Find all boundary substances and concentrations
     boundaries, substances, loads = _setup_boundaries(model, node_mapping)
+    loads.extend(user_demand_loads)
+    substances.update(user_demand_substances)
     # Write boundary data with substances and concentrations
     template = env.get_template("B5_bounddata.inc.j2")
     with (include_path / "B5_bounddata.inc").open(mode="w") as f:

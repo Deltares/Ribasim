@@ -65,7 +65,8 @@ Although it may seem that way, this table does *not* describe demands that chang
 :::
 
 ## Concentration
-This table defines the concentration of substances for the flow from the UserDemand.
+This table defines the concentration of substances that the UserDemand adds to its return flow.
+The return flow also carries the concentrations of the abstracted water.
 
 ```{julia}
 # | code-fold: true

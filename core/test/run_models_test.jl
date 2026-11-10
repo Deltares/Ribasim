@@ -342,11 +342,12 @@ end
 
     table = Ribasim.concentration_data(model)
     concentration(substance) = table.concentration[table.substance .== substance]
-    # The return flow carries the concentrations of the abstracted water
+    # The return flows carry the concentrations of the abstracted water
     @test all(isapprox.(concentration("Continuity"), 1.0))
     @test all(isapprox.(concentration("FlowBoundary") .+ concentration("Initial"), 1.0))
-    # A quarter of the inflow of 1.25 m³/s comes from the UserDemand
-    @test last(concentration("UserDemand")) ≈ 0.2 rtol = 1.0e-4
+    # A quarter of the inflow of 1.25 m³/s into Basin #2 comes from UserDemand #3
+    is_user_demand_2 = (table.substance .== "UserDemand") .& (table.node_id .== 2)
+    @test last(table.concentration[is_user_demand_2]) ≈ 0.2 rtol = 1.0e-4
 end
 
 @testitem "Sparse, AD/FDM and reduced implicit solve jac solver options" begin

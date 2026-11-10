@@ -91,7 +91,13 @@ The Delwaq network that `generate` builds from the Ribasim model is very similar
 
 - All non-Basin or non-boundary types are removed (e.g. no more Pumps or TabulatedRatingCurves)
 - Basin boundaries are split into separate nodes and links (drainage, precipitation, and evaporation)
+- The return flow of a UserDemand is a link from the Basin it abstracts from to the Basin it returns to, so it carries the concentrations of the abstracted water. Only the consumed water flows to the UserDemand boundary. The UserDemand concentrations and the UserDemand tracer are added to the return flow as mass loads.
 - All node IDs have been renumbered, with boundaries being negative, and Basins being positive.
+
+The UserDemand handling differs from Ribasim's own tracer calculation in two ways:
+
+- Delwaq does not reset the UserDemand tracer of the abstracted water. The UserDemand tracer therefore counts how often water passed a UserDemand, and can exceed 1 when water passes UserDemands repeatedly.
+- A return flow larger than the abstraction (`return_factor` > 1) enters from the UserDemand boundary. This extra water does not carry the concentrations of the abstracted water.
 
 ## Parsing the results
 With Delwaq having run, we can now parse the results using `ribasim.delwaq.parse`. This function requires either a path to a toml file, or a Model instance. The mapping and substances needed to interpret the results are read from the `ribasim.nc` file written by `ribasim.delwaq.generate`.
