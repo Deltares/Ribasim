@@ -627,8 +627,8 @@ struct TracerTransport
     outflow::Vector{Float64}
     # Right hand side of the linear system, Basin x substance
     rhs::Matrix{Float64}
-    # Per Basin the weight of the concentration at the end of the timestep in its outflows
-    theta::Vector{Float64}
+    # Per Basin the weight 1 - θ of the concentration at the start of the timestep in its outflows
+    weight_start::Vector{Float64}
     # KLU factorization of A, refactorized with new values each timestep
     linear_solve::TracerLinearSolve
 end

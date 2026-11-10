@@ -403,6 +403,19 @@ end
     @test all(isapprox.(concentration("FlowBoundary") .+ concentration("Initial"), 1.0))
 end
 
+@testitem "Tracers with masses that round to below zero" begin
+    # allocation_control has a Basin that loses nearly all its water in one timestep, and in
+    # junction_allocation_shortage a UserDemand abstracts all water that flows into a Junction
+    for name in ("allocation_control", "junction_allocation_shortage")
+        toml_path = normpath(@__DIR__, "../../generated_testmodels/$name/ribasim.toml")
+        @test ispath(toml_path)
+        model = Ribasim.run(Ribasim.Config(toml_path; experimental_concentration = true))
+        @test success(model)
+        table = Ribasim.concentration_data(model)
+        @test all(isapprox.(table.concentration[table.substance .== "Continuity"], 1.0))
+    end
+end
+
 @testitem "Sparse, AD/FDM and reduced implicit solve jac solver options" begin
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
