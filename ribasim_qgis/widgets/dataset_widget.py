@@ -8,6 +8,7 @@ import contextlib
 import os
 import re
 import shutil
+from collections.abc import Collection
 from contextvars import ContextVar
 from datetime import datetime
 from functools import partial
@@ -43,7 +44,7 @@ from qgis.PyQt.QtWidgets import (
     QWidget,
 )
 
-from ribasim_qgis.core.junctions import link_towards_basin
+from ribasim_qgis.core.junctions import link_towards_basin, read_junctions_in_static
 from ribasim_qgis.core.model import (
     get_database_path_from_model_file,
     get_directory_path_from_model_file,
@@ -155,6 +156,8 @@ class DatasetWidget:
 
         # Observation input data (read from the GeoPackage, not the results).
         self.observations: Observations | None = None
+        # The Junctions with rows in Junction / static, read from the GeoPackage
+        self.junctions_in_static: frozenset[int] = frozenset()
 
         # Plot widget for timeseries
         self.plot_widget = PlotWidget(
@@ -163,6 +166,7 @@ class DatasetWidget:
             link_layer_getter=lambda: self.link_layer,
             concentration_for_node_getter=self._get_concentration_for_node,
             flow_for_link_getter=self._get_flow_for_link,
+            junctions_in_static_getter=lambda: self.junctions_in_static,
         )
 
         # Track running simulations by model path
@@ -621,6 +625,7 @@ class DatasetWidget:
     def refresh_results(self) -> None:
         self._load_netcdf_results()
         self._load_observations()
+        self._load_junctions_in_static()
         self._preload_plot_variables()
         self._set_node_results()
         self._set_link_results()
@@ -688,6 +693,12 @@ class DatasetWidget:
     def _load_observations(self) -> None:
         """Load Observation input data from the GeoPackage into self.observations."""
         self.observations = read_observations(
+            get_database_path_from_model_file(self.ribasim_widget.path)
+        )
+
+    def _load_junctions_in_static(self) -> None:
+        """Load which Junctions have rows in Junction / static from the GeoPackage."""
+        self.junctions_in_static = read_junctions_in_static(
             get_database_path_from_model_file(self.ribasim_widget.path)
         )
 
@@ -1152,6 +1163,7 @@ class DatasetWidget:
                     node_id,
                     link_id_to_idx,
                     flow_arr,
+                    self.junctions_in_static,
                 )
                 if column is not None:
                     new_traces[f"{node_type} #{node_id} flow_rate"] = (
@@ -1214,15 +1226,21 @@ class DatasetWidget:
         node_id: int,
         link_id_to_idx: dict[int, int],
         flow_arr: np.ndarray,
+        junctions_in_static: Collection[int] = frozenset(),
     ) -> np.ndarray | None:
-        """Return the flow_rate of a Junction.
+        """Return the flow_rate of a Junction, as the core defines it.
 
-        In a Junction group with exactly one Basin this is the flow on the link that
-        leads to that Basin, positive in the direction of that link. In other groups
-        it is the sum of the flows on the incoming links of the Junction.
+        For a Junction in *junctions_in_static*, those with rows in Junction / static,
+        it is the total inflow: the sum of the flows on its incoming links.
+        The other Junctions form groups. In a group with exactly one Basin it is the
+        flow on the link that leads to that Basin, positive in the direction of that
+        link. In other groups it is the sum of the flows on the incoming links.
         """
         link_id = link_towards_basin(
-            link_layer, lambda i: cls._node_type_of(node_layer, i), node_id
+            link_layer,
+            lambda i: cls._node_type_of(node_layer, i),
+            node_id,
+            junctions_in_static,
         )
         if link_id is not None:
             idx = link_id_to_idx.get(link_id)
@@ -1361,6 +1379,7 @@ class DatasetWidget:
                     target_id,
                     link_id_to_idx,
                     flow_arr,
+                    self.junctions_in_static,
                 )
             # A conservative node's flow_rate equals its single connected flow
             # link: outgoing for source-style nodes, incoming for sink-style.
