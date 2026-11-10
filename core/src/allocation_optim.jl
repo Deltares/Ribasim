@@ -1612,7 +1612,7 @@ function update_allocation!(
     # Don't run the allocation algorithm if allocation is not active
     !is_active(allocation) && return nothing
 
-    update_scaling!(p, t, Δt)
+    update_scaling!(p, t, Δt, t_known)
 
     for secondary_network in get_secondary_networks(allocation_models)
         update_control_states!(secondary_network, p_independent)

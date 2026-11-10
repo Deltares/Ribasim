@@ -284,20 +284,23 @@ end
 
 """
 The mean of the nonzero FlowBoundary flow rates and UserDemand and FlowDemand demands
-in the subnetwork at time `t`, as a typical flow rate for a subnetwork without a Basin.
+in the subnetwork, as a typical flow rate for a subnetwork without a Basin. Like in the
+optimization, the FlowBoundary flow rates are read at the intervention time `t_known` and
+the demands at the start of the allocation timestep `t`.
 Returns `nothing` if all of these are zero or there are none.
 """
 function typical_boundary_flow(
         p_independent::ParametersIndependent,
         node_ids_in_subnetwork::NodeIDsInSubnetwork,
         t::Float64,
+        t_known::Float64,
     )::Union{Float64, Nothing}
     (; flow_boundary, user_demand, flow_demand, allocation) = p_independent
     (; flow_boundary_ids_subnetwork, user_demand_ids_subnetwork, flow_demand_ids_subnetwork) =
         node_ids_in_subnetwork
     flows = Float64[]
     for node_id in flow_boundary_ids_subnetwork
-        push!(flows, boundary_flow_rate(flow_boundary, node_id.idx, t))
+        push!(flows, boundary_flow_rate(flow_boundary, node_id.idx, t_known))
     end
     for demand_priority_idx in eachindex(allocation.demand_priorities_all)
         for node_id in user_demand_ids_subnetwork
@@ -313,7 +316,7 @@ function typical_boundary_flow(
     return isempty(flows) ? nothing : sum(abs, flows) / length(flows)
 end
 
-function update_scaling!(p::Parameters, t::Float64, Δt::Float64)
+function update_scaling!(p::Parameters, t::Float64, Δt::Float64, t_known::Float64)
     (; p_independent, current_basin_properties) = p
     (; allocation_models) = p_independent.allocation
     (; current_storage) = current_basin_properties
@@ -324,7 +327,7 @@ function update_scaling!(p::Parameters, t::Float64, Δt::Float64)
         if isempty(basin_ids_subnetwork)
             # Without a Basin the storage scale is not used, so scale by the flows. If these
             # are all zero, keep the previous scaling.
-            flow = typical_boundary_flow(p_independent, node_ids_in_subnetwork, t)
+            flow = typical_boundary_flow(p_independent, node_ids_in_subnetwork, t, t_known)
             isnothing(flow) || (scaling.flow = flow)
             scaling.storage = scaling.flow * Δt
         else
