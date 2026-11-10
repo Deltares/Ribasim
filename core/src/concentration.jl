@@ -7,8 +7,9 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
     (; basin, user_demand, cumulative_flow_dt) = p.p_independent
     (; concentration_state, mass) = basin.concentration_data
 
-    for (node_idx, outflow_link) in enumerate(user_demand.outflow_link)
-        to_node = outflow_link.link[2]
+    for (node_idx, outflow_data) in enumerate(user_demand.outflow_data)
+        @assert !outflow_data.to_pass_down "Internal tracers through PassDown nodes not supported yet, see issue #3337"
+        to_node = outflow_id(outflow_data)
         inflow_links = user_demand.inflow_links[node_idx]
 
         if to_node.is_basin
@@ -141,7 +142,7 @@ end
 
 function TracerTransport(
         inflow_id::FlowCVector{NodeID},
-        outflow_id::FlowCVector{NodeID},
+        outflow_data::FlowCVector{OutflowData},
         basin::Basin,
         do_concentration::Bool,
     )::TracerTransport
@@ -153,7 +154,8 @@ function TracerTransport(
     rows = collect(1:n_basin)
     cols = collect(1:n_basin)
     if do_concentration
-        for (from_node, to_node) in zip(inflow_id, outflow_id)
+        for (from_node, to_data) in zip(inflow_id, outflow_data)
+            to_node = outflow_id(to_data)
             if from_node.is_basin && to_node.is_basin
                 push!(rows, to_node.idx, from_node.idx)
                 push!(cols, from_node.idx, to_node.idx)
@@ -170,7 +172,8 @@ function TracerTransport(
     forward_nz = zeros(Int, n_flow)
     backward_nz = zeros(Int, n_flow)
     if do_concentration
-        for (flow_idx, (from_node, to_node)) in enumerate(zip(inflow_id, outflow_id))
+        for (flow_idx, (from_node, to_data)) in enumerate(zip(inflow_id, outflow_data))
+            to_node = outflow_id(to_data)
             if from_node.is_basin && to_node.is_basin
                 forward_nz[flow_idx] = nz_index(to_node.idx, from_node.idx)
                 backward_nz[flow_idx] = nz_index(from_node.idx, to_node.idx)
@@ -203,7 +206,7 @@ function transport_tracers!(
         tprev::Float64,
         dt::Float64,
     )::Nothing
-    (; tracer_transport, basin, level_boundary, cumulative_flow_dt, inflow_id, outflow_id, flow_ranges) =
+    (; tracer_transport, basin, level_boundary, cumulative_flow_dt, inflow_id, outflow_data, flow_ranges) =
         p_independent
     (; A, diagonal_nz, forward_nz, backward_nz, outflow, rhs, theta, linear_solve) = tracer_transport
     (; mass, evaporate_mass, concentration_state) = basin.concentration_data
@@ -220,10 +223,13 @@ function transport_tracers!(
         flow_idx in flow_ranges.horizontal.user_demand_outflow && continue
 
         volume = cumulative_flow_dt[flow_idx]
+        to_data = outflow_data[flow_idx]
+        @assert !to_data.to_pass_down "Internal tracers through PassDown nodes not supported yet, see issue #3337"
+        to_node = outflow_id(to_data)
         upstream, downstream, nz = if volume > 0
-            inflow_id[flow_idx], outflow_id[flow_idx], forward_nz[flow_idx]
+            inflow_id[flow_idx], to_node, forward_nz[flow_idx]
         elseif volume < 0
-            outflow_id[flow_idx], inflow_id[flow_idx], backward_nz[flow_idx]
+            to_node, inflow_id[flow_idx], backward_nz[flow_idx]
         else
             continue
         end

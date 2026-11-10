@@ -19,6 +19,7 @@
       <category render="true" label="ContinuousControl" symbol="14" uuid="{d0f405db-ba45-46b8-b936-27083bc4fbc2}" value="ContinuousControl" type="string"/>
       <category render="true" label="Junction" symbol="15" uuid="{ca672951-5625-497b-983e-8003d9c3629e}" value="Junction" type="string"/>
       <category render="true" label="Observation" symbol="16" uuid="{a1b2c3d4-e5f6-7890-abcd-ef1234567890}" value="Observation" type="string"/>
+      <category render="true" label="PassDown" symbol="18" uuid="{e897d218-d081-4657-afe4-03823c3dd709}" value="PassDown" type="string"/>
       <category render="true" label="" symbol="17" uuid="{cd195da4-dc01-4c6e-8fd4-5e582bf3faf5}" value="NULL" type="NULL"/>
     </categories>
     <symbols>
@@ -217,6 +218,29 @@
         <layer pass="0" locked="0" id="{b1c2d3e4-f5a6-7890-bcde-f12345678901}" class="SvgMarker" enabled="1">
           <Option type="Map">
             <Option name="name" value="base64:PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiIHN0YW5kYWxvbmU9Im5vIj8+CjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIKICAiaHR0cDovL3d3dy53My5vcmcvR3JhcGhpY3MvU1ZHLzEuMS9EVEQvc3ZnMTEuZHRkIj4KPHN2ZyB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgd2lkdGg9IjcycHQiIGhlaWdodD0iNzJwdCIgdmlld0JveD0iMCAwIDcyIDcyIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZlcnNpb249IjEuMSI+CjxkZWZzPgogIDxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+KntzdHJva2UtbGluZWpvaW46IHJvdW5kOyBzdHJva2UtbGluZWNhcDogYnV0dH08L3N0eWxlPgogPC9kZWZzPgogPGcgaWQ9ImZpZ3VyZV8xIj4KICA8ZyBpZD0icGF0Y2hfMSI+CiAgIDxwYXRoIGQ9Ik0gMCA3MgpMIDcyIDcyCkwgNzIgMApMIDAgMApMIDAgNzIKegoiIHN0eWxlPSJmaWxsOiBub25lIi8+CiAgPC9nPgogIDxnIGlkPSJheGVzXzEiPgogICA8ZyBpZD0icGF0Y2hfMiI+CiAgICA8cGF0aCBkPSJNIDI4LjA4IDY0LjgKTCA0My45MiA2NC44CkwgNDMuOTIgNy4yCkwgMjguMDggNy4yCnoKIiBjbGlwLXBhdGg9InVybCgjcGUyMTc0ODNjOTYpIiBzdHlsZT0iZmlsbDogI2ZmZmZmZjsgc3Ryb2tlOiAjMDAwMDAwOyBzdHJva2Utd2lkdGg6IDEuNTsgc3Ryb2tlLWxpbmVqb2luOiBtaXRlciIvPgogICA8L2c+CiAgIDxnIGlkPSJwYXRjaF8zIj4KICAgIDxwYXRoIGQ9Ik0gMjguMDggNjQuOApMIDQzLjkyIDY0LjgKTCA0My45MiA1My4yOApMIDI4LjA4IDUzLjI4CnoKIiBjbGlwLXBhdGg9InVybCgjcGUyMTc0ODNjOTYpIiBzdHlsZT0ic3Ryb2tlOiAjMDAwMDAwOyBzdHJva2Utd2lkdGg6IDAuNzU7IHN0cm9rZS1saW5lam9pbjogbWl0ZXIiLz4KICAgPC9nPgogICA8ZyBpZD0icGF0Y2hfNCI+CiAgICA8cGF0aCBkPSJNIDI4LjA4IDQxLjc2CkwgNDMuOTIgNDEuNzYKTCA0My45MiAzMC4yNApMIDI4LjA4IDMwLjI0CnoKIiBjbGlwLXBhdGg9InVybCgjcGUyMTc0ODNjOTYpIiBzdHlsZT0ic3Ryb2tlOiAjMDAwMDAwOyBzdHJva2Utd2lkdGg6IDAuNzU7IHN0cm9rZS1saW5lam9pbjogbWl0ZXIiLz4KICAgPC9nPgogICA8ZyBpZD0icGF0Y2hfNSI+CiAgICA8cGF0aCBkPSJNIDI4LjA4IDE4LjcyCkwgNDMuOTIgMTguNzIKTCA0My45MiA3LjIKTCAyOC4wOCA3LjIKegoiIGNsaXAtcGF0aD0idXJsKCNwZTIxNzQ4M2M5NikiIHN0eWxlPSJzdHJva2U6ICMwMDAwMDA7IHN0cm9rZS13aWR0aDogMC43NTsgc3Ryb2tlLWxpbmVqb2luOiBtaXRlciIvPgogICA8L2c+CiAgPC9nPgogPC9nPgogPGRlZnM+CiAgPGNsaXBQYXRoIGlkPSJwZTIxNzQ4M2M5NiI+CiAgIDxyZWN0IHg9IjAiIHk9IjAiIHdpZHRoPSI3MiIgaGVpZ2h0PSI3MiIvPgogIDwvY2xpcFBhdGg+CiA8L2RlZnM+Cjwvc3ZnPgo=" type="QString"/>
+            <Option name="size" value="6.6" type="QString"/>
+            <Option name="size_unit" value="MM" type="QString"/>
+          </Option>
+          <data_defined_properties>
+            <Option type="Map">
+              <Option name="name" value="" type="QString"/>
+              <Option name="properties"/>
+              <Option name="type" value="collection" type="QString"/>
+            </Option>
+          </data_defined_properties>
+        </layer>
+      </symbol>
+      <symbol clip_to_extent="1" frame_rate="10" force_rhr="0" name="18" alpha="1" is_animated="0" type="marker">
+        <data_defined_properties>
+          <Option type="Map">
+            <Option name="name" value="" type="QString"/>
+            <Option name="properties"/>
+            <Option name="type" value="collection" type="QString"/>
+          </Option>
+        </data_defined_properties>
+        <layer pass="0" locked="0" id="{fb7d3320-ab52-4a3c-89f4-c3d5a7107ea4}" class="SvgMarker" enabled="1">
+          <Option type="Map">
+            <Option name="name" value="base64:PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiIHN0YW5kYWxvbmU9Im5vIj8+CjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIKICAiaHR0cDovL3d3dy53My5vcmcvR3JhcGhpY3MvU1ZHLzEuMS9EVEQvc3ZnMTEuZHRkIj4KPHN2ZyB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgd2lkdGg9IjcycHQiIGhlaWdodD0iNzJwdCIgdmlld0JveD0iMCAwIDcyIDcyIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZlcnNpb249IjEuMSI+CjxkZWZzPgogIDxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+KntzdHJva2UtbGluZWpvaW46IHJvdW5kOyBzdHJva2UtbGluZWNhcDogYnV0dH08L3N0eWxlPgogPC9kZWZzPgogPGcgaWQ9ImZpZ3VyZV8xIj4KICA8ZyBpZD0icGF0Y2hfMSI+CiAgIDxwYXRoIGQ9Ik0gMCA3MgpMIDcyIDcyCkwgNzIgMApMIDAgMApMIDAgNzIKegoiIHN0eWxlPSJmaWxsOiBub25lIi8+CiAgPC9nPgogIDxnIGlkPSJheGVzXzEiPgogICA8ZyBpZD0icGF0Y2hfMiI+CiAgICA8cGF0aCBkPSJNIDM2IDU1LjgKQyA0MS4yNTEwMjEgNTUuOCA0Ni4yODc2ODEgNTMuNzEzNzQ3IDUwLjAwMDcxNCA1MC4wMDA3MTQKQyA1My43MTM3NDcgNDYuMjg3NjgxIDU1LjggNDEuMjUxMDIxIDU1LjggMzYKQyA1NS44IDMwLjc0ODk3OSA1My43MTM3NDcgMjUuNzEyMzE5IDUwLjAwMDcxNCAyMS45OTkyODYKQyA0Ni4yODc2ODEgMTguMjg2MjUzIDQxLjI1MTAyMSAxNi4yIDM2IDE2LjIKQyAzMC43NDg5NzkgMTYuMiAyNS43MTIzMTkgMTguMjg2MjUzIDIxLjk5OTI4NiAyMS45OTkyODYKQyAxOC4yODYyNTMgMjUuNzEyMzE5IDE2LjIgMzAuNzQ4OTc5IDE2LjIgMzYKQyAxNi4yIDQxLjI1MTAyMSAxOC4yODYyNTMgNDYuMjg3NjgxIDIxLjk5OTI4NiA1MC4wMDA3MTQKQyAyNS43MTIzMTkgNTMuNzEzNzQ3IDMwLjc0ODk3OSA1NS44IDM2IDU1LjgKegoiIGNsaXAtcGF0aD0idXJsKCNwZTIxNzQ4M2M5NikiIHN0eWxlPSJmaWxsOiAjMDA3MmIyOyBzdHJva2U6ICMwMDAwMDA7IHN0cm9rZS13aWR0aDogMS41OyBzdHJva2UtbGluZWpvaW46IG1pdGVyIi8+CiAgIDwvZz4KICA8L2c+CiA8L2c+CiA8ZGVmcz4KICA8Y2xpcFBhdGggaWQ9InBlMjE3NDgzYzk2Ij4KICAgPHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjcyIiBoZWlnaHQ9IjcyIi8+CiAgPC9jbGlwUGF0aD4KIDwvZGVmcz4KPC9zdmc+Cg==" type="QString"/>
             <Option name="size" value="6.6" type="QString"/>
             <Option name="size_unit" value="MM" type="QString"/>
           </Option>

@@ -3,7 +3,9 @@ import pytest
 import shapely.geometry as sg
 from pandera.errors import SchemaErrors
 from pydantic import ValidationError
+from ribasim import Model, Node
 from ribasim.geometry.link import LinkTable, NodeData, _infer_link_type
+from ribasim.nodes import basin, pass_down, pump, user_demand
 
 
 @pytest.fixture(scope="session")
@@ -95,6 +97,87 @@ def test_validate_link_rejects_excess_inneighbors(basic):
     with pytest.raises(ValueError, match="at most 1 flow link inneighbor"):
         # LinearResistance allows at most 1 flow inneighbor; it already has one
         model.link.add(model.basin[1], model.linear_resistance[10])
+
+
+@pytest.mark.parametrize(
+    "upstream",
+    [("basin", "pass_down"), ("pass_down", "basin"), ("pass_down", "pass_down")],
+)
+def test_validate_link_user_demand_pass_down_inflow(upstream: tuple[str, str]):
+    """A UserDemand has either Basin inflow(s) or exactly one PassDown inflow."""
+    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+    nodes = {
+        "basin": [
+            model.basin.add(
+                Node(1, sg.Point(0, 0)),
+                [
+                    basin.State(level=[1.0]),
+                    basin.Profile(level=[0.0, 2.0], area=[100.0, 200.0]),
+                ],
+            )
+        ],
+        "pass_down": [
+            model.pass_down.add(
+                Node(node_id, sg.Point(0, node_id)),
+                [pass_down.Static(fraction=[0.5])],
+            )
+            for node_id in (2, 3)
+        ],
+    }
+    ud = model.user_demand.add(
+        Node(4, sg.Point(1, 0)),
+        [
+            user_demand.Static(
+                demand_priority=[1], demand=[1e-4], return_factor=0.5, min_level=[0.0]
+            )
+        ],
+    )
+    first, second = (nodes[upstream[0]].pop(), nodes[upstream[1]].pop())
+    model.link.add(first, ud)
+    with pytest.raises(ValueError, match="exactly one PassDown inflow link"):
+        model.link.add(second, ud)
+
+
+def test_validate_link_pass_down_user_demand_and_other_outflow():
+    """A PassDown node with a UserDemand outflow can only flow into other PassDown nodes."""
+    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+    pd = model.pass_down.add(
+        Node(1, sg.Point(0, 0)), [pass_down.Static(fraction=[1.0])]
+    )
+    ud = model.user_demand.add(
+        Node(2, sg.Point(1, 1)),
+        [
+            user_demand.Static(
+                demand_priority=[1], demand=[1e-4], return_factor=0.5, min_level=[0.0]
+            )
+        ],
+    )
+    trm = model.terminal.add(Node(3, sg.Point(1, -1)))
+    model.link.add(pd, ud)
+    with pytest.raises(ValueError, match="all its other flow link outneighbors"):
+        model.link.add(pd, trm)
+
+
+def test_validate_link_pass_down_skipped_with_junction():
+    """PassDown connectivity involving a Junction is left to the Julia core."""
+    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+    pmp = model.pump.add(Node(1, sg.Point(0, 0)), [pump.Static(flow_rate=[1e-3])])
+    pd = model.pass_down.add(
+        Node(2, sg.Point(1, 1)), [pass_down.Static(fraction=[0.5])]
+    )
+    jct = model.junction.add(Node(3, sg.Point(1, -1)))
+    ud = model.user_demand.add(
+        Node(4, sg.Point(2, 0)),
+        [
+            user_demand.Static(
+                demand_priority=[1], demand=[1e-4], return_factor=0.5, min_level=[0.0]
+            )
+        ],
+    )
+    model.link.add(pmp, pd)
+    model.link.add(pmp, jct)
+    model.link.add(pd, ud)
+    model.link.add(jct, ud)
 
 
 def test_listen_link_allows_reverse_control(discrete_control_of_pid_control):

@@ -613,7 +613,7 @@ end
     @test Ribasim.get_flow(
         du.flow,
         (NodeID(:FlowBoundary, 1, p_independent), NodeID(:Basin, 2, p_independent)),
-        p;
+        p_independent;
         t,
     ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
     @test Ribasim.get_flow(
@@ -622,7 +622,7 @@ end
             NodeID(:ManningResistance, 101, p_independent),
             NodeID(:Basin, 102, p_independent),
         ),
-        p;
+        p_independent;
         t,
     ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
 end

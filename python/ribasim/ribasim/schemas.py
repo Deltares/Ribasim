@@ -317,6 +317,13 @@ class OutletTimeSchema(_BaseSchema):
     max_downstream_level: float = pa.Field(nullable=True)
 
 
+class PassDownStaticSchema(_BaseSchema):
+    _node_id_relation: str = "equal"
+    fid: Index[np.int32] = pa.Field(default=1, check_name=True, coerce=True)
+    node_id: np.int32 = pa.Field(nullable=False, default=0)
+    fraction: float = pa.Field(nullable=True)
+
+
 class PidControlStaticSchema(_BaseSchema):
     _node_id_relation: str = "partition"
     fid: Index[np.int32] = pa.Field(default=1, check_name=True, coerce=True)
@@ -402,7 +409,7 @@ class UserDemandStaticSchema(_BaseSchema):
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     demand: float = pa.Field(nullable=True)
     return_factor: float = pa.Field(nullable=False)
-    min_level: float = pa.Field(nullable=False)
+    min_level: float = pa.Field(nullable=True)
     demand_priority: pd.Int32Dtype = pa.Field(nullable=True)
 
 
@@ -413,5 +420,5 @@ class UserDemandTimeSchema(_BaseSchema):
     time: pd.Timestamp = pa.Field(nullable=False)
     demand: float = pa.Field(nullable=False)
     return_factor: float = pa.Field(nullable=False)
-    min_level: float = pa.Field(nullable=False)
+    min_level: float = pa.Field(nullable=True)
     demand_priority: pd.Int32Dtype = pa.Field(nullable=True)

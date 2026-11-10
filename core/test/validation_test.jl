@@ -431,29 +431,6 @@ end
         "Pump #2 has multiple control states but is not controlled by DiscreteControl, add a row without control_state to define its parameters."
 end
 
-@testitem "Missing demand priority when allocation is active" begin
-    using Ribasim
-    using Logging
-    using IOCapture: capture
-
-    toml_path =
-        normpath(@__DIR__, "../../generated_testmodels/invalid_priorities/ribasim.toml")
-    @test ispath(toml_path)
-
-    logger = TestLogger()
-    with_logger(logger) do
-        @test_throws "Missing demand priority parameter(s)." Ribasim.run(toml_path)
-    end
-    @test length(logger.logs) == 3
-    @test logger.logs[1].level == Error
-    @test logger.logs[1].message ==
-        "Missing demand_priority parameter(s) for a FlowDemand / static node in the allocation problem."
-    @test logger.logs[2].message ==
-        "Missing demand_priority parameter(s) for a LevelDemand / static node in the allocation problem."
-    @test logger.logs[3].message ==
-        "Missing demand_priority parameter(s) for a UserDemand / static node in the allocation problem."
-end
-
 @testitem "Node ID not in Node table" begin
     using Ribasim
     import SQLite
@@ -800,4 +777,21 @@ end
     end
     @test only(logger.logs).message ==
         "The return_factor and min_level of UserDemand #1 must be the same for all demand priorities."
+end
+
+@testitem "UserDemand min_level required for Basin inflow" begin
+    using Logging
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/invalid_user_demand_missing_min_level/ribasim.toml",
+    )
+    @test ispath(toml_path)
+
+    logger = TestLogger()
+    with_logger(logger) do
+        @test_throws "Errors encountered when parsing UserDemand data." Ribasim.Model(toml_path)
+    end
+    @test [string(log.message) for log in logger.logs if log.level == Logging.Error] ==
+        ["UserDemand #2 abstracts from a Basin, so a min_level must be provided."]
 end

@@ -142,7 +142,7 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     for allocation_model in allocation.allocation_models
         (; cumulative_supplied_volume) = allocation_model
         for link in keys(cumulative_supplied_volume)
-            cumulative_supplied_volume[link] += get_flow(cumulative_flow_dt, link, p)
+            cumulative_supplied_volume[link] += get_flow(cumulative_flow_dt, link, p_independent)
         end
     end
     return nothing
@@ -214,14 +214,16 @@ function update_concentrations!(u, t, integrator)::Nothing
     add_forcing_mass!(mass, loads, dt, tprev)
 
     # Exact boundary flow over time step
-    for (id, outflow_link) in zip(flow_boundary.node_id, flow_boundary.outflow_link)
-        outflow_id = outflow_link.link[2]
-        add_substance_mass!(
-            view(mass, :, outflow_id.idx),
-            flow_boundary.concentration_itp[id.idx],
-            flow_boundary.cumulative_flow_dt[id.idx],
-            tprev,
-        )
+    for (id, data_out) in zip(flow_boundary.node_id, flow_boundary.outflow_data)
+        if !data_out.to_pass_down
+            to_node = outflow_id(data_out)
+            add_substance_mass!(
+                view(mass, :, to_node.idx),
+                flow_boundary.concentration_itp[id.idx],
+                flow_boundary.cumulative_flow_dt[id.idx],
+                tprev,
+            )
+        end
     end
 
     mass_inflows_from_user_demand!(integrator)
@@ -386,7 +388,8 @@ function save_mean_flows!(saved::SavedResults, u, t::Float64, integrator)::Bool
         (forcing.exact_cumulative_forcing_since_reset - forcing.exact_cumulative_forcing_prev_saveat) / Δt
 
     save_mean_convergence!(mean_flows, p_independent)
-    errors = check_water_balance_error!(mean_flows, integrator, Δt)
+    errors = check_basin_water_balance_error!(mean_flows, integrator, Δt)
+    errors |= check_pass_down_water_balance_error!(p_independent, t, flow, boundary_flow)
 
     # Basin results
     (; variables) = saved.basin
@@ -452,10 +455,47 @@ function save_mean_convergence!(mean_flows::MeanFlows, p_independent::Parameters
 end
 
 """
+Check the water balance per PassDown node, and return whether there are too large errors.
+"""
+function check_pass_down_water_balance_error!(
+        p_independent::ParametersIndependent,
+        t::Float64,
+        flow_mean::FlowCVector{Float64},
+        boundary_flow_mean::Vector{Float64},
+    )::Bool
+    (; pass_down, water_balance_abstol, water_balance_reltol) = p_independent
+    (; node_id, inflow_links, outflow_links) = pass_down
+
+    errors = false
+
+    for id in node_id
+        inflow_rate = sum(
+            get_flow(flow_mean, link.link, p_independent; boundary_flow = boundary_flow_mean, t)
+                for link in inflow_links[id.idx]
+        )
+        outflow_rate = sum(
+            get_flow(flow_mean, link.link, p_independent; boundary_flow = boundary_flow_mean, t)
+                for link in outflow_links[id.idx]
+        )
+
+        balance_error = outflow_rate - inflow_rate
+        mean_flow_rate = (inflow_rate + outflow_rate) / 2
+        relative_error = iszero(mean_flow_rate) ? 0.0 : balance_error / mean_flow_rate
+
+        if abs(balance_error) > water_balance_abstol &&
+                abs(relative_error) > water_balance_reltol
+            errors = true
+            @error "Too large PassDown water balance error" id balance_error relative_error inflow_rate outflow_rate
+        end
+    end
+    return errors
+end
+
+"""
 Check the water balance per Basin, and return whether there are too large errors. The
 error is thrown after saving the results, so that the results show them.
 """
-function check_water_balance_error!(
+function check_basin_water_balance_error!(
         mean_flows::MeanFlows,
         integrator::DEIntegrator,
         Δt::Float64,
@@ -522,12 +562,12 @@ function save_external_flows!(file::SavedFile, mean_flows::MeanFlows, p::Paramet
     n_new = n + only(file.size)
 
     for (fi, link) in enumerate(internal_flow_links)
-        if link.link[1].type == NodeType.FlowBoundary
+        if link.link[1].type == NodeType.FlowBoundary && !link.link[2].is_pass_down
             internal_flow_rate[fi] = boundary_flow[link.link[1].idx]
             internal_convergence[fi] = missing
         else
-            internal_flow_rate[fi] = get_flow(flow, link.link, p)
-            internal_convergence[fi] = get_flow(flow_convergence.flow, link.link, p)
+            internal_flow_rate[fi] = get_flow(flow, link.link, p.p_independent)
+            internal_convergence[fi] = get_flow(flow_convergence.flow, link.link, p.p_independent)
         end
     end
     resize!(flow_rate, n_new)
