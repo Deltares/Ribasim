@@ -303,3 +303,50 @@ end
     @test all(>=(0), allocation_flow_data.flow_rate)
     @test mean_flow_rate(allocation_flow_data, 4, 5) ≈ 5.0e-3 rtol = 1.0e-5
 end
+
+@testitem "ContinuousControl listens to flows in a Junction subgraph" begin
+    using DataFrames: DataFrame
+    using LinearAlgebra: norm
+    using Ribasim.SciMLOperators: update_coefficients!
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/junction_continuous_control/ribasim.toml")
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    flow_data = Ribasim.flow_data(model) |> DataFrame
+    flow_rates(from_node_id, to_node_id) =
+        filter(row -> row.from_node_id == from_node_id && row.to_node_id == to_node_id, flow_data).flow_rate
+
+    # UserDemand #4 gets its demand at first, and all of the flow once that is less than its demand
+    @test first(flow_rates(3, 4)) ≈ 2.0e-3
+    @test last(flow_rates(3, 4)) ≈ last(flow_rates(2, 3))
+    @test 0 < last(flow_rates(3, 4)) < 1.0e-3
+    # Pump #7 follows the flow rate of UserDemand #4, which abstracts from Junction #3
+    @test flow_rates(7, 9) ≈ flow_rates(3, 4)
+    # Pump #8 follows the flow rate of Junction #5, which is what UserDemand #4 leaves
+    @test flow_rates(8, 9) ≈ flow_rates(5, 6) atol = 1.0e-7
+    @test first(flow_rates(8, 9)) > 1.0e-4
+
+    # The Jacobian of the reduced solve has the dependence of the Pumps on the storage of Basin #1
+    # via the flows in the Junction subgraph. At the end Pump #7 depends on it, since the
+    # abstraction of UserDemand #4 is limited by the flow of TabulatedRatingCurve #2.
+    (; u, p, t) = model.integrator
+    (; J) = model.integrator.cache.nlsolver.cache.W
+    Ribasim.water_balance!(zero(u), u, p, t)
+    p.p_mutable.refresh_jac = true
+    update_coefficients!(J, u, p, t)
+    n_flow = length(u.flow)
+    ∂q_∂storage = zeros(n_flow, J.n_basin)
+    Ribasim.foreach_∂flow_∂storage(J) do flow_idx, basin_idx, val
+        ∂q_∂storage[flow_idx, basin_idx] += val
+    end
+    @test ∂q_∂storage[p.p_independent.flow_ranges.horizontal.pump[1], 1] > 1.0e-7
+
+    config_full = Ribasim.Config(toml_path; solver_reduced_implicit_solve = false)
+    integrator_full = Ribasim.Model(config_full).integrator
+    J_full = Matrix(copy(integrator_full.f.jac_prototype))
+    integrator_full.f.jac(J_full, u, integrator_full.p, t)
+    K = Matrix(J.cache.jac_junction.jac)
+    M = Matrix(p.p_independent.incidence_matrix)
+    @test norm(K * ∂q_∂storage * M - J_full) <= 1.0e-8 * norm(J_full)
+end

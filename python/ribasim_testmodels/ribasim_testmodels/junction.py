@@ -16,6 +16,7 @@ from ribasim.nodes import (
     outlet,
     pid_control,
     pump,
+    tabulated_rating_curve,
     user_demand,
 )
 from shapely.geometry import Point
@@ -522,6 +523,82 @@ def junction_pid_model() -> Model:
     model.link.add(b1, out)
     model.link.add(out, trm)
     model.link.add(pid, out)
+    return model
+
+
+def junction_continuous_control_model() -> Model:
+    """Create a model with ContinuousControl nodes that listen to flows in a Junction subgraph.
+
+    TabulatedRatingCurve #2 drains Basin #1 into Junction #3, which supplies UserDemand #4 and
+    passes the remainder on via Junction #5 to Basin #6. The flow of the rating curve drops
+    below the demand during the simulation, after which the UserDemand takes all of it.
+
+    - ContinuousControl #10 sets Pump #7 to the flow rate of UserDemand #4.
+    - ContinuousControl #11 sets Pump #8 to the flow rate of Junction #5, which is downstream
+      of the abstraction.
+    """
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 2, 1),
+        crs="EPSG:28992",
+    )
+
+    def basin_tables(bottom: float) -> list:
+        return [
+            basin.Profile(area=[1000.0, 1000.0], level=[bottom, bottom + 10.0]),
+            basin.State(level=[bottom + 5.0]),
+        ]
+
+    def listen_to(node_id: int) -> list:
+        return [
+            continuous_control.Variable(listen_node_id=[node_id], variable="flow_rate"),
+            continuous_control.Function(
+                input=[0.0, 1.0], output=[0.0, 1.0], controlled_variable="flow_rate"
+            ),
+        ]
+
+    b1 = model.basin.add(Node(1, Point(0, 0)), basin_tables(0.0))
+    trc = model.tabulated_rating_curve.add(
+        Node(2, Point(1, 0)),
+        [tabulated_rating_curve.Static(level=[0.0, 10.0], flow_rate=[0.0, 1e-2])],
+    )
+    jct_ud = model.junction.add(
+        Node(3, Point(2, 0)), [junction.Static(to_node_id=[5], fraction=[1.0])]
+    )
+    ud = model.user_demand.add(
+        Node(4, Point(2, 1)),
+        [
+            user_demand.Static(
+                demand_priority=[1],
+                demand=[2e-3],
+                return_factor=[0.5],
+                min_level=[-10.0],
+            )
+        ],
+    )
+    jct = model.junction.add(
+        Node(5, Point(3, 0)), [junction.Static(to_node_id=[6], fraction=[1.0])]
+    )
+    # Below Basin #1, so that the rating curve keeps its free outflow
+    b2 = model.basin.add(Node(6, Point(4, 0)), basin_tables(-10.0))
+    p_ud = model.pump.add(Node(7, Point(5, 1)), [pump.Static(flow_rate=[0.0])])
+    p_jct = model.pump.add(Node(8, Point(5, -1)), [pump.Static(flow_rate=[0.0])])
+    trm = model.terminal.add(Node(9, Point(6, 0)))
+    cc_ud = model.continuous_control.add(Node(10, Point(4, 2)), listen_to(4))
+    cc_jct = model.continuous_control.add(Node(11, Point(4, -2)), listen_to(5))
+
+    model.link.add(b1, trc)
+    model.link.add(trc, jct_ud)
+    model.link.add(jct_ud, ud)
+    model.link.add(jct_ud, jct)
+    model.link.add(ud, b2)
+    model.link.add(jct, b2)
+    model.link.add(b2, p_ud)
+    model.link.add(b2, p_jct)
+    model.link.add(p_ud, trm)
+    model.link.add(p_jct, trm)
+    model.link.add(cc_ud, p_ud)
+    model.link.add(cc_jct, p_jct)
     return model
 
 

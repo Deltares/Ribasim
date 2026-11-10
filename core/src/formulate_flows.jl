@@ -57,7 +57,7 @@ function water_balance!(
 
     # Provisional Junction flows, so that the derivative term of PID control sees the
     # flow into the listened Basin via Junction nodes
-    formulate_provisional_junction_flow!(du.flow, p, t)
+    formulate_provisional_junction_flow!(du.flow, p, t, ContinuousControlType.PID)
 
     # Formulate the PID control integral term rate
     formulate_PID_control!(
@@ -73,6 +73,9 @@ function water_balance!(
         formulate_flows_args...;
         control_type = ContinuousControlType.PID
     )
+
+    # Provisional Junction flows, so that ContinuousControl sees the flows in the Junction subgraphs
+    formulate_provisional_junction_flow!(du.flow, p, t, ContinuousControlType.Continuous)
 
     # Compute ContinuousControl compound variables
     compute_continuous_control_compound_variables!(
@@ -1133,15 +1136,30 @@ function set_current_boundary_flow_rate!(flow_boundary::FlowBoundary, p::Paramet
 end
 
 """
-The PID derivative term uses the storage rate of the listened Basin, which includes the
-flows into it via Junction nodes. These are computed after the controlled flows, so they are
-computed provisionally before PID control from the flows known at that point. The flows of
-PID and ContinuousControl controlled nodes are still zero then, so a controlled flow that
-reaches the listened Basin via Junction nodes is not part of the derivative term.
+The flows in the Junction subgraphs are computed at the end of the right hand side, after the
+controlled flows. Control that depends on them therefore computes them provisionally first,
+from the flows known at that point:
+
+- The PID derivative term uses the storage rate of the listened Basin, which includes the
+  flows into it via Junction nodes. The flows of PID and ContinuousControl controlled nodes
+  are still zero then, so a controlled flow that reaches the listened Basin via Junction
+  nodes is not part of the derivative term.
+- ContinuousControl can listen to the flow rate of a Junction node, or of a UserDemand node
+  that abstracts from one. The flows of ContinuousControl controlled nodes are still zero
+  then, like for any other flow that ContinuousControl listens to.
+
+`control_type` is the type of control that is formulated next.
 """
-function formulate_provisional_junction_flow!(flow::FlowCVector, p::Parameters, t::Number)::Nothing
-    (; junction, pid_control) = p.p_independent
-    if !isempty(junction.routed_ids) && !isempty(pid_control.node_id)
+function formulate_provisional_junction_flow!(
+        flow::FlowCVector,
+        p::Parameters,
+        t::Number,
+        control_type::ContinuousControlType.T,
+    )::Nothing
+    (; junction, pid_control, continuous_control) = p.p_independent
+    control_node_id = control_type == ContinuousControlType.PID ?
+        pid_control.node_id : continuous_control.node_id
+    if !isempty(junction.routed_ids) && !isempty(control_node_id)
         formulate_junction_flow!(flow, p, t)
     end
     return nothing
