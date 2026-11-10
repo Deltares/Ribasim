@@ -283,10 +283,12 @@ function ScalingFactors(
 end
 
 """
-The mean of the nonzero FlowBoundary flow rates and UserDemand and FlowDemand demands
-in the subnetwork, as a typical flow rate for a subnetwork without a Basin. Like in the
-optimization, the FlowBoundary flow rates are read at the intervention time `t_known` and
-the demands at the start of the allocation timestep `t`.
+The order of magnitude (power of 10) of the geometric mean of the nonzero FlowBoundary flow
+rates and UserDemand and FlowDemand demands in the subnetwork, as a typical flow rate for a
+subnetwork without a Basin. Unlike the arithmetic mean, the geometric mean is not dominated
+by a single large value, like a demand that is much larger than the available flow.
+Like in the optimization, the FlowBoundary flow rates are read at the intervention time
+`t_known` and the demands at the start of the allocation timestep `t`.
 Returns `nothing` if all of these are zero or there are none.
 """
 function typical_boundary_flow(
@@ -313,7 +315,7 @@ function typical_boundary_flow(
         end
     end
     filter!(q -> isfinite(q) && !iszero(q), flows)
-    return isempty(flows) ? nothing : sum(abs, flows) / length(flows)
+    return isempty(flows) ? nothing : exp10(round(sum(log10 ∘ abs, flows) / length(flows)))
 end
 
 function update_scaling!(p::Parameters, t::Float64, Δt::Float64, t_known::Float64)

@@ -987,6 +987,7 @@ end
 - An expression can be non-retained. It is optimized as a deterministic tie-break, but is not constrained for the next expression.
 - Temporary constraints are removed after all objectives are solved
 - The termination status is checked after every objective optimization; an infeasible or other non-optimal solve stops allocation immediately
+- If all objective expressions are zero, for instance when all demands are zero in a subnetwork without Basins, the problem is solved once without an objective, so that there are results to read
 
 # Scaling for Numerical Stability
 
@@ -1025,7 +1026,7 @@ end
 ```
 
 `mean_half_storage` is computed once when the allocation problem is built, as the mean over the Basins in the subnetwork of half their maximum storage.
-A subnetwork without a Basin is scaled by its flows instead: `typical_boundary_flow` gives the mean of the nonzero FlowBoundary flow rates and UserDemand and FlowDemand demands in the subnetwork. As in the optimization, the FlowBoundary flow rates are read at the intervention time `t_known`, so that a future change of a boundary flow doesn't change the scaling.
+A subnetwork without a Basin is scaled by its flows instead: `typical_boundary_flow` gives the order of magnitude (power of 10) of the geometric mean of the nonzero FlowBoundary flow rates and UserDemand and FlowDemand demands in the subnetwork. Unlike the arithmetic mean, the geometric mean is not dominated by a single large value, like a demand that is much larger than the available flow. As in the optimization, the FlowBoundary flow rates are read at the intervention time `t_known`, so that a future change of a boundary flow doesn't change the scaling.
 
 **Key concepts:**
 - Storage variables are divided by `scaling.storage`

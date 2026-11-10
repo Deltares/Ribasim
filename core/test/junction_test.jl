@@ -229,6 +229,21 @@ end
     @test mean_flow_rate(1, 2) ≈ 1.0e-3
     @test mean_flow_rate(2, 3) ≈ 0.0 atol = 1.0e-9
     @test mean_flow_rate(5, 6) ≈ 1.0e-3 rtol = 1.0e-6
+
+    # A demand of UserDemand #3 far above the available flow doesn't dominate the scaling
+    model = Ribasim.Model(toml_path)
+    model.integrator.p.p_independent.user_demand.demand[1, 2] = 1.0e6
+    Ribasim.solve!(model)
+    flow_data = Ribasim.flow_data(model) |> DataFrame
+    @test mean_flow_rate(5, 6) ≈ 1.0e-3 rtol = 1.0e-6
+
+    # Without demands there is no objective left to optimize, but allocation still runs
+    model = Ribasim.Model(toml_path)
+    model.integrator.p.p_independent.user_demand.demand .= 0.0
+    Ribasim.solve!(model)
+    @test success(model)
+    flow_data = Ribasim.flow_data(model) |> DataFrame
+    @test mean_flow_rate(5, 9) ≈ 1.0e-3
 end
 
 @testitem "Downstream level through Junction nodes" begin
