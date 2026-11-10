@@ -345,7 +345,7 @@ temporary_constraints: Goal programming constraints; one is added after each opt
 allocation_controlled: The allocation_controlled flags of the Pumps, Outlets and TabulatedRatingCurves in the
     subnetwork that the control constraints were built for, see update_control_states!
 """
-@kwdef mutable struct AllocationModel
+@kwdef struct AllocationModel
     subnetwork_id::Int32
     node_ids_in_subnetwork::NodeIDsInSubnetwork
     problem::JuMP.Model

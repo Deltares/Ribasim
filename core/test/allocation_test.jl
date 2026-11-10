@@ -645,8 +645,7 @@ end
         du = zero(u)
         Ribasim.set_simulation_data!(allocation_model, p, t, 86400.0, u, du, t)
         kept = control_constraint_data(allocation_model.problem)
-        allocation_model.allocation_controlled = Bool[]
-        Ribasim.update_control_states!(allocation_model, p.p_independent)
+        Ribasim.rebuild_control_constraints!(allocation_model, p.p_independent)
         Ribasim.set_simulation_data!(allocation_model, p, t, 86400.0, u, du, t)
         return kept, control_constraint_data(allocation_model.problem)
     end
