@@ -562,11 +562,51 @@ once, so that each timestep only the time dependent ones need to be evaluated.
     time_dependent::Vector{CartesianIndex{2}} = CartesianIndex{2}[]
 end
 
+"""
+Initialize the linear solve of the tracer transport, for all substances at once. It refers to
+`A` and `rhs`, which are updated in place each timestep.
+"""
+function init_tracer_linear_solve(A::SparseMatrixCSC{Float64, Int}, rhs::Matrix{Float64})
+    alias = LinearAliasSpecifier(; alias_A = true, alias_b = true)
+    # As in the linear solve of the flows, the stored zeros should not be dropped, since the
+    # symbolic factorization is reused without checking the sparsity pattern
+    assumptions = OperatorAssumptions(true; nonstructural_zeros = NonstructuralZeros.None)
+    return init(
+        LinearProblem(A, rhs),
+        KLUFactorization(; check_pattern = false);
+        alias,
+        assumptions,
+    )
+end
+
+const TracerLinearSolve = typeof(init_tracer_linear_solve(spzeros(0, 0), zeros(0, 0)))
+
+"""
+The linear system for the transport of substances between Basins over a timestep, which all
+substances share. See the section on substance concentrations in `docs/concept/core.qmd` for
+the derivation of the scheme, and [`transport_tracers!`](@ref) for its implementation.
+"""
+struct TracerTransport
+    # Matrix with a fixed sparsity pattern: the diagonal and both directions of each Basin to Basin flow
+    A::SparseMatrixCSC{Float64, Int}
+    # Index into nonzeros(A) of the diagonal entry per Basin
+    diagonal_nz::Vector{Int}
+    # Per flow index into nonzeros(A) of the entry for positive and negative flow, 0 if not Basin to Basin
+    forward_nz::Vector{Int}
+    backward_nz::Vector{Int}
+    # Volume that left each Basin with its mixed concentration over the timestep
+    outflow::Vector{Float64}
+    # Right hand side of the linear system, Basin x substance
+    rhs::Matrix{Float64}
+    # Per Basin the weight of the concentration at the end of the timestep in its outflows
+    theta::Vector{Float64}
+    # KLU factorization of A, refactorized with new values each timestep
+    linear_solve::TracerLinearSolve
+end
+
 @kwdef struct ConcentrationData
     # Config setting to enable/disable evaporation of mass
     evaporate_mass::Bool = true
-    # Cumulative inflow for each Basin at a given time
-    cumulative_in::Vector{Float64} = zeros(Float64, 0)
     # Matrix with concentrations for each substance and Basin,
     # such that the concentrations of a Basin are contiguous in memory
     concentration_state::Matrix{Float64} = zeros(Float64, 0, 0)  # substance, Basin
@@ -1428,6 +1468,9 @@ an immutable struct.
     const inflow_id::FlowCVector{NodeID}
     const outflow_data::FlowCVector{OutflowData}
     const state_id::FlowCVector{NodeID}
+    # Linear system for the implicit tracer transport between Basins
+    const tracer_transport::TracerTransport =
+        TracerTransport(inflow_id, outflow_data, basin, do_concentration)
     # The up- and downlink storage per flow
     const storage_uplink::FlowCVector{Float64} = similar(inflow_id, Float64)
     const storage_downlink::FlowCVector{Float64} = similar(inflow_id, Float64)
