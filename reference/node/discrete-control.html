@@ -709,7 +709,7 @@ window.Quarto = {
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table_from_schema</span>(</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    Ribasim.Schema.DiscreteControl.Variable;</span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    restrictions <span class="op">=</span> <span class="fu">Dict</span>(</span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>        <span class="op">:</span>listen_node_id <span class="op">=&gt;</span> <span class="st">"cannot be a Junction"</span>,</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>        <span class="op">:</span>listen_node_id <span class="op">=&gt;</span> <span class="st">"a Junction only with variable `flow_rate`"</span>,</span>
 <span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>        <span class="op">:</span>variable <span class="op">=&gt;</span> <span class="st">"must be `level`, `storage`, `flow_rate`, `concentration.&lt;substance&gt;` or `concentration_external.&lt;substance&gt;`"</span>,</span>
 <span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>        <span class="op">:</span>look_ahead <span class="op">=&gt;</span> <span class="st">"only on transient boundary conditions, non-negative"</span>,</span>
 <span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    ),</span>
@@ -758,7 +758,7 @@ window.Quarto = {
 <td>-</td>
 <td>x</td>
 <td>-</td>
-<td>cannot be a Junction</td>
+<td>a Junction only with variable <code>flow_rate</code></td>
 </tr>
 <tr class="even">
 <td>variable</td>
@@ -796,6 +796,7 @@ window.Quarto = {
 <li>The flow rate through one of these node types: Pump, Outlet, TabulatedRatingCurve, LinearResistance, ManningResistance</li>
 <li>The inflow rate of a UserDemand</li>
 <li>The flow rate of a FlowBoundary (supports look ahead)</li>
+<li>The flow rate of a <a href="../../reference/node/junction.html#equations">Junction</a></li>
 <li>The concentration of a substance in a Basin, with variable <code>concentration.&lt;substance&gt;</code>, e.g.&nbsp;<code>concentration.Cl</code></li>
 <li>The external concentration of a substance in a Basin, with variable <code>concentration_external.&lt;substance&gt;</code>, as given in the <a href="../../reference/node/basin.html#concentration-external"><code>Basin / concentration_external</code></a> table</li>
 </ul>

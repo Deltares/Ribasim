@@ -453,8 +453,8 @@ window.Quarto = {
 
 
 <p>A UserDemand takes water from the Basin that supplies it.</p>
-<p>When allocation is not used, a <code>UserDemand</code> node attempts to extract the full demand from the connected Basin. When allocation is used, the amount a <code>UserDemand</code> node is allowed to abstract is determined by the <a href="../../concept/allocation.html">allocation algorithm</a>. This algorithm first tries to allocate from the directly connected basin, and then from other sources whose flow can reach the <code>UserDemand</code> node. Note that <code>demand_priority</code> is used to determine the order in which the UserDemands are allocated water. This parameter is only used when allocation is active and is optional when allocation is not active.</p>
-<p>When the connected Basin is almost empty or reaches the minimum level at which the UserDemand can extract water (<code>min_level</code>), it will stop extraction.</p>
+<p>When allocation is not used, a <code>UserDemand</code> node attempts to extract the full demand from the connected Basin. When allocation is used, the amount a <code>UserDemand</code> node is allowed to abstract is determined by the <a href="../../concept/allocation.html">allocation algorithm</a>. This algorithm first tries to allocate from the directly connected basin, and then from other sources whose flow can reach the <code>UserDemand</code> node. Note that <code>demand_priority</code> is used to determine the order in which the UserDemands are allocated water. This parameter is only used when allocation is active and is optional, it defaults to 1.</p>
+<p>When the connected Basin is almost empty or reaches the minimum level at which the UserDemand can extract water (<code>min_level</code>), it will stop extraction. The <code>min_level</code> must be provided when the UserDemand abstracts from Basin(s); it is not used for abstraction from a <a href="../../reference/node/junction.html">Junction</a>.</p>
 <p>UserDemands need an outgoing flow link along which they can send their return flow, this can also be to the same Basin from which it extracts water. The amount of return flow is always a fraction of the inflow into the UserDemand. The difference is consumed by the UserDemand.</p>
 <section id="allowed-connectivity" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> Allowed connectivity</h1>
@@ -539,8 +539,8 @@ window.Quarto = {
 <td>min_level</td>
 <td>Float64</td>
 <td>m</td>
-<td>x</td>
-<td>-</td>
+<td>✓</td>
+<td>NaN</td>
 <td>-</td>
 </tr>
 <tr class="odd">
@@ -548,7 +548,7 @@ window.Quarto = {
 <td>Int32</td>
 <td>-</td>
 <td>✓</td>
-<td>-</td>
+<td>1</td>
 <td>positive</td>
 </tr>
 </tbody>
@@ -566,12 +566,21 @@ window.Quarto = {
 </details>
 <div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
 <table class="caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 23%">
+<col style="width: 14%">
+<col style="width: 11%">
+<col style="width: 14%">
+<col style="width: 12%">
+<col style="width: 23%">
+</colgroup>
 <thead>
 <tr class="header">
 <th>column</th>
 <th>type</th>
 <th>unit</th>
 <th>optional</th>
+<th>default</th>
 <th>restriction</th>
 </tr>
 </thead>
@@ -582,6 +591,7 @@ window.Quarto = {
 <td>-</td>
 <td>x</td>
 <td>-</td>
+<td>-</td>
 </tr>
 <tr class="even">
 <td>time</td>
@@ -589,12 +599,14 @@ window.Quarto = {
 <td>-</td>
 <td>x</td>
 <td>-</td>
+<td>-</td>
 </tr>
 <tr class="odd">
 <td>demand</td>
 <td>Float64</td>
 <td>m³ s⁻¹</td>
 <td>x</td>
+<td>-</td>
 <td>non-negative</td>
 </tr>
 <tr class="even">
@@ -602,13 +614,15 @@ window.Quarto = {
 <td>Float64</td>
 <td>-</td>
 <td>x</td>
+<td>-</td>
 <td>between [0 - 1]</td>
 </tr>
 <tr class="odd">
 <td>min_level</td>
 <td>Float64</td>
 <td>m</td>
-<td>x</td>
+<td>✓</td>
+<td>NaN</td>
 <td>-</td>
 </tr>
 <tr class="even">
@@ -616,6 +630,7 @@ window.Quarto = {
 <td>Int32</td>
 <td>-</td>
 <td>✓</td>
+<td>1</td>
 <td>positive</td>
 </tr>
 </tbody>

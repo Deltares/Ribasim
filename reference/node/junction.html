@@ -116,6 +116,35 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../../site_libs/quarto-diagram/mermaid-init.js"></script>
 <link href="../../site_libs/quarto-diagram/mermaid.css" rel="stylesheet">
 
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 <link rel="stylesheet" href="../../assets/styles.css">
 </head>
@@ -394,9 +423,25 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
    
   <ul>
   <li><a href="#allowed-connectivity" id="toc-allowed-connectivity" class="nav-link active" data-scroll-target="#allowed-connectivity"><span class="header-section-number">1</span> Allowed connectivity</a></li>
-  <li><a href="#tables" id="toc-tables" class="nav-link" data-scroll-target="#tables"><span class="header-section-number">2</span> Tables</a></li>
-  <li><a href="#equations" id="toc-equations" class="nav-link" data-scroll-target="#equations"><span class="header-section-number">3</span> Equations</a></li>
-  <li><a href="#examples" id="toc-examples" class="nav-link" data-scroll-target="#examples"><span class="header-section-number">4</span> Examples</a></li>
+  <li><a href="#tables" id="toc-tables" class="nav-link" data-scroll-target="#tables"><span class="header-section-number">2</span> Tables</a>
+  <ul class="collapse">
+  <li><a href="#static" id="toc-static" class="nav-link" data-scroll-target="#static"><span class="header-section-number">2.1</span> Static</a></li>
+  </ul></li>
+  <li><a href="#equations" id="toc-equations" class="nav-link" data-scroll-target="#equations"><span class="header-section-number">3</span> Equations</a>
+  <ul class="collapse">
+  <li><a href="#junctions-not-in-the-static-table" id="toc-junctions-not-in-the-static-table" class="nav-link" data-scroll-target="#junctions-not-in-the-static-table"><span class="header-section-number">3.1</span> Junctions not in the Static table</a>
+  <ul class="collapse">
+  <li><a href="#a-junction-tree-with-one-basin" id="toc-a-junction-tree-with-one-basin" class="nav-link" data-scroll-target="#a-junction-tree-with-one-basin"><span class="header-section-number">3.1.1</span> A Junction tree with one Basin</a></li>
+  </ul></li>
+  <li><a href="#junctions-in-the-static-table" id="toc-junctions-in-the-static-table" class="nav-link" data-scroll-target="#junctions-in-the-static-table"><span class="header-section-number">3.2</span> Junctions in the Static table</a>
+  <ul class="collapse">
+  <li><a href="#downstream-level" id="toc-downstream-level" class="nav-link" data-scroll-target="#downstream-level"><span class="header-section-number">3.2.1</span> Downstream level</a></li>
+  <li><a href="#tracers" id="toc-tracers" class="nav-link" data-scroll-target="#tracers"><span class="header-section-number">3.2.2</span> Tracers</a></li>
+  <li><a href="#allocation" id="toc-allocation" class="nav-link" data-scroll-target="#allocation"><span class="header-section-number">3.2.3</span> Allocation</a></li>
+  <li><a href="#water-quality" id="toc-water-quality" class="nav-link" data-scroll-target="#water-quality"><span class="header-section-number">3.2.4</span> Water quality</a></li>
+  </ul></li>
+  </ul></li>
+  <li><a href="#connectivity-rules" id="toc-connectivity-rules" class="nav-link" data-scroll-target="#connectivity-rules"><span class="header-section-number">4</span> Connectivity rules</a></li>
   </ul>
 </nav>
     </div>
@@ -422,12 +467,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>A Junction node allows explicitly representing confluences and bifurcations in the network. It doesn’t introduce new behavior but makes it easier to make the network layout recognizable.</p>
-<p>Junctions can connect to other Junctions, but are not allowed to form cycles. Note that a confluence Junction followed by bifurcation Junction is generally invalid, as it will connect a connector node with multiple basins.</p>
+<p>A Junction node allows explicitly representing confluences and bifurcations in the network. It has no storage, so the sum of its inflows is always equal to the sum of its outflows, and it does not need any profile information.</p>
+<p>A Junction that is not in the <a href="#static">Static</a> table does not introduce new behavior, it makes the network layout recognizable: the flow goes where the links go, as if the nodes around the Junction were connected directly. See <a href="#junctions-not-in-the-static-table">Junctions not in the Static table</a> for examples.</p>
+<p>A Junction that is in the <a href="#static">Static</a> table divides the flow it receives over its outflow links by the fractions in that table, and can supply a UserDemand, which takes its demand before the remainder is divided. The flow over each of its links is in the flow results. Such Junctions can be combined into larger networks, see <a href="#junctions-in-the-static-table">Junctions in the Static table</a>.</p>
+<p>Flow cannot be divided directly by other nodes: a connector node (e.g.&nbsp;Pump or Outlet), FlowBoundary or UserDemand has a single outflow link. To divide such flow, put a Junction that is in the Static table downstream of it.</p>
 <section id="allowed-connectivity" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> Allowed connectivity</h1>
 <p>The diagram below shows which node types are allowed directly upstream (left) and downstream (right) of this node. This is a connectivity illustration, not a valid simulation model.</p>
-<div id="e88a6497" class="cell" data-execution_count="1">
+<div id="3584639f" class="cell" data-execution_count="1">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="op">%</span>run ..<span class="op">/</span>..<span class="op">/</span>..<span class="op">/</span>utils<span class="op">/</span>plot_node_connectivity.py</span>
@@ -446,15 +493,66 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="tables" class="level1" data-number="2">
 <h1 data-number="2"><span class="header-section-number">2</span> Tables</h1>
-<p>No tables are required for Junction nodes.</p>
+<section id="static" class="level2" data-number="2.1">
+<h2 data-number="2.1" class="anchored" data-anchor-id="static"><span class="header-section-number">2.1</span> Static</h2>
+<p>This table is optional. A Junction that isn’t in the table only connects its neighbors, see <a href="#equations">Equations</a>. A Junction that is in the table divides the flow it receives.</p>
+<p>The fractions are defined per link from the Junction <code>node_id</code> to the node <code>to_node_id</code>. All outflow links of the Junction have a fraction, except the link to a UserDemand node, which gets the abstraction instead. A single outflow link gets the whole flow, so a row with a fraction of 1 or no fraction is enough for a Junction with one outflow, for instance to supply a UserDemand from it.</p>
+<p>The <code>to_node_id</code> can be a Junction that isn’t in the table. The row then applies to the node that Junction passes the flow on to, or to the Basin of its group. Such a Junction cannot divide the flow it receives from a Junction in the table, since nothing says how: add it to the table as well, or name the nodes downstream of it directly.</p>
+<div id="77f34937" class="cell" data-execution_count="2">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="op">%</span>run ..<span class="op">/</span>..<span class="op">/</span>gen_docs_table.py</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>table_from_schema(<span class="st">"Junction.Static"</span>, restrictions <span class="op">=</span> {<span class="st">"to_node_id"</span>: <span class="st">"Must be a node directly downstream of `node_id` that is not a UserDemand node"</span>, <span class="st">"fraction"</span>: <span class="st">"Must be in [0,1]. The fractions of the outflow links of a node must sum to 1, where at most one may be unspecified and gets the remainder."</span>})</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>Detected IPython. Loading juliacall extension. See https://juliapy.github.io/PythonCall.jl/stable/compat/#IPython</code></pre>
+</div>
+<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="2">
+<table class="caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 7%">
+<col style="width: 5%">
+<col style="width: 5%">
+<col style="width: 81%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>column</th>
+<th>type</th>
+<th>optional</th>
+<th>restriction</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>node_id</td>
+<td>Int32</td>
+<td>x</td>
+<td>-</td>
+</tr>
+<tr class="even">
+<td>to_node_id</td>
+<td>Int32</td>
+<td>x</td>
+<td>Must be a node directly downstream of <code>node_id</code> that is not a UserDemand node</td>
+</tr>
+<tr class="odd">
+<td>fraction</td>
+<td>Float64</td>
+<td>✓</td>
+<td>Must be in [0,1]. The fractions of the outflow links of a node must sum to 1, where at most one may be unspecified and gets the remainder.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
 </section>
 <section id="equations" class="level1" data-number="3">
 <h1 data-number="3"><span class="header-section-number">3</span> Equations</h1>
-<p>Junctions connect all upstream nodes with all downstream nodes, and are not used in the equations themselves.</p>
-</section>
-<section id="examples" class="level1" data-number="4">
-<h1 data-number="4"><span class="header-section-number">4</span> Examples</h1>
-<p>This model with both diverging and converging Junctions</p>
+<section id="junctions-not-in-the-static-table" class="level2" data-number="3.1">
+<h2 data-number="3.1" class="anchored" data-anchor-id="junctions-not-in-the-static-table"><span class="header-section-number">3.1</span> Junctions not in the Static table</h2>
+<p>Junctions connect all upstream nodes with all downstream nodes, and are not used in the equations themselves. For example, this model with diverging and converging Junctions</p>
 <div class="cell" data-layout-align="default">
 <div class="cell-output-display">
 <div>
@@ -463,9 +561,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <pre class="mermaid mermaid-js">flowchart LR
     classDef junction fill:#000,stroke:#000,color:white
-    C((Boundary)) --&gt; E((Junction))
-    E --&gt; F[\Basin/]
-    E --&gt; G[\Basin/]
+    A[\Basin/] --&gt; E((Junction))
+    E --&gt; B{{Connector}}
+    E --&gt; C{{Connector}}
+    B --&gt; F[\Basin/]
+    C --&gt; G[\Basin/]
     F --&gt; H{{Connector}}
     G --&gt; I{{Connector}}
     H --&gt; J((Junction))
@@ -486,7 +586,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div>
 
 <pre class="mermaid mermaid-js">flowchart LR
-    C((Boundary)) --&gt; F[\Basin/]
+    A[\Basin/] --&gt; B{{Connector}}
+    A --&gt; C{{Connector}}
+    B --&gt; F[\Basin/]
     C --&gt; G[\Basin/]
     F --&gt; H{{Connector}}
     G --&gt; I{{Connector}}
@@ -536,6 +638,195 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </div>
+<p>A group of connected Junctions must form a tree: also when ignoring the direction of the links, the Junctions cannot form a cycle. So flow that is split by these Junctions cannot be joined again by them. A confluence Junction followed by a bifurcation Junction is generally invalid as well, as it connects a connector node with multiple Basins downstream, while a connector node has a single outflow link.</p>
+<section id="a-junction-tree-with-one-basin" class="level3" data-number="3.1.1">
+<h3 data-number="3.1.1" class="anchored" data-anchor-id="a-junction-tree-with-one-basin"><span class="header-section-number">3.1.1</span> A Junction tree with one Basin</h3>
+<p>A group of connected Junctions with exactly one Basin as a neighbor connects that Basin in both directions. Then inflows and outflows of the Basin along the same waterway can share one Junction tree,</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+
+<pre class="mermaid mermaid-js">flowchart LR
+    classDef junction fill:#000,stroke:#000,color:white
+    B[\Basin/] --- J1((Junction))
+    J1 --- J2((Junction))
+    A{{Connector A}} --&gt; J1
+    J1 --&gt; C{{Connector C}}
+    E{{Connector E}} --&gt; J2
+    J2 --&gt; D{{Connector D}}
+    class J1,J2 junction
+</pre>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+<p>which translates to the following model:</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+
+<pre class="mermaid mermaid-js">flowchart LR
+    A{{Connector A}} --&gt; B[\Basin/]
+    E{{Connector E}} --&gt; B
+    B --&gt; C{{Connector C}}
+    B --&gt; D{{Connector D}}
+</pre>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+<p>The links of A, C, D and E keep their direction, now to or from the Basin. The links between the Junctions, and between the Junctions and the Basin, are drawn without arrows here since their direction does not matter. The rules for such a group are:</p>
+<ul>
+<li>The Junctions and the Basin form a tree, and each of these Junctions has at least two links.</li>
+<li>A UserDemand can connect to the Basin in both directions through the group.</li>
+<li>A Terminal or a LevelBoundary does not take the place of the Basin.</li>
+</ul>
+<p>The flow over a link in the tree, such as the link between the two Junctions above, is the sum of the flows of the nodes on the side of the link away from the Basin. Flows in the direction of the link count as positive and flows against it as negative, so the link reports the net flow through that part of the waterway. In the example above, if the link between the Junctions points towards the Basin, it reports the flow of E minus the flow of D. To get the inflows and outflows separately, use separate Junction trees, which do not connect to each other:</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+
+<pre class="mermaid mermaid-js">flowchart LR
+    classDef junction fill:#000,stroke:#000,color:white
+    A{{Connector A}} --&gt; J1((Junction))
+    E{{Connector E}} --&gt; J2((Junction))
+    J2 --&gt; J1
+    J1 --&gt; B[\Basin/]
+    B --&gt; J3((Junction))
+    J3 --&gt; C{{Connector C}}
+    J3 --&gt; J4((Junction))
+    J4 --&gt; D{{Connector D}}
+    class J1,J2,J3,J4 junction
+</pre>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+<p>This translates to the same model.</p>
+<p>The flow rate of a Junction in such a tree, which control nodes can listen to, is the net flow through it, positive in the direction of its link towards the Basin. The flow rate of the other Junctions that are not in the Static table is their total inflow.</p>
+</section>
+</section>
+<section id="junctions-in-the-static-table" class="level2" data-number="3.2">
+<h2 data-number="3.2" class="anchored" data-anchor-id="junctions-in-the-static-table"><span class="header-section-number">3.2</span> Junctions in the Static table</h2>
+<p>In this example Junction J1 divides the flow of the Pump: 30% goes to Basin A and the remainder to Junction J2, which supplies the UserDemand first and passes the remainder on to Basin B.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+
+<pre class="mermaid mermaid-js">flowchart LR
+    classDef junction fill:#000,stroke:#000,color:white
+    P{{Pump}} --&gt; J1
+    subgraph S [Junction subgraph]
+        J1((J1)) --&gt;|remainder| J2((J2))
+        J2 --&gt; U[/UserDemand\]
+    end
+    J1 --&gt;|0.3| A[\Basin A/]
+    J2 --&gt;|remainder| B[\Basin B/]
+    U --&gt; B
+    class J1,J2 junction
+    style S fill:none,stroke:#888,stroke-dasharray:5 5,color:#333
+</pre>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+<table class="table-striped caption-top table">
+<caption>Junction / static</caption>
+<thead>
+<tr class="header">
+<th style="text-align: right;">node_id</th>
+<th style="text-align: right;">to_node_id</th>
+<th style="text-align: right;">fraction</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">J1</td>
+<td style="text-align: right;">A</td>
+<td style="text-align: right;">0.3</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">J1</td>
+<td style="text-align: right;">J2</td>
+<td style="text-align: right;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">J2</td>
+<td style="text-align: right;">B</td>
+<td style="text-align: right;"></td>
+</tr>
+</tbody>
+</table>
+<p>Junction J1 and J2, and the UserDemand that abstracts from J2, form a Junction subgraph, over which flow travels instantaneously. The inflow of a subgraph comes from nodes which determine their own flow: a Pump, Outlet, TabulatedRatingCurve, FlowBoundary or a UserDemand outside the subgraph. Multiple nodes can flow into the same Junction (a confluence), in which case the inflows are summed. A subgraph can be any network of Junctions, as long as there are no loops when following the direction of the links: splitting the flow and joining it again in a Junction downstream is allowed.</p>
+<p>The flows in a subgraph are computed as follows:</p>
+<ul>
+<li>Traverse the subgraph node-wise in topological order, so that every node comes after all nodes it depends on: the nodes upstream of it, and the UserDemand nodes that take precedence over it. UserDemands take precedence over the division of the flow because the UserDemand abstracts before the remainder is passed on. Since the order is only well defined if there are no loops, loops in a subgraph are not allowed.</li>
+<li>For Junction nodes:
+<ul>
+<li>Compute the total inflow <span class="math display">\[
+  q_\text{total in} = \sum q_\text{in}
+  \]</span></li>
+<li>Compute the remaining outflow <span class="math display">\[
+  q_\text{out} = q_\text{total in} - q_\text{ud},
+  \]</span> where <span class="math inline">\(q_\text{ud}\)</span> is the UserDemand abstraction given the effective total demand <span class="math inline">\(d\)</span>: <span class="math display">\[
+  q_\text{ud} = \min(q_\text{total in}, d).
+  \]</span> Then the flow over each outflow link <span class="math inline">\(l\)</span>, except the link to the UserDemand node, follows from the fraction <span class="math inline">\(f_l\)</span> of that link: <span class="math display">\[
+  q_l = f_l \cdot q_\text{out}.
+  \]</span></li>
+</ul></li>
+<li>For UserDemand nodes it works like the standard <a href="../../reference/node/user-demand.html#equations">UserDemand flow</a>, but without the low storage factor or minimum level.</li>
+</ul>
+<p>Without allocation, a UserDemand abstracting from a Junction takes its demand before anything is passed on, regardless of its <code>demand_priority</code>: in a chain of Junctions the upstream UserDemand is served first. Demand priorities are only applied by <a href="#allocation">allocation</a>, which bounds the abstraction of each UserDemand by what it allocated.</p>
+<p>A model does not need a Basin when all flow comes from FlowBoundary nodes and passes through Junctions, for instance into UserDemand or Terminal nodes. Allocation does require a Basin in each subnetwork.</p>
+<p>The flow rate of such a Junction, which control nodes can listen to, is its total inflow.</p>
+<section id="downstream-level" class="level3" data-number="3.2.1">
+<h3 data-number="3.2.1" class="anchored" data-anchor-id="downstream-level"><span class="header-section-number">3.2.1</span> Downstream level</h3>
+<p>A Junction has no level of its own. A structure that flows into a Junction sees the level of the single Basin or LevelBoundary downstream of it, if the Junction, and the Junctions downstream of it, do not divide the flow: then the structure behaves as if it flowed into that node directly, so a Pump or Outlet can still be drowned by <code>max_downstream_level</code>. This holds whether or not the Junction is in the Static table. Where the flow is divided over several nodes there is no single level, and the structure has free outflow: <code>max_downstream_level</code> and the downstream level reduction of a TabulatedRatingCurve are not applied. In the example above the Pump has free outflow, since J1 divides the flow over Basin A and Basin B.</p>
+</section>
+<section id="tracers" class="level3" data-number="3.2.2">
+<h3 data-number="3.2.2" class="anchored" data-anchor-id="tracers"><span class="header-section-number">3.2.2</span> Tracers</h3>
+<p>With <code>experimental.concentration</code> the tracers are propagated through the subgraphs using the mass over the timestep rather than concentrations, so that no mass is lost when a flow is zero:</p>
+<ul>
+<li>For flows into a subgraph the mass is the flow times the concentration of the source: the concentration of the FlowBoundary or LevelBoundary, or of the Basin upstream of a Pump, Outlet or TabulatedRatingCurve. For a UserDemand outside the subgraph it is the mass in its return flow.</li>
+<li>The mass of the inflows of a Junction is mixed: the concentration of the flow out of a Junction, including the flow abstracted by a UserDemand, is the total mass in divided by the total volume out.</li>
+<li>A UserDemand abstracting from a Junction handles tracers like a UserDemand abstracting from Basins: its return flow has the concentration of the water it abstracts, with the UserDemand tracer replaced by the one of the UserDemand itself. The mass in the water it consumes leaves the model.</li>
+<li>The mass that flows from a subgraph into a Basin is added to the mass of that Basin, as a source in the <a href="../../concept/core.html#sec-tracer">implicit transport between Basins</a>. The flows into a subgraph use the Basin concentrations at the start of the timestep, so unlike the transport between Basins this part is explicit. A Junction itself does not store water, so tracers do not age in it.</li>
+</ul>
+</section>
+<section id="allocation" class="level3" data-number="3.2.3">
+<h3 data-number="3.2.3" class="anchored" data-anchor-id="allocation"><span class="header-section-number">3.2.3</span> Allocation</h3>
+<p>Junctions in the Static table can be used in <a href="../../concept/allocation.html#sec-allocation-junction">allocation</a> subnetworks, where the UserDemand abstracting from a Junction abstracts up to its allocated demand and the rest of the flow is divided over the downstream nodes. Such a Junction must have the same subnetwork ID as the nodes it is connected to: Junctions at the boundary between the primary network and a subnetwork, or between subnetworks, are not supported yet.</p>
+</section>
+<section id="water-quality" class="level3" data-number="3.2.4">
+<h3 data-number="3.2.4" class="anchored" data-anchor-id="water-quality"><span class="header-section-number">3.2.4</span> Water quality</h3>
+<p>In the offline <a href="../../guide/delwaq.html">Delwaq coupling</a> a Junction has no volume, so it is removed from the Delwaq network like the connector nodes: each node that flows into the Junction gets an exchange with each node it flows into. The flow over such an exchange is the flow of the link into the Junction times the share of the outflow link in the total outflow, per timestep, so the mixing in the Junction is the same as in the <a href="#tracers">tracers</a> of the core. An exchange between two boundary nodes, like a FlowBoundary and the UserDemand that abstracts from the Junction, is dropped, since it does not touch a Basin.</p>
+</section>
+</section>
+</section>
+<section id="connectivity-rules" class="level1" data-number="4">
+<h1 data-number="4"><span class="header-section-number">4</span> Connectivity rules</h1>
+<p>A Junction in the Static table has some specific connectivity rules:</p>
+<ul>
+<li>Its inflow comes from a Pump, Outlet, TabulatedRatingCurve, FlowBoundary, UserDemand or another Junction in the Static table, in the direction of the flow.</li>
+<li>It flows into Basin, LevelBoundary, Terminal, UserDemand or Junction nodes. A Junction that isn’t in the Static table and that it flows into cannot divide the flow over several nodes.</li>
+<li>A maximum of 1 UserDemand node can abstract from it.</li>
+<li>A UserDemand node must have either one or more Basin inflow links, or exactly one inflow link from such a Junction.</li>
+<li>Since a Junction cannot accumulate water, it always needs one or more outflow links. If the Junction flows into a UserDemand node, there must be another outflow link, because the inflow to the Junction can be larger than the demand and the remainder needs somewhere to go.</li>
+<li>Multiple nodes can flow into the same Junction, but the Junctions and the UserDemand nodes that abstract from them cannot form a loop when following the direction of the links.</li>
+<li>A node that is not such a Junction (a connector node, FlowBoundary or UserDemand) has a single outflow link. To divide its flow, put a Junction that is in the Static table downstream of it.</li>
+</ul>
 
 
 </section>

@@ -482,7 +482,7 @@ Note
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">table_from_schema</span>(</span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    Ribasim.Schema.ContinuousControl.Variable;</span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    restrictions <span class="op">=</span> <span class="fu">Dict</span>(</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>        <span class="op">:</span>listen_node_id <span class="op">=&gt;</span> <span class="st">"cannot be a Junction"</span>,</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>        <span class="op">:</span>listen_node_id <span class="op">=&gt;</span> <span class="st">"a Junction only with variable </span><span class="sc">\"</span><span class="st">flow_rate</span><span class="sc">\"</span><span class="st">"</span>,</span>
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        <span class="op">:</span>variable <span class="op">=&gt;</span> <span class="st">"must be </span><span class="sc">\"</span><span class="st">level</span><span class="sc">\"</span><span class="st"> or </span><span class="sc">\"</span><span class="st">flow_rate</span><span class="sc">\"</span><span class="st">"</span>,</span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>        <span class="op">:</span>look_ahead <span class="op">=&gt;</span> <span class="st">"only on transient boundary conditions, non-negative"</span>,</span>
 <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    ),</span>
@@ -523,7 +523,7 @@ Note
 <td>-</td>
 <td>x</td>
 <td>-</td>
-<td>cannot be a Junction</td>
+<td>a Junction only with variable “flow_rate”</td>
 </tr>
 <tr class="odd">
 <td>variable</td>

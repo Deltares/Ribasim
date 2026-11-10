@@ -284,6 +284,7 @@ window.Quarto = {
   <li><a href="#simulation-physical-layer-input" id="toc-simulation-physical-layer-input" class="nav-link" data-scroll-target="#simulation-physical-layer-input"><span class="header-section-number">3.3</span> Simulation (physical layer) input</a>
   <ul class="collapse">
   <li><a href="#userdemand-return-flows" id="toc-userdemand-return-flows" class="nav-link" data-scroll-target="#userdemand-return-flows"><span class="header-section-number">3.3.1</span> UserDemand return flows</a></li>
+  <li><a href="#sec-allocation-junction" id="toc-sec-allocation-junction" class="nav-link" data-scroll-target="#sec-allocation-junction"><span class="header-section-number">3.3.2</span> Junction nodes</a></li>
   </ul></li>
   <li><a href="#sec-flow-capacities" id="toc-sec-flow-capacities" class="nav-link" data-scroll-target="#sec-flow-capacities"><span class="header-section-number">3.4</span> Flow capacities</a></li>
   <li><a href="#route-priority" id="toc-route-priority" class="nav-link" data-scroll-target="#route-priority"><span class="header-section-number">3.5</span> Route priority</a>
@@ -371,6 +372,8 @@ Figure&nbsp;1: The primary network (subnetwork 1, blue) with connected secondary
 <ul>
 <li>Can only connect to the primary network via Pump or Outlet nodes, which must be allocation controlled</li>
 <li>Cannot connect directly to other secondary networks</li>
+<li>Cannot flow into the primary network</li>
+<li>Cannot have a <a href="../reference/node/junction.html">Junction</a> with fractions at the connection with the primary network, or with another subnetwork</li>
 <li>The demand of a subnetwork to the primary network is the sum of all unmet demands within the subnetwork</li>
 <li>Must have a subnetwork greater than 1.</li>
 </ul>
@@ -685,7 +688,7 @@ Important
 <p><span class="math display">\[
     Q_{ij}(t).
 \]</span></p>
-<p>For the definition of <span class="math inline">\(Q_{ij}\)</span> see <a href="../concept/equations.html#formal-model-description">the formal model description</a>. LevelBoundary nodes instead enter the problem through their level, which is evaluated at the end of the allocation timestep and enters the constant terms of the linearized connector nodes (see <a href="#boundary-nodes">Boundary nodes</a>).</p>
+<p>For the definition of <span class="math inline">\(Q_{ij}\)</span> see <a href="../concept/equations.html#formal-model-description">the formal model description</a>. If the FlowBoundary flows into a Junction in <code>Junction / static</code>, the boundary flow goes to that node. LevelBoundary nodes instead enter the problem through their level, which is evaluated at the end of the allocation timestep and enters the constant terms of the linearized connector nodes (see <a href="#boundary-nodes">Boundary nodes</a>).</p>
 </section>
 <section id="user-demands" class="level3" data-number="3.2.3">
 <h3 data-number="3.2.3" class="anchored" data-anchor-id="user-demands"><span class="header-section-number">3.2.3</span> User demands</h3>
@@ -723,6 +726,16 @@ Note
 <h3 data-number="3.3.1" class="anchored" data-anchor-id="userdemand-return-flows"><span class="header-section-number">3.3.1</span> UserDemand return flows</h3>
 <p>UserDemand nodes dictate proportional relationships between flows over links in the subnetwork. The return factor is given by <span class="math inline">\(0 \le r_i(t) \le 1, i \in U_S\)</span>: the outflow of a UserDemand node is <span class="math inline">\(r_i\)</span> times the sum of the flows over all its inflow links.</p>
 </section>
+<section id="sec-allocation-junction" class="level3" data-number="3.3.2">
+<h3 data-number="3.3.2" class="anchored" data-anchor-id="sec-allocation-junction"><span class="header-section-number">3.3.2</span> Junction nodes</h3>
+<p>A <a href="../reference/node/junction.html">Junction</a> in <code>Junction / static</code> does not store water, so all flow into such a Junction <span class="math inline">\(i \in P_S\)</span> is passed on, except for the flow abstracted by the UserDemand node <span class="math inline">\(u\)</span> that abstracts from it, if there is one. All these relations are linear equalities with constant coefficients, so the problem remains a linear optimization problem:</p>
+<ul>
+<li>A node <span class="math inline">\(j\)</span> that flows into such a Junction (a Pump, Outlet, TabulatedRatingCurve, FlowBoundary or UserDemand) passes its full outflow <span class="math inline">\(Q_j\)</span> on to that Junction <span class="math inline">\(i\)</span>: <span class="math inline">\(Q_{ji} = Q_j\)</span>. For a UserDemand <span class="math inline">\(Q_j\)</span> is the return flow, see above, and for a FlowBoundary it is the boundary flow.</li>
+<li>The flow from a Junction <span class="math inline">\(i\)</span> over a link to a node <span class="math inline">\(k\)</span> is <span class="math inline">\(Q_{ik} = f_{ik} \left(\sum_j Q_{ji} - Q_{iu}\right)\)</span>, where <span class="math inline">\(f_{ik}\)</span> is the fraction of the link, <span class="math inline">\(f_{ik} = 1\)</span> for a single outflow link, and <span class="math inline">\(Q_{iu} = 0\)</span> if there is no UserDemand abstracting from <span class="math inline">\(i\)</span>.</li>
+</ul>
+<p>The Junction nodes that are not in <code>Junction / static</code> are removed from the network before the allocation problem is set up, like in the simulation.</p>
+<p>The abstraction <span class="math inline">\(Q_{iu}\)</span> is a decision variable, like the inflow of a UserDemand from a Basin. It is bounded by the allocated demand of the UserDemand, and the allocation algorithm can allocate less than is available to leave more for demands further downstream.</p>
+</section>
 </section>
 <section id="sec-flow-capacities" class="level2" data-number="3.4">
 <h2 data-number="3.4" class="anchored" data-anchor-id="sec-flow-capacities"><span class="header-section-number">3.4</span> Flow capacities</h2>
@@ -732,7 +745,8 @@ Note
 <li><p><strong>FlowBoundary</strong>: the flow variable is fixed to the prescribed boundary flow, so no bounds are needed.</p></li>
 <li><p><strong>Allocation controlled Pump and Outlet</strong>: bounded by <code>min_flow_rate</code> and <code>max_flow_rate</code>, where <code>max_flow_rate</code> is <a href="#control-by-allocation">required to be finite</a>. Since allocation assigns a single flow rate for the whole timestep, the tightest bounds over <span class="math inline">\([t, t + \Delta t]\)</span> are used, i.e.&nbsp;the largest minimum and the smallest maximum of the two interpolated endpoints.</p></li>
 <li><p><strong>Allocation controlled TabulatedRatingCurve</strong>: bounded below by <span class="math inline">\(0\)</span>. The upper bound is a constraint rather than a bound on the variable: the flow is at most <span class="math inline">\(Q(h_a)\)</span>, linearized around the current upstream level. Because <span class="math inline">\(Q(h)\)</span> is validated to be non-decreasing and all reduction factors applied in the physical layer are in <span class="math inline">\([0, 1]\)</span>, this is a valid upper bound.</p></li>
-<li><p><strong>UserDemand</strong>: both the inflow links and the return flow link are bounded between <span class="math inline">\(0\)</span> and the total demand of the node summed over all its demand priorities. For the upper bound the return factor is conservatively assumed to be <span class="math inline">\(1\)</span>.</p></li>
+<li><p><strong>UserDemand</strong>: both the inflow links and the return flow links are bounded between <span class="math inline">\(0\)</span> and the total demand of the node summed over all its demand priorities. For the upper bound the return factor is conservatively assumed to be <span class="math inline">\(1\)</span>.</p></li>
+<li><p><strong>Junction</strong>: the flows over the links from and to Junction nodes in <code>Junction / static</code> are non-negative, otherwise they follow from the <a href="#sec-allocation-junction">constraints</a> and the bounds of the nodes upstream. So a UserDemand abstracting from such a Junction gets at most its inflow.</p></li>
 <li><p><strong>LinearResistance, ManningResistance, and Pump, Outlet and TabulatedRatingCurve that are not allocation controlled</strong>: the flow of these nodes is given by the linearized relation</p>
 <p><span class="math display">\[Q \approx Q^n + \frac{\partial Q}{\partial h_a}\Delta h_a + \frac{\partial Q}{\partial h_b}\Delta h_b,\]</span></p>
 <p>so they get no bounds of their own: these would only follow from the same linearization. In particular, a Pump or Outlet that is not allocation controlled is not bounded by its <code>min_flow_rate</code> and <code>max_flow_rate</code>. Its physical flow applies the reduction factors for low storage and <code>min_upstream_level</code> to <code>min_flow_rate</code> as well, so it can be below <code>min_flow_rate</code>, and such a bound could make the problem infeasible.</p></li>
