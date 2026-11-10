@@ -106,6 +106,7 @@ $$
 $$
 where $M$ is the $n_\text{basin} \times n_\text{flow}$ signed incidence matrix: $M_{b,k} = -1$ if Basin $b$ is upstream of flow $k$, $M_{b,k} = 1$ if Basin $b$ is downstream of flow $k$ and $M_{b,k} = 0$ otherwise.
 Evaporation and infiltration are flows with their Basin upstream and nothing downstream.
+The flows over the links out of the [Junction](/reference/node/junction.qmd) nodes in `Junction / static` are not states: they are weighted sums of the flows that enter the subgraph of Junction nodes, with the products of the fractions along the way as weights, minus the abstractions of the UserDemand nodes in the subgraph. The column of $M$ of a flow into such a Junction therefore holds these weights for the Basins downstream of the subgraph instead of a $1$ for a Basin directly downstream, and the same holds for the UserDemand abstractions with negative weights. See [Junction](#sec-numerics-junction) below.
 
 For every flow $k$ we then take a copy of the storage of its upstream Basin $S^\text{up}_k$ and its downstream Basin $S^\text{down}_k$:
 $$
@@ -186,6 +187,29 @@ $$
 to $Q_S$, and thus $M$ times this term to $J_\text{inner}$.
 Here only the direct dependence of listened flows on their own Basin storages is taken into account, since chaining control (listening to a flow that is itself controlled by PidControl or ContinuousControl) is not supported.
 
+### Junction {#sec-numerics-junction}
+
+Since the fractions of the Junction links are constant, the flow over every link out of a Junction in `Junction / static` is a constant weighted sum of the flows that enter the subgraph and of the inflows of the UserDemand nodes in it, and so is the contribution of these flows to the Basins downstream of the subgraph. These weights are in $M$, so the links in the subgraphs need no states of their own, and a FlowBoundary that flows into such a Junction is integrated exactly like any other FlowBoundary.
+The only flows that need a computation are the inflows of the UserDemand nodes that abstract from a Junction, the minimum of the total inflow of that node and the demand, and their return flows.
+They are computed in the last step of the right-hand side as a function of the other flows $\mathbf{q}^\text{np}$ (np: not computed in a Junction subgraph), which are computed as described above:
+$$
+	\mathbf{q} = K\mathbf{q}^\text{np}, \quad K = \frac{\partial\mathbf{q}}{\partial\mathbf{q}^\text{np}}.
+$$
+$K$ is the identity except for the rows of these UserDemand flows, which hold the dependence on the flows entering the subgraph.
+It is computed with automatic differentiation like the other Jacobians, and only if the model has Junction nodes in `Junction / static`.
+For the derivative term of PID control, which uses the storage rate of the listened Basin, these UserDemand flows are computed once more before the PID controlled flows, from the flows known at that point.
+
+Since $K$ is applied after $\mathbf{q}^\text{np}$, the flow rows of the linear system have $Q_S$ and $G$ replaced by $KQ_S$ and $KG$, and the solution of the flow states becomes
+$$
+	\mathbf{x}^\text{flow} = \gamma\left(K\left(Q_S\mathbf{s} + G\mathbf{x}^\text{pid}\right) - \mathbf{b}^\text{flow}\right).
+$$
+The inner system follows as before by multiplying by $M$, which holds the routing weights:
+$$
+	\left(M K Q_S - \gamma M K G E - \gamma^{-1}I_{n_\text{basin}}\right)\mathbf{s} = M\mathbf{b}^\text{flow} + \gamma M K G \mathbf{b}^\text{pid}.
+$$
+For instance, a Pump upstream of a Basin $b_1$ which flows into a Junction that divides its flow over Basins $b_2$ and $b_3$ with link fractions $f$ and $1-f$ has the column $-e_{b_1} + f e_{b_2} + (1-f) e_{b_3}$ in $M$. If a UserDemand abstracts from the Junction, its inflow has the column $-f e_{b_2} - (1-f) e_{b_3}$, and the row of $K$ of that inflow holds its dependence on the Pump flow.
+Note that $\mathbf{b}^\text{flow}$ is not multiplied by $K$, since the right-hand side of the linear system is given in terms of the states. The dimension of the inner system remains the number of Basins.
+
 ### Exactness
 
 The linear solve above is equivalent to solving the full linear system with the Jacobian of $\mathbf{f}$, as long as control is not chained.
@@ -195,6 +219,15 @@ An approximate Jacobian only affects the convergence speed of the Newton iterati
 The reduced linear solve can be disabled with the solver setting `reduced_implicit_solve = false`, see the [solver settings](/reference/usage.qmd#sec-solver-settings).
 In that case the (sparse) Jacobian of $\mathbf{f}$ is computed directly with automatic differentiation and sparse matrix coloring, and the full linear system is solved.
 This is mainly useful for verification, as it is considerably slower for larger models.
+
+# Convergence of the Newton iterations {#sec-newton-convergence}
+
+The solver reuses the Jacobian and the factorization of $W = J - \gamma^{-1}I$ over many timesteps, so the Newton iterations converge linearly, at a rate $\theta$ that is estimated from successive increments.
+A solve is accepted when the error estimated from $\theta$ and the last increment is small compared to the tolerance.
+OrdinaryDiffEq uses the criterion from Section IV.8 of [Hairer and Wanner](https://doi.org/10.1007/978-3-642-05221-7_8); the [CVODE documentation](https://sundials.readthedocs.io/en/latest/cvode/Mathematics_link.html#nonlinear-solve) describes the same idea.
+The first iteration of a solve uses the $\theta$ of an earlier solve, and a solve that stops after one iteration does not measure it again, so a small $\theta$ could otherwise be used for many timesteps after $W$ has changed.
+Ribasim therefore resets $\theta$ to 1 whenever $W$ is rebuilt, like CVODE does.
+Without this reset, a stiff Basin can oscillate slightly every timestep, which keeps the timestep small for hours, as in the `pump_pit` test model.
 
 # Continuity considerations
 
@@ -267,3 +300,66 @@ Because it is an absolute volume it does not scale with the model, so a large mo
 raise it to $10^{-2}\ \text{m}^3$ for a substantial speedup at no measurable loss of accuracy,
 while the same setting on a small model is roughly two orders of magnitude less accurate.
 If you raise it, verify against a run with a tighter tolerance.
+
+# Substance transport {#sec-tracer-numerics}
+
+The [mass balance of a substance](/concept/equations.qmd#sec-tracer-equations) in Basin $i$ is
+$$
+\frac{\text{d}}{\text{d}t} \left( S_i C_i \right) = \sum_j q_{ji} C_j - q_{\text{out},i} C_i + f_i.
+$$
+It is solved after each timestep of the water balance, using the flows of that timestep.
+Integrating it over a timestep from $t_n$ to $t_{n+1}$ gives
+
+$$
+S_i^{n+1} C_i^{n+1} - S_i^n C_i^n = \sum_j \int_{t_n}^{t_{n+1}} q_{ji} C_j \,\text{d}t - \int_{t_n}^{t_{n+1}} q_{\text{out},i} C_i \,\text{d}t + F_i,
+$$
+
+where the superscripts denote the time and $F_i$ is the mass from the other sources over the timestep.
+
+How the integrals over the flows are approximated determines the numerical scheme.
+The water balance gives the volumes $V_{ji}$ and $V_{\text{out},i}$ that flowed over the timestep.
+Ribasim combines these with one concentration per Basin for the entire timestep, a weighted average of its concentrations at the start and the end of the timestep:
+
+$$
+\int_{t_n}^{t_{n+1}} q_{ji} C_j \,\text{d}t \approx V_{ji} \left( \theta_j C_j^{n+1} + (1 - \theta_j) C_j^n \right).
+$$
+
+Using this for all flows and moving the unknown concentrations to the left hand side gives a linear system for the concentrations of all Basins at the end of the timestep:
+
+$$
+\left( S_i^{n+1} + \theta_i V_{\text{out},i} \right) C_i^{n+1} - \sum_j \theta_j V_{ji} C_j^{n+1} =
+\left( S_i^n - (1 - \theta_i) V_{\text{out},i} \right) C_i^n + \sum_j (1 - \theta_j) V_{ji} C_j^n + F_i.
+$$ {#eq-tracer-scheme}
+
+The weights that Ribasim uses are determined per Basin and per timestep:
+
+$$
+\theta_i = \max\left( \frac{1}{2}, 1 - \frac{S_i^n}{V_{\text{out},i}} \right).
+$$
+
+The weight is $\theta_i = 1/2$ wherever possible, as this is the trapezoidal rule, which is second order accurate.
+The concentrations can however only be guaranteed to stay non-negative if the coefficient of $C_i^n$ in @eq-tracer-scheme is non-negative, which requires $\theta_i \geq 1 - S_i^n / V_{\text{out},i}$.
+So where more water flows out of a Basin within one timestep than twice its storage, the weight increases towards 1, using the smallest value that keeps the concentrations non-negative.
+
+With these weights the matrix of @eq-tracer-scheme has non-positive off-diagonal entries and is strictly diagonally dominant by column, since a Basin keeps a small positive storage.
+The system therefore always has a unique and non-negative solution, regardless of the size of the timestep.
+The mass that leaves one Basin over a flow is the mass that enters the other, so the scheme conserves mass, and a substance can travel through any number of Basins within one timestep.
+All substances share the same sparse matrix, which is factorized once per timestep.
+
+If all Basins would use the same weight, the scheme reduces to these well known methods:
+
+| $\theta$ | Method | Delwaq scheme | Properties |
+|----------|--------|---------------|------------|
+| $0$ | Forward Euler (explicit upwind) | 1 | First order. Needs no linear system. Non-negative if $V_{\text{out},i} \leq S_i^n$. A substance travels at most one Basin per timestep. |
+| $1/2$ | Trapezoidal rule (Crank-Nicolson) | | Second order. Non-negative if $V_{\text{out},i} \leq 2 S_i^n$. |
+| $1$ | Backward Euler (implicit upwind) | 15 | First order, with more numerical dispersion. Non-negative for any timestep. |
+
+The [Delwaq coupling](/guide/coupling.qmd#sec-waterquality) uses scheme 15.
+Adjusting the weight per Basin is also the idea of the local-theta schemes 21 and 22 of Delwaq, which however use $\theta_i = 0$ wherever that is stable, and limit the fluxes to avoid new extremes.
+With instantaneously mixed Basins $\theta_i = 1/2$ is more accurate, since an explicit step in which the full storage of a Basin flows out moves all of its water to the next Basin without mixing.
+
+The ResidenceTime tracer has the integral of the storage over the timestep as a source in $F_i$, which also uses the trapezoidal rule.
+The UserDemand return flows are part of $F_i$ as well, with the concentrations of the Basins they came from at the start of the timestep.
+
+Only the volume of a flow over a timestep is used, in its net direction, so effectively flows are constant over a timestep.
+The concentrations and loads from the input are constant over a timestep as well, since the solver stops at each time they change, so a pulse in one of these is followed exactly.

@@ -159,7 +159,7 @@ end
 
 """
 Get the current water level of a node ID.
-The ID can belong to either a Basin or a LevelBoundary.
+The ID can belong to either a Basin, Junction or a LevelBoundary.
 """
 function get_level(
         storage::Number,
@@ -192,8 +192,12 @@ function get_level(
         # Terminal is like a bottomless pit.
         # A level at -Inf ensures we don't hit `max_downstream_level` reduction factors.
         -Inf
+    elseif node_id.is_routed
+        # A Junction node is only downstream of connector nodes. Like Terminal it does not
+        # limit the flow, and its inflow is passed on regardless of the level downstream.
+        -Inf
     else
-        error("Node ID $node_id is not a Basin, LevelBoundary or Terminal.")
+        error("Node ID $node_id is not a Basin, Junction, LevelBoundary or Terminal.")
     end
 end
 
@@ -282,52 +286,6 @@ function expand_logic_mapping(
     end
     return logic_mapping_expanded
 end
-
-"""
-    struct FlatVector{T} <: AbstractVector{T}
-
-A FlatVector is an AbstractVector that iterates the T of a `Vector{Vector{T}}`.
-
-Each inner vector is assumed to be of equal length.
-
-It is similar to `Iterators.flatten`, though that doesn't work with the `Tables.Column`
-interface, which needs `length` and `getindex` support.
-"""
-struct FlatVector{T, V <: AbstractVector{T}} <: AbstractVector{T}
-    v::Vector{V}
-end
-
-function Base.length(fv::FlatVector)
-    return if isempty(fv.v)
-        0
-    else
-        length(fv.v) * length(first(fv.v))
-    end
-end
-
-Base.size(fv::FlatVector) = (length(fv),)
-
-function Base.getindex(fv::FlatVector, i::Int)
-    veclen = length(first(fv.v))
-    d, r = divrem(i - 1, veclen)
-    v = fv.v[d + 1]
-    return v[r + 1]
-end
-
-"Construct a FlatVector from one of the fields of SavedFlow, following a path of symbols."
-function FlatVector(saveval::Vector{SavedFlow}, syms::Symbol...)
-    v = if isempty(saveval)
-        Vector{Float64}[]
-    else
-        v_ = getfield.(saveval, first(syms))
-        for sym in syms[2:end]
-            v_ = getproperty.(v_, sym)
-        end
-        v_
-    end
-    return FlatVector(v)
-end
-FlatVector(v::Vector{Matrix{Float64}}) = FlatVector(vec.(v))
 
 """
 Function that goes smoothly from 0 to 1 in the interval [0,threshold],
@@ -422,8 +380,9 @@ function get_all_demand_priorities(db::DB, config::Config)::Vector{Int32}
         end
 
         data = load_structvector(db, config, table_type)
+        demand_priority_default = schema_default(Schema.UserDemand.Static, Val(:demand_priority))
         demand_priority_col = data.demand_priority
-        demand_priority_col = Int32.(coalesce.(demand_priority_col, Int32(0)))
+        demand_priority_col = Int32.(coalesce.(demand_priority_col, demand_priority_default))
         if valid_demand_priorities(demand_priority_col, config.experimental.allocation)
             union!(demand_priorities, demand_priority_col)
         else
@@ -470,28 +429,6 @@ function set_control_type!(node::AbstractParameterNode, graph::MetaGraph)::Nothi
     errors && error("Errors encountered when parsing control type of $(typeof(node)).")
 
     return nothing
-end
-
-"""
-Get the time interval between (flow) saves
-"""
-function get_Δt(integrator)::Float64
-    (; p, t, dt) = integrator
-    (; saveat) = p.p_independent.graph[]
-    return if iszero(saveat)
-        dt
-    elseif isinf(saveat)
-        t
-    else
-        t_end = integrator.sol.prob.tspan[end]
-        if t_end - t > saveat
-            saveat
-        else
-            # The last interval might be shorter than saveat
-            rem = t % saveat
-            iszero(rem) ? saveat : rem
-        end
-    end
 end
 
 inflow_link(graph, node_id)::LinkMetadata = graph[inflow_id(graph, node_id), node_id]
@@ -615,7 +552,7 @@ end
 reduction_factor(x::GradientTracer, ::Real) = x
 low_storage_factor_resistance_node(::Number, ::Number, ::Parameters, q::GradientTracer, ::NodeID, ::NodeID) = q
 relaxed_root(x::GradientTracer, threshold::Real) = x
-get_level(storage::GradientTracer, p::Parameters, node_id::NodeID, t::Number; kwargs...) = storage
+get_level(storage::GradientTracer, ::Parameters, ::NodeID, ::Number; kwargs...) = storage
 
 function get_ns_flow_horizontal(nodes::NamedTuple)
     (;
@@ -650,25 +587,23 @@ function count_flow_ranges(nodes::Union{NamedTuple, ParametersIndependent})::Flo
     ns_flow_horizontal = get_ns_flow_horizontal(nodes)
     ns_flow_vertical = get_ns_flow_vertical(nodes)
 
-    horizontal_flow = cvector_axes_from_lengths(
+    horizontal = cvector_axes_from_lengths(
         state_horizontal_flow_components,
         ns_flow_horizontal,
     )
-    vertical_flow = cvector_axes_from_lengths(
+    vertical = cvector_axes_from_lengths(
         state_vertical_flow_components,
-        ns_flow_vertical;
-        offset = sum(ns_flow_horizontal)
+        ns_flow_vertical
     )
-    return NamedTuple{state_flow_components}((horizontal_flow, vertical_flow))
+    return concatenate_axes((; horizontal), (; vertical))
 end
 
 "Create the axis of the state vector"
 function count_state_ranges(nodes::Union{NamedTuple, ParametersIndependent})::RibasimStateTuple
     flow_ranges = count_flow_ranges(nodes)
-    n_flows = get_n_flow(nodes)
-    return (;
-        flow = flow_ranges,
-        pid_integral = (n_flows + 1):(n_flows + length(nodes.pid_control)),
+    return concatenate_axes(
+        (; flow = flow_ranges),
+        (; pid_integral = 1:length(nodes.pid_control)),
     )
 end
 
@@ -749,19 +684,129 @@ function get_state_node_id(p_independent::ParametersIndependent, state_idx::Int)
     end
 end
 
-function get_incidence_matrix(inflow_id::FlowCVector{NodeID}, outflow_id::FlowCVector{NodeID})::SparseMatrixCSC
+"""
+The incidence matrix M of the flows: -1 for the Basin a flow comes from, +1 for the Basin it goes to,
+and the routing weights for the Basins a flow reaches via Junction nodes, see `set_routing!`.
+"""
+function get_incidence_matrix(
+        inflow_id::FlowCVector{NodeID},
+        outflow_id::FlowCVector{NodeID},
+        routed_basins::Vector{Vector{Tuple{Int, Float64}}},
+    )::SparseMatrixCSC
     n_flow = length(inflow_id)
     n_basin = length(inflow_id.vertical.evaporation)
-    incidence_matrix = spzeros(Int, n_basin, n_flow)
+    incidence_matrix = spzeros(Float64, n_basin, n_flow)
 
     for flow_idx in 1:n_flow
         in_id = inflow_id[flow_idx]
         out_id = outflow_id[flow_idx]
 
-        in_id.is_basin && (incidence_matrix[in_id.idx, flow_idx] = -1)
-        out_id.is_basin && (incidence_matrix[out_id.idx, flow_idx] = 1)
+        in_id.is_basin && (incidence_matrix[in_id.idx, flow_idx] = -1.0)
+        out_id.is_basin && (incidence_matrix[out_id.idx, flow_idx] = 1.0)
+        for (basin_idx, weight) in routed_basins[flow_idx]
+            incidence_matrix[basin_idx, flow_idx] += weight
+        end
     end
     return incidence_matrix
+end
+
+"""
+Set the routing weights of the Junction subgraphs: the flow over each routed link (see `Junction.routed_links`)
+and the total inflow of each Junction node as a weighted sum of the flows that enter the subgraphs
+(the states of connector nodes and UserDemand outflows, and the FlowBoundary flows), with the
+inflows of the UserDemand nodes in the subgraphs subtracted. The weights are products of the
+fractions along the way, and are constant since the fractions are.
+
+Returns per flow state and per FlowBoundary the Basins they flow into via Junction nodes, with
+the weights, and the indices of the flow states that have such Basins.
+"""
+function set_routing!(nodes::NamedTuple, flow_ranges::FlowTuple)
+    (; junction, user_demand, flow_boundary) = nodes
+    (;
+        inflow_links,
+        inflow_link_idx,
+        outflow_link_idx,
+        fraction,
+        link_weights,
+        inflow_weights,
+        routed_links,
+        user_demand_id,
+        routed_subgraphs,
+    ) = junction
+    n_flow = get_n_flow(nodes)
+    routed_basins = [Tuple{Int, Float64}[] for _ in 1:n_flow]
+    routed_basins_boundary = [Tuple{Int, Float64}[] for _ in flow_boundary.node_id]
+    isempty(junction.routed_ids) && return routed_basins, Int[], routed_basins_boundary
+
+    # The flow state of a node that flows into a Junction node
+    function entry_state_idx(id::NodeID)::Int
+        return if id.type == NodeType.UserDemand
+            flow_ranges.horizontal.user_demand_outflow[id.idx]
+        else
+            flow_ranges.horizontal[node_type_map[id.type]][id.idx]
+        end
+    end
+    user_demand_inflow_idx(id::NodeID) =
+        flow_ranges.horizontal.user_demand_inflow[user_demand.inflow_link_offsets[id.idx] + 1]
+
+    link_state = [Dict{Int, Float64}() for _ in routed_links]
+    link_boundary = [Dict{Int, Float64}() for _ in routed_links]
+    # The subgraphs are in topological order, so the weights of the links into a Junction node are known
+    for subgraph in routed_subgraphs, id in subgraph
+        id.is_routed || continue
+        state = Dict{Int, Float64}()
+        boundary = Dict{Int, Float64}()
+        for (link, idx) in zip(inflow_links[id.idx], inflow_link_idx[id.idx])
+            if iszero(idx)
+                source_id = link.link[1]
+                if source_id.type == NodeType.FlowBoundary
+                    boundary[source_id.idx] = get(boundary, source_id.idx, 0.0) + 1.0
+                else
+                    state_idx = entry_state_idx(source_id)
+                    state[state_idx] = get(state, state_idx, 0.0) + 1.0
+                end
+            else
+                mergewith!(+, state, link_state[idx])
+                mergewith!(+, boundary, link_boundary[idx])
+            end
+        end
+        inflow_weights[id.idx] = RoutingWeights(state, boundary)
+
+        # The UserDemand abstracts before the remainder is divided over the outflow links
+        remainder = copy(state)
+        if user_demand_id[id.idx].type == NodeType.UserDemand
+            state_idx = user_demand_inflow_idx(user_demand_id[id.idx])
+            remainder[state_idx] = get(remainder, state_idx, 0.0) - 1.0
+        end
+        for (idx, link_fraction) in zip(outflow_link_idx[id.idx], fraction[id.idx])
+            iszero(idx) && continue
+            link_state[idx] = Dict(k => link_fraction * v for (k, v) in remainder)
+            link_boundary[idx] = Dict(k => link_fraction * v for (k, v) in boundary)
+            link_weights[idx] = RoutingWeights(link_state[idx], link_boundary[idx])
+        end
+    end
+
+    # The Basins that the routed links flow into
+    basin_state = [Dict{Int, Float64}() for _ in 1:n_flow]
+    basin_boundary = [Dict{Int, Float64}() for _ in flow_boundary.node_id]
+    for (idx, link) in enumerate(routed_links)
+        target_id = link.link[2]
+        target_id.is_basin || continue
+        for (state_idx, weight) in link_state[idx]
+            basin_state[state_idx][target_id.idx] = get(basin_state[state_idx], target_id.idx, 0.0) + weight
+        end
+        for (boundary_idx, weight) in link_boundary[idx]
+            basin_boundary[boundary_idx][target_id.idx] = get(basin_boundary[boundary_idx], target_id.idx, 0.0) + weight
+        end
+    end
+    for flow_idx in 1:n_flow
+        routed_basins[flow_idx] = sort!([(k, v) for (k, v) in basin_state[flow_idx] if !iszero(v)])
+    end
+    for boundary_idx in eachindex(flow_boundary.node_id)
+        routed_basins_boundary[boundary_idx] = sort!([(k, v) for (k, v) in basin_boundary[boundary_idx] if !iszero(v)])
+    end
+    routed_flow_idxs = findall(!isempty, routed_basins)
+    return routed_basins, routed_flow_idxs, routed_basins_boundary
 end
 
 """
@@ -818,6 +863,33 @@ function unsafe_array(
     return GC.@preserve A unsafe_wrap(Array, pointer(A), length(A))
 end
 
+"""
+Add the flows of a flow component to the Basins they flow out of or into,
+see `aggregate_flows!`.
+"""
+function aggregate_link_flows!(
+        aggregate::AbstractVector,
+        flows,
+        inflow_ids,
+        outflow_ids,
+        do_inflows::Bool,
+        do_outflows::Bool,
+        weight::Number,
+    )
+    for (flow_, id_in, id_out) in zip(flows, inflow_ids, outflow_ids)
+        positive_flow = (flow_ > 0)
+
+        if id_in.is_basin && ((!positive_flow && do_inflows) || (positive_flow && do_outflows))
+            aggregate[id_in.idx] -= weight * flow_
+        end
+
+        if id_out.is_basin && ((positive_flow && do_inflows) || (!positive_flow && do_outflows))
+            aggregate[id_out.idx] += weight * flow_
+        end
+    end
+    return nothing
+end
+
 function aggregate_flows!(
         aggregate::AbstractVector,
         flow::FlowCVector,
@@ -831,28 +903,36 @@ function aggregate_flows!(
         positive_vertical_forcing::Union{ExactVerticalFlowCVector, Nothing} = nothing,
         boundary_flow::Union{Vector{Float64}, Nothing} = nothing
     )
-    (; flow_boundary, inflow_id, outflow_id) = p_independent
+    (; flow_boundary, inflow_id, outflow_id, routed_basins, routed_flow_idxs, routed_basins_boundary) = p_independent
 
     from_zero && (aggregate .= 0)
 
     if do_horizontal_flows
-        for (flow_, id_in, id_out) in zip(flow.horizontal, inflow_id.horizontal, outflow_id.horizontal)
+        aggregate_link_flows!(
+            aggregate, flow.horizontal, inflow_id.horizontal, outflow_id.horizontal,
+            do_inflows, do_outflows, weight,
+        )
+        # The flows that reach Basins via Junction nodes
+        for flow_idx in routed_flow_idxs
+            flow_ = flow[flow_idx]
             positive_flow = (flow_ > 0)
-
-            if id_in.is_basin && ((!positive_flow && do_inflows) || (positive_flow && do_outflows))
-                aggregate[id_in.idx] -= weight * flow_
-            end
-
-            if id_out.is_basin && ((positive_flow && do_inflows) || (!positive_flow && do_outflows))
-                aggregate[id_out.idx] += weight * flow_
+            ((positive_flow && do_inflows) || (!positive_flow && do_outflows)) || continue
+            for (basin_idx, routing_weight) in routed_basins[flow_idx]
+                aggregate[basin_idx] += weight * routing_weight * flow_
             end
         end
     end
 
     if do_horizontal_flows && do_inflows && !isnothing(boundary_flow)
         for idx in eachindex(flow_boundary.node_id)
-            outflow_id = flow_boundary.outflow_link[idx].link[2]
-            aggregate[outflow_id.idx] += boundary_flow[idx]
+            downstream_id = flow_boundary.outflow_link[idx].link[2]
+            if downstream_id.is_routed
+                for (basin_idx, routing_weight) in routed_basins_boundary[idx]
+                    aggregate[basin_idx] += routing_weight * boundary_flow[idx]
+                end
+            else
+                aggregate[downstream_id.idx] += boundary_flow[idx]
+            end
         end
     end
 
@@ -897,6 +977,7 @@ function get_timeseries_tstops(
         tabulated_rating_curve,
         user_demand,
         discrete_control,
+        do_concentration,
     ) = p_independent
     tstops = Vector{Float64}[]
 
@@ -938,7 +1019,33 @@ function get_timeseries_tstops(
     get_timeseries_tstops!(tstops, t_end, outlet.min_upstream_level)
     get_timeseries_tstops!(tstops, t_end, outlet.max_downstream_level)
 
+    if do_concentration
+        (; concentration_data) = basin
+        get_concentration_tstops!(tstops, t_end, concentration_data.concentration_drainage.itp)
+        get_concentration_tstops!(tstops, t_end, concentration_data.concentration_precipitation.itp)
+        get_concentration_tstops!(tstops, t_end, concentration_data.concentration_surface_runoff.itp)
+        get_concentration_tstops!(tstops, t_end, concentration_data.loads.itp)
+        get_concentration_tstops!(tstops, t_end, flow_boundary.concentration_itp)
+        get_concentration_tstops!(tstops, t_end, level_boundary.concentration_itp)
+        get_concentration_tstops!(tstops, t_end, user_demand.concentration_itp)
+    end
+
     return tstops
+end
+
+"""
+The tstops from the concentrations per node and substance, so that the concentrations are
+constant over a timestep. Nearly all concentrations are constant, and don't add any tstops.
+"""
+function get_concentration_tstops!(
+        tstops::Vector{Vector{Float64}},
+        t_end::Float64,
+        concentration_itp::Vector{Vector{ScalarConstantInterpolation}},
+    )::Nothing
+    for itp_node in concentration_itp, itp in itp_node
+        all(==(first(itp.u)), itp.u) || push!(tstops, get_timeseries_tstops(itp, t_end))
+    end
+    return nothing
 end
 
 function get_timeseries_tstops!(
@@ -1025,23 +1132,40 @@ function ranges(lengths::Vector{<:Integer})
     return ranges
 end
 
-function get_interpolation_vec(
-        interpolation_type::String,
+"""
+Interpolate the values `u` over the times `t` (in seconds) with the given interpolation type.
+Block interpolation is smoothed over `block_transition_period` seconds on either side of each
+data point, see `SmoothedConstantInterpolation`.
+"""
+function time_interpolation(
+        u::Vector{Float64},
+        t::Vector{Float64},
+        interpolation_type::InterpolationType.T,
         block_transition_period::Float64,
-        node_id::Vector{NodeID},
-    )::Vector
-    type = if interpolation_type == "linear"
-        ScalarLinearInterpolation
-    elseif interpolation_type == "block"
-        if iszero(block_transition_period)
-            ScalarConstantInterpolation # Doesn't support smoothing
-        else
-            ScalarBlockInterpolation # Does support smoothing
-        end
+        extrapolation::ExtrapolationType.T,
+    )::ScalarTimeInterpolation
+    return if interpolation_type == InterpolationType.linear
+        LinearInterpolation(u, t; cache_parameters = true, extrapolation)
+    elseif iszero(block_transition_period)
+        # Without smoothing, ConstantInterpolation gives the same result faster
+        ConstantInterpolation(u, t; cache_parameters = true, extrapolation)
     else
-        error("Invalid interpolation type specified: $interpolation_type.")
+        SmoothedConstantInterpolation(
+            u,
+            t;
+            cache_parameters = true,
+            extrapolation,
+            d_max = block_transition_period,
+        )
     end
-    return Vector{type}(undef, length(node_id))
+end
+
+"The interpolation type with the given name, or `nothing` if there is none."
+function parse_interpolation_type(name::AbstractString)::Union{InterpolationType.T, Nothing}
+    for interpolation_type in instances(InterpolationType.T)
+        name == String(Symbol(interpolation_type)) && return interpolation_type
+    end
+    return nothing
 end
 
 function check_new_t!(p::Parameters, t::Number)::Nothing
@@ -1167,11 +1291,11 @@ function set_uplink_downlink_storage!(
         storage::AbstractVector,
         p_independent::ParametersIndependent,
     )
-    (; inflow_id, outflow_id) = p_independent
+    (; inflow_id, downlink_level_id) = p_independent
 
     @threaded CHEAP_LOOP_MIN_CHUNK_SIZE for idx in eachindex(storage_uplink)
         in_id = inflow_id[idx]
-        out_id = outflow_id[idx]
+        out_id = downlink_level_id[idx]
         storage_uplink[idx] = in_id.is_basin ? storage[in_id.idx] : zero(eltype(storage_uplink))
         storage_downlink[idx] = out_id.is_basin ? storage[out_id.idx] : zero(eltype(storage_downlink))
     end
@@ -1205,4 +1329,59 @@ function set_controlled_node_ids!(p_independent, node::Union{PidControl, Continu
         node.outflow_id[id.idx] = outflow_id[flow_idx]
     end
     return nothing
+end
+
+"""
+Set per connector node the node whose level is the downstream level: the node downstream, or
+for a Junction node downstream the single Basin or LevelBoundary behind it (`Junction.level_node_id`).
+A structure that flows into a Junction node that divides the flow has free outflow.
+"""
+function set_downstream_level_ids!(nodes::NamedTuple)::Nothing
+    (; junction) = nodes
+    for node in (nodes.pump, nodes.outlet, nodes.tabulated_rating_curve, nodes.linear_resistance, nodes.manning_resistance)
+        for (idx, outflow_link) in enumerate(node.outflow_link)
+            downstream_id = outflow_link.link[2]
+            node.downstream_level_id[idx] =
+                downstream_id.is_routed ? junction.level_node_id[downstream_id.idx] : downstream_id
+        end
+    end
+    return nothing
+end
+
+"Per flow state the node whose level is the downstream level, see `set_downstream_level_ids!`."
+function get_downlink_level_ids(nodes::NamedTuple, outflow_id::FlowCVector{NodeID})::FlowCVector{NodeID}
+    downlink_level_id = copy(outflow_id)
+    downlink_level_id.horizontal.pump .= nodes.pump.downstream_level_id
+    downlink_level_id.horizontal.outlet .= nodes.outlet.downstream_level_id
+    downlink_level_id.horizontal.tabulated_rating_curve .= nodes.tabulated_rating_curve.downstream_level_id
+    downlink_level_id.horizontal.linear_resistance .= nodes.linear_resistance.downstream_level_id
+    downlink_level_id.horizontal.manning_resistance .= nodes.manning_resistance.downstream_level_id
+    return downlink_level_id
+end
+
+"Mark the UserDemand nodes that are part of a Junction subgraph."
+function set_in_routed_subgraph!(user_demand::UserDemand, junction::Junction)::Nothing
+    for subgraph in junction.routed_subgraphs, id in subgraph
+        id.type == NodeType.UserDemand || continue
+        user_demand.in_routed_subgraph[id.idx] = true
+    end
+    return nothing
+end
+
+# Total effective demand = min(allocated, demand) summed over priorities.
+# When allocation is not running, allocated = Inf and this becomes the demand.
+function get_effective_user_demand(p_independent::ParametersIndependent, node_idx::Int, t::Number)
+    (; allocation, user_demand) = p_independent
+
+    has_demand_priority = view(user_demand.has_demand_priority, node_idx, :)
+    allocated = view(user_demand.allocated, node_idx, :)
+    q_total_demand = 0.0
+    for demand_priority_idx in eachindex(allocation.demand_priorities_all)
+        !has_demand_priority[demand_priority_idx] && continue
+        q_total_demand += min(
+            allocated[demand_priority_idx],
+            get_demand(user_demand, user_demand.node_id[node_idx], demand_priority_idx, t),
+        )
+    end
+    return q_total_demand
 end

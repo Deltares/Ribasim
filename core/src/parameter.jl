@@ -128,8 +128,10 @@ This index can be passed directly, or calculated from the database or parameters
     idx::Int
     "Fast lookup of whether this node is a Basin"
     is_basin::Bool
-    function NodeID(type, value, idx)
-        new(type, value, idx, type ∈ (NodeType.Basin, :Basin))
+    "Whether this is a Junction that divides the flow or supplies a UserDemand, and stays in the simulation"
+    is_routed::Bool
+    function NodeID(type, value, idx, routed::Bool = false)
+        new(type, value, idx, type ∈ (NodeType.Basin, :Basin), routed)
     end
 end
 
@@ -162,6 +164,9 @@ Base.convert(::Type{Int32}, id::NodeID) = id.value
 Base.convert(::Type{NodeID}, value::Integer) = NodeID(NodeType.Basin, value, 0)
 Base.broadcastable(id::NodeID) = Ref(id)
 Base.show(io::IO, id::NodeID) = print(io, id.type, " #", id.value)
+
+"A Junction that only draws the network, and is removed from the graph before the simulation."
+is_plain_junction(id::NodeID)::Bool = id.type == NodeType.Junction && !id.is_routed
 config.snake_case(id::NodeID) = config.snake_case(id.type)
 Base.to_index(id::NodeID) = Int(id.value)
 
@@ -204,6 +209,23 @@ const ScalarBlockInterpolation = SmoothedConstantInterpolation{
     Float64,
     Float64,
     SearchProperties{Float64},
+}
+
+"The interpolation type of a timeseries that users can choose"
+@enumx InterpolationType block linear
+
+"""
+An interpolation over time from a Float64 to a Float64 of an `InterpolationType`, see
+`time_interpolation`. Block interpolation without a transition period is a
+`ScalarConstantInterpolation`, and with one a `ScalarBlockInterpolation`.
+
+This is a small `Union` instead of a type parameter, such that the compiled code is the same
+for every interpolation type, and calls on it are resolved statically by union splitting.
+"""
+const ScalarTimeInterpolation = Union{
+    ScalarConstantInterpolation,
+    ScalarBlockInterpolation,
+    ScalarLinearInterpolation,
 }
 
 "PCHIPInterpolation (a special type of CubicHermiteSpline) from a Float64 to a Float64"
@@ -280,6 +302,7 @@ struct NodeIDsInSubnetwork
     manning_resistance_ids_subnetwork::Vector{NodeID}
     pump_ids_subnetwork::Vector{NodeID}
     outlet_ids_subnetwork::Vector{NodeID}
+    junction_ids_subnetwork::Vector{NodeID}
     basin_ids_subnetwork_with_level_demand::Vector{NodeID}
     node_ids_subnetwork_with_flow_demand::Vector{NodeID}
 end
@@ -457,6 +480,42 @@ Base.length(::LinkMetadata) = 1
 Base.isless(link_1::LinkMetadata, link_2::LinkMetadata) = link_1.id < link_2.id
 
 """
+The weights of a flow that is a weighted sum of other flows: of flow states, by their index
+in the flow vector, and of FlowBoundary flows, by the index of the FlowBoundary. The flows
+over the links in Junction subgraphs are such sums of the flows that enter the subgraphs,
+with the products of the fractions along the way as weights, and the inflows of the
+UserDemand nodes in the subgraphs with negative weights.
+"""
+struct RoutingWeights
+    state_idx::Vector{Int}
+    state_weight::Vector{Float64}
+    boundary_idx::Vector{Int}
+    boundary_weight::Vector{Float64}
+end
+
+RoutingWeights() = RoutingWeights(Int[], Float64[], Int[], Float64[])
+
+function RoutingWeights(state::Dict{Int, Float64}, boundary::Dict{Int, Float64})
+    state_idx = sort!([k for (k, v) in state if !iszero(v)])
+    boundary_idx = sort!([k for (k, v) in boundary if !iszero(v)])
+    return RoutingWeights(
+        state_idx, [state[k] for k in state_idx], boundary_idx, [boundary[k] for k in boundary_idx]
+    )
+end
+
+"Evaluate the weighted sum, with the FlowBoundary flows given per FlowBoundary or as a function of its index."
+function routed_flow(weights::RoutingWeights, flow::AbstractVector, boundary_flow)
+    result = zero(eltype(flow))
+    for (idx, weight) in zip(weights.state_idx, weights.state_weight)
+        result += weight * flow[idx]
+    end
+    for (idx, weight) in zip(weights.boundary_idx, weights.boundary_weight)
+        result += weight * (boundary_flow isa AbstractVector ? boundary_flow[idx] : boundary_flow(idx))
+    end
+    return result
+end
+
+"""
 The update of a parameter given by a value and a reference to the target
 location of the variable in memory
 """
@@ -484,41 +543,35 @@ The parameter update associated with a certain control state for discrete contro
 end
 
 """
-In-memory storage of saved mean flows for writing to results.
+The mean flows over the saveat interval that is being saved. These are only buffers, the
+results are in `SavedResults`.
 
 - `flow`: The mean flows on all links and Basin forcings which aren't integrated exactly
-- `boundary_flow`: The mean boundary fl
+- `boundary_flow`: The mean boundary flows
+- `exact_vertical_forcing`: The mean Basin forcings which are integrated exactly
 - `inflow`: The sum of the mean flows coming into each Basin
 - `outflow`: The sum of the mean flows going out of each Basin
-- `concentration`: Concentrations for each Basin and substance
 - `storage_rate`: The mean rate of change of the Basin storages
 - `balance_error`: The (absolute) water balance error
 - `relative_error`: The relative water balance error
-- `t`: Endtime of the interval over which is averaged
+- `flow_convergence`: The mean convergence of each state
+- `basin_convergence`: The mean convergence of each Basin
+- `internal_flow_rate`, `internal_convergence`: The flow and convergence per internal flow link
 """
-@kwdef struct SavedFlow
-    # Mean flow rates per internal flow link
+@kwdef struct MeanFlows
     flow::FlowCVector{Float64}
     boundary_flow::Vector{Float64}
     exact_vertical_forcing::ExactVerticalFlowCVector{Float64}
-    inflow::Vector{Float64}
-    outflow::Vector{Float64}
-    concentration::Matrix{Float64}
+    inflow::Vector{Float64} = zeros(length(exact_vertical_forcing.precipitation))
+    outflow::Vector{Float64} = zero(inflow)
     storage_rate::Vector{Float64} = zero(inflow)
     balance_error::Vector{Float64} = zero(inflow)
     relative_error::Vector{Float64} = zero(inflow)
     flow_convergence::RibasimStateCVector{Union{Missing, Float64}}
-    basin_convergence::Vector{Union{Missing, Float64}}
-    t::Float64
-end
-
-"""
-In-memory storage of saved instantaneous storages and levels for writing to results.
-"""
-@kwdef struct SavedBasinState
-    storage::Vector{Float64}
-    level::Vector{Float64}
-    t::Float64
+    basin_convergence::Vector{Union{Missing, Float64}} = Vector{Union{Missing, Float64}}(missing, length(inflow))
+    internal_flow_rate::Vector{Float64}
+    internal_convergence::Vector{Union{Missing, Float64}} =
+        Vector{Union{Missing, Float64}}(missing, length(internal_flow_rate))
 end
 
 abstract type AbstractParameterNode end
@@ -541,11 +594,51 @@ once, so that each timestep only the time dependent ones need to be evaluated.
     time_dependent::Vector{CartesianIndex{2}} = CartesianIndex{2}[]
 end
 
+"""
+Initialize the linear solve of the tracer transport, for all substances at once. It refers to
+`A` and `rhs`, which are updated in place each timestep.
+"""
+function init_tracer_linear_solve(A::SparseMatrixCSC{Float64, Int}, rhs::Matrix{Float64})
+    alias = LinearAliasSpecifier(; alias_A = true, alias_b = true)
+    # As in the linear solve of the flows, the stored zeros should not be dropped, since the
+    # symbolic factorization is reused without checking the sparsity pattern
+    assumptions = OperatorAssumptions(true; nonstructural_zeros = NonstructuralZeros.None)
+    return init(
+        LinearProblem(A, rhs),
+        KLUFactorization(; check_pattern = false);
+        alias,
+        assumptions,
+    )
+end
+
+const TracerLinearSolve = typeof(init_tracer_linear_solve(spzeros(0, 0), zeros(0, 0)))
+
+"""
+The linear system for the transport of substances between Basins over a timestep, which all
+substances share. See the section on substance concentrations in `docs/concept/core.qmd` for
+the derivation of the scheme, and [`transport_tracers!`](@ref) for its implementation.
+"""
+struct TracerTransport
+    # Matrix with a fixed sparsity pattern: the diagonal and both directions of each Basin to Basin flow
+    A::SparseMatrixCSC{Float64, Int}
+    # Index into nonzeros(A) of the diagonal entry per Basin
+    diagonal_nz::Vector{Int}
+    # Per flow index into nonzeros(A) of the entry for positive and negative flow, 0 if not Basin to Basin
+    forward_nz::Vector{Int}
+    backward_nz::Vector{Int}
+    # Volume that left each Basin with its mixed concentration over the timestep
+    outflow::Vector{Float64}
+    # Right hand side of the linear system, Basin x substance
+    rhs::Matrix{Float64}
+    # Per Basin the weight of the concentration at the end of the timestep in its outflows
+    theta::Vector{Float64}
+    # KLU factorization of A, refactorized with new values each timestep
+    linear_solve::TracerLinearSolve
+end
+
 @kwdef struct ConcentrationData
     # Config setting to enable/disable evaporation of mass
     evaporate_mass::Bool = true
-    # Cumulative inflow for each Basin at a given time
-    cumulative_in::Vector{Float64} = zeros(Float64, 0)
     # Matrix with concentrations for each substance and Basin,
     # such that the concentrations of a Basin are contiguous in memory
     concentration_state::Matrix{Float64} = zeros(Float64, 0, 0)  # substance, Basin
@@ -666,6 +759,8 @@ inflow_link: incoming flow link metadata
     The ID of the destination node is always the ID of the TabulatedRatingCurve node
 outflow_link: outgoing flow link metadata
     The ID of the source node is always the ID of the TabulatedRatingCurve node
+downstream_level_id: the node whose level is the downstream level: the node downstream, or the single Basin or
+    LevelBoundary behind Junction nodes that do not divide the flow, see `set_downstream_level_ids!`
 max_downstream_level: The downstream level above which the TabulatedRatingCurve flow goes to zero
 interpolations: All Q(h) relationships for the nodes over time
 current_interpolation_index: Per node 1 lookup from t to an index in `interpolations`
@@ -678,6 +773,7 @@ allocation_controlled: whether this TabulatedRatingCurve is controlled by alloca
     node_id::Vector{NodeID}
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    downstream_level_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
     max_downstream_level::Vector{Float64} = fill(Inf, length(node_id))
     interpolations::Vector{ScalarPCHIPInterpolation} = ScalarLinearInterpolation[]
     current_interpolation_index::Vector{IndexLookup} = IndexLookup[]
@@ -706,6 +802,7 @@ flow_demand_id: connected flow demand node if applicable
     node_id::Vector{NodeID}
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    downstream_level_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
     resistance::Vector{Float64} = zeros(length(node_id))
     max_flow_rate::Vector{Float64} = zeros(length(node_id))
     control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
@@ -756,6 +853,7 @@ Requirements:
     node_id::Vector{NodeID}
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    downstream_level_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
     length::Vector{Float64} = zeros(size(node_id))
     manning_n::Vector{Float64} = zeros(size(node_id))
     profile_width::Vector{Float64} = zeros(size(node_id))
@@ -782,17 +880,18 @@ end
 """
 node_id: node ID of the FlowBoundary node
 outflow_link: The outgoing flow link metadata
-flow_rate: flow rate (exact)
+flow_rate: flow rate (exact), interpolated over time with the interpolation type of the node
 flow_rate_bmi: flow rate set externally via BMI, which takes precedence over `flow_rate`; `NaN` means unset
 cumulative_flow: The exactly integrated cumulative boundary flow since the start of the simulation
 cumulative_flow_prev_saveat: `cumulative_flow` at the previous saveat
 cumulative_flow_dt: The exact cumulative flow over the latest timestep
 concentration_itp: matrix with boundary concentrations per FlowBoundary per substance
 """
-@kwdef struct FlowBoundary{I} <: AbstractParameterNode
+@kwdef struct FlowBoundary <: AbstractParameterNode
     node_id::Vector{NodeID}
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
-    flow_rate::Vector{I}
+    flow_rate::Vector{ScalarTimeInterpolation} =
+        Vector{ScalarTimeInterpolation}(undef, length(node_id))
     flow_rate_bmi::Vector{Float64} = fill(NaN, length(node_id))
     cumulative_flow::Vector{Float64} = zeros(length(node_id))
     cumulative_flow_since_reset::Vector{Float64} = zeros(length(node_id))
@@ -852,6 +951,7 @@ flow_demand_id: connected flow demand node if applicable
     node_id::Vector{NodeID}
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    downstream_level_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
     flow_rate::Vector{Float64} = fill(NaN, length(node_id))
     time_dependent_flow_rate::Vector{ScalarConstantInterpolation} =
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
@@ -892,6 +992,7 @@ flow_demand_id: connected flow demand node if applicable
     node_id::Vector{NodeID}
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    downstream_level_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
     flow_rate::Vector{Float64} = fill(NaN, length(node_id))
     time_dependent_flow_rate::Vector{ScalarConstantInterpolation} =
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
@@ -918,13 +1019,6 @@ node_id: node ID of the Terminal node
     node_id::Vector{NodeID}
 end
 
-"""
-node_id: node ID of the Junction node
-"""
-@kwdef struct Junction <: AbstractParameterNode
-    node_id::Vector{NodeID}
-end
-
 @enumx CacheType flow_rate_pump flow_rate_outlet basin_level basin_storage
 
 """
@@ -934,7 +1028,7 @@ to be of `ForwardDiff.Dual` type. This second version of the cache is created by
 """
 const TimeDependentCache{T} = @NamedTuple{
     basin::ExactVerticalFlowCVector{T},
-    flow_boundary::@NamedTuple{current_cumulative_boundary_flow::Vector{T}},
+    flow_boundary::@NamedTuple{current_cumulative_boundary_flow::Vector{T}, current_flow_rate::Vector{T}},
     pump::@NamedTuple{
         current_flow_rate_setpoint::Vector{T},
         current_min_flow_rate::Vector{T},
@@ -1044,6 +1138,18 @@ record: Namedtuple with discrete control information for results
     )
 end
 
+"""
+node_id: node IDs of the ContinuousControl nodes
+controlled_node_id: the ID of the structure (Pump/Outlet) controlled by each ContinuousControl node
+inflow_id: the ID of the node upstream of the controlled structure
+outflow_id: the ID of the node downstream of the controlled structure
+compound_variable: the compound variable each ContinuousControl node listens to
+controlled_variable: the name of the variable of the controlled structure that is set,
+    e.g. "flow_rate"
+func: the function (interpolation) that maps the compound variable value to the controlled variable value
+continuous_control_compound_variables: memory for the current value of the compound variable
+    of each ContinuousControl node
+"""
 @kwdef struct ContinuousControl <: AbstractParameterNode
     node_id::Vector{NodeID}
     controlled_node_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
@@ -1062,7 +1168,7 @@ node_id: node ID of the PidControl node
 controlled_node_id: the id of the structure (pum/outlet) being controlled
 listen_node_id: the id of the basin being controlled
 inflow_id: the id of the node upstream of the controlled structure
-outflow_id: the id pf the node downstream of the controlled structure
+outflow_id: the id of the node downstream of the controlled structure
 target: target level (possibly time dependent)
 target_ref: reference to the controlled flow_rate value
 proportional: proportionality coefficient error
@@ -1089,6 +1195,65 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
 end
 
 """
+node_id: node IDs of all Junction nodes
+routed_ids: the Junction nodes that divide the flow or supply a UserDemand (they have rows in `Junction / static`).
+    These stay in the simulation as nodes without storage, the other Junction nodes are removed from the
+    graph and only draw the network. The fields below hold data for the routed Junction nodes only.
+inflow_links: the inflow links per Junction node
+outflow_links: the outflow links per Junction node
+fraction: per Junction node the fraction of its flow (after UserDemand abstraction) that goes over each of its outflow links,
+    in the order of `outflow_links`. This is 1 for links that do not lead to a Junction node, and for the link
+    towards a UserDemand node, since that flow is not divided.
+level_node_id: per Junction node the node whose level is seen by the structures upstream: the single Basin or
+    LevelBoundary behind it if the node and the Junction nodes behind it do not divide the flow, otherwise the
+    Junction node itself, whose level is -Inf (free outflow)
+routed_subgraphs: disjoint directed acyclic graphs of flow-connected Junction and UserDemand nodes,
+    excluding UserDemand nodes without a Junction inneighbor. The nodes of each subgraph
+    are ordered such that each node comes after all nodes its flow depends on.
+user_demand_id: The ID of the UserDemand node that abstracts from the Junction node, if present
+routed_links: The flow links out of Junction nodes, except the links towards a UserDemand node, sorted by link ID.
+    These links have no state: their flow is a weighted sum of the flows into the subgraph and the
+    inflows of the UserDemand nodes in it, see `RoutingWeights`. The flow towards a UserDemand node is
+    the UserDemand inflow state, and the flow over a link into a Junction node from a node outside the
+    subgraph is the state of that node.
+inflow_link_idx: Per Junction node the index in `routed_links` of each of its inflow links,
+    or 0 for a link from a node outside the subgraph
+outflow_link_idx: Per Junction node the index in `routed_links` of each of its outflow links,
+    or 0 for the link towards a UserDemand node
+link_weights: Per link in `routed_links` the weights of the flows it consists of
+inflow_weights: Per Junction node the weights of the flows that make up its total inflow
+link_mass: The mass per substance that flowed over each link in `routed_links` in the last timestep (substance, link)
+source_mass: Work vector for the mass that flowed over a link into a Junction subgraph in the last timestep (substance)
+concentration: The concentration per substance of the flow through each Junction node in the last timestep (substance, node)
+"""
+@kwdef struct Junction <: AbstractParameterNode
+    node_id::Vector{NodeID}
+    routed_ids::Vector{NodeID} = filter(id -> id.is_routed, node_id)
+    inflow_links::Vector{Vector{LinkMetadata}} = [LinkMetadata[] for _ in node_id]
+    outflow_links::Vector{Vector{LinkMetadata}} = [LinkMetadata[] for _ in node_id]
+    fraction::Vector{Vector{Float64}} = [ones(length(links)) for links in outflow_links]
+    routed_subgraphs::Vector{Vector{NodeID}} = Vector{NodeID}[]
+    user_demand_id::Vector{NodeID} = fill(NodeID(:Terminal, 0, 0), length(node_id))
+    level_node_id::Vector{NodeID} = copy(node_id)
+    routed_links::Vector{LinkMetadata} = LinkMetadata[]
+    inflow_link_idx::Vector{Vector{Int}} = [Int[] for _ in node_id]
+    outflow_link_idx::Vector{Vector{Int}} = [Int[] for _ in node_id]
+    link_weights::Vector{RoutingWeights} = [RoutingWeights() for _ in routed_links]
+    inflow_weights::Vector{RoutingWeights} = [RoutingWeights() for _ in node_id]
+    link_mass::Matrix{Float64} = zeros(0, length(routed_links))
+    source_mass::Vector{Float64} = zeros(0)
+    concentration::Matrix{Float64} = zeros(0, length(node_id))
+end
+
+"""
+The index of a link in `routed_links`, or 0 if it is not a routed link.
+"""
+function routed_link_index(routed_links::Vector{LinkMetadata}, link::LinkMetadata)::Int
+    idx = searchsortedfirst(routed_links, link)
+    return (idx <= length(routed_links) && routed_links[idx].id == link.id) ? idx : 0
+end
+
+"""
 node_id: node ID of the UserDemand node
 demand_priorities: All demand priorities that exist in the model (not just by UserDemand) sorted
 inflow_links: incoming flow links
@@ -1112,8 +1277,13 @@ demand_from_timeseries: If false the demand comes from the BMI or is fixed
 allocated: water flux currently allocated to UserDemand per demand priority (node_idx, demand_priority_idx)
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
 min_level: The level of the source Basin below which the UserDemand does not abstract
+    (not applied to inflow from Junction nodes, which have no level)
 cumulative_inflow: The summed inflow since the start of the simulation
 concentration_itp: matrix with timeseries interpolations of concentrations per LevelBoundary per substance
+in_routed_subgraph: whether the UserDemand node is part of one of the Junction subgraphs,
+    in which case its flows are computed in `formulate_junction_flow!`
+return_mass: The mass per substance in the return flow in the last timestep (substance, node), only computed
+    if the return flow goes to a Basin or a Junction node, used for tracers
 """
 @kwdef struct UserDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
@@ -1134,6 +1304,8 @@ concentration_itp: matrix with timeseries interpolations of concentrations per L
     min_level::Vector{Float64} = zeros(length(node_id))
     cumulative_inflow::Vector{Float64} = zeros(length(node_id))
     concentration_itp::Vector{Vector{ScalarConstantInterpolation}}
+    in_routed_subgraph::Vector{Bool} = fill(false, length(node_id))
+    return_mass::Matrix{Float64} = zeros(0, length(node_id))
 end
 
 """
@@ -1218,6 +1390,8 @@ saveat: The time interval between saves of output data (storage, flow, ...)
 internal_flow_links: The metadata of the flow links used in the core without any Junctions.
 external_flow_links: The metadata of all flow links including those with Junctions.
 flow_link_map: A sparse matrix mapping internal_flow_ids to external_flow_ids.
+    A value is 1 if the internal flow goes in the direction of the external link and -1 if against it.
+junction_flows: Per Junction the internal flow links, with their sign, that make up its flow rate.
 """
 const ModelGraph = MetaGraph{
     Int64,
@@ -1230,7 +1404,8 @@ const ModelGraph = MetaGraph{
         saveat::Float64,
         internal_flow_links::Vector{LinkMetadata},
         external_flow_links::Vector{LinkMetadata},
-        flow_link_map::SparseMatrixCSC{Bool, Int},
+        flow_link_map::SparseMatrixCSC{Int8, Int},
+        junction_flows::Vector{Vector{Tuple{Tuple{NodeID, NodeID}, Int8}}},
         flow_link_lookup::Dict{Tuple{NodeID, NodeID}, Int},
     },
     Returns{Float64},
@@ -1251,6 +1426,7 @@ The part of the parameters passed to the rhs and callbacks that are mutable.
    quantities are not cached but computed on-demand, to maintain a differentiable computational pipeline
 - `tprev`: The start of the current time step, set as soon as a time step is accepted, see
    [`update_cumulative_forcing!`](@ref) and [`interpolation_time`](@ref)
+- `defer_interrupt`: Whether Ctrl-C is only handled in between time steps, see [`solve!`](@ref)
 """
 @kwdef mutable struct ParametersMutable
     new_time_dependent_cache::Bool = true
@@ -1259,6 +1435,7 @@ The part of the parameters passed to the rhs and callbacks that are mutable.
     jac_version::Int = 0
     ad_active::Bool = false
     tprev::Float64 = 0.0
+    defer_interrupt::Bool = false
 end
 
 """
@@ -1297,7 +1474,7 @@ inline. Storing this large struct inline makes code that uses it, such as everyt
 takes the integrator, much slower to compile. The const fields keep loads as fast as for
 an immutable struct.
 """
-@kwdef mutable struct ParametersIndependent{C1}
+@kwdef mutable struct ParametersIndependent
     const starttime::DateTime
     const reltol::Float64
     const graph::ModelGraph
@@ -1307,7 +1484,7 @@ an immutable struct.
     const manning_resistance::ManningResistance
     const tabulated_rating_curve::TabulatedRatingCurve
     const level_boundary::LevelBoundary
-    const flow_boundary::FlowBoundary{C1}
+    const flow_boundary::FlowBoundary
     const pump::Pump
     const outlet::Outlet
     const terminal::Terminal
@@ -1322,7 +1499,13 @@ an immutable struct.
     # Whether all specialized AD and linear solve code should be used
     const reduced_implicit_solve::Bool
     # Matrix which aggregates flows into the basin storages
-    const incidence_matrix::SparseMatrixCSC{Int, Int}
+    const incidence_matrix::SparseMatrixCSC{Float64, Int}
+    # Per flow state the Basins it flows into via Junction nodes, with the weights, see `set_routing!`
+    const routed_basins::Vector{Vector{Tuple{Int, Float64}}}
+    # The indices of the flow states with a nonempty `routed_basins`
+    const routed_flow_idxs::Vector{Int}
+    # Per FlowBoundary the Basins it flows into via Junction nodes, with the weights
+    const routed_basins_boundary::Vector{Vector{Tuple{Int, Float64}}}
     # Water balance tolerances
     const water_balance_abstol::Float64
     const water_balance_reltol::Float64
@@ -1338,7 +1521,12 @@ an immutable struct.
     # Per state the inflow, outflow and self id associated with that state (if they exist)
     const inflow_id::FlowCVector{NodeID}
     const outflow_id::FlowCVector{NodeID}
+    # Per state the node whose level is the downstream level, see `set_downstream_level_ids!`
+    const downlink_level_id::FlowCVector{NodeID}
     const state_id::FlowCVector{NodeID}
+    # Linear system for the implicit tracer transport between Basins
+    const tracer_transport::TracerTransport =
+        TracerTransport(inflow_id, outflow_id, basin, do_concentration)
     # The up- and downlink storage per flow
     const storage_uplink::FlowCVector{Float64} = similar(inflow_id, Float64)
     const storage_downlink::FlowCVector{Float64} = similar(inflow_id, Float64)
@@ -1346,6 +1534,8 @@ an immutable struct.
     const cumulative_flow_dt::FlowCVector{Float64} = zero(storage_uplink)
     # State at previous saveat
     const u_prev_saveat::RibasimStateCVector{Float64} = cvector_from_axes(state_ranges)
+    # State at the last accepted time step, the state in the integrator can be in between
+    const u_accepted::RibasimStateCVector{Float64} = zero(u_prev_saveat)
     # Cumulative flow over last allocation times
     const cumulative_flow_prev_allocation_dt::FlowCVector{Float64} = zero(storage_uplink)
     # How much of the solver error is attributed to each state, see [`accumulate_residual!`](@ref).
@@ -1361,7 +1551,10 @@ function TimeDependentCache(p_independent::ParametersIndependent)::TimeDependent
     basin = zero(p_independent.basin.forcing.exact_cumulative_forcing)
 
     n_flow_boundary = length(p_independent.flow_boundary.node_id)
-    flow_boundary = (; current_cumulative_boundary_flow = zeros(n_flow_boundary))
+    flow_boundary = (;
+        current_cumulative_boundary_flow = zeros(n_flow_boundary),
+        current_flow_rate = zeros(n_flow_boundary),
+    )
 
     n_pump = length(p_independent.pump.node_id)
     pump = (;
@@ -1411,8 +1604,8 @@ The collection of all parameters that are passed to the rhs (`water_balance!`) a
 
 A mutable struct with only const fields, like [`ParametersIndependent`](@ref).
 """
-@kwdef mutable struct Parameters{C, T}
-    const p_independent::ParametersIndependent{C}
+@kwdef mutable struct Parameters{T}
+    const p_independent::ParametersIndependent
     const time_dependent_cache::TimeDependentCache{T} = TimeDependentCache(p_independent)
     const current_basin_properties::CurrentBasinProperties =
         CurrentBasinProperties(; n = length(p_independent.basin))

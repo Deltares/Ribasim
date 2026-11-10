@@ -9,8 +9,11 @@ run(config_path::AbstractString)::Model = run(Config(config_path))
 
 function run(config::Config)::Model
     model = Model(config)
-    solve!(model)
-    write_results(model)
+    try
+        solve!(model)
+    finally
+        write_results(model)
+    end
     return model
 end
 
@@ -25,6 +28,8 @@ Performs argument parsing and sets up logging to both the terminal and a file.
 Handles exceptions to convert to exit codes.
 """
 function main(toml_path::AbstractString)::Cint
+    # Ctrl-C ends the simulation like an error, with all results so far
+    Base.exit_on_sigint(false)
     try
         config = Config(toml_path)
         mkpath(results_path(config))
@@ -45,11 +50,11 @@ function main(toml_path::AbstractString)::Cint
                         t = datetime_since(model.integrator.t, model.config.starttime)
                         @warn "Simulation crashed or interrupted at $t."
                         log_bottlenecks(model)
-                        write_results(model)
+                        disable_sigint(() -> write_results(model))
                         display_error(io)
                         return 1
                     end
-                    write_results(model)
+                    disable_sigint(() -> write_results(model))
                     return log_finalize(model)
                 catch
                     # Catch errors thrown before the model is initialized.

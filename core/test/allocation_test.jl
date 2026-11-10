@@ -504,6 +504,19 @@ end
     @test isempty(failure_reasons)
 end
 
+@testitem "Missing demand priority defaults to 1" begin
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/demand_priority_default/ribasim.toml")
+    model = Ribasim.run(toml_path)
+    @test success(model)
+    (; user_demand, level_demand, flow_demand) = model.integrator.p.p_independent
+    # UserDemand (time table) and FlowDemand omit the demand priority, LevelDemand has 2
+    @test user_demand.demand_priorities == [1, 2]
+    @test user_demand.has_demand_priority == [true false]
+    @test flow_demand.has_demand_priority == [true false]
+    @test level_demand.has_demand_priority == [false true]
+end
+
 @testitem "Route priorities" begin
     using DataFrames: DataFrame
 

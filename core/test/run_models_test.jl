@@ -292,7 +292,7 @@ end
     integrator.u.flow.horizontal.tabulated_rating_curve[1] = Inf
     integrator.cache.nlsolver.cache.linsolve.cache_inner.A.J .= NaN
     diagnostic = log_numerical_instability(integrator)
-    for (basin_id, expected_depth) in ((1, -3.1199999723277004e6), (6, -3.3226334011822836e6), (9, 397006.2329949941))
+    for (basin_id, expected_depth) in ((1, -3.1199999723277004e6), (6, -3.3226377889662893e6), (9, 397006.2329949941))
         depth_match = match(Regex("Basin #$basin_id: ([-+0-9.e]+)"), diagnostic)
         @test !isnothing(depth_match)
         @test parse(Float64, depth_match[1]) ≈ expected_depth rtol = 1.0e-6
@@ -332,6 +332,64 @@ end
     flow_data_links = Set((row.from_node_id, row.to_node_id) for row in eachrow(flow_data))
     allocation_flow_data_links = Set((row.from_node_id, row.to_node_id) for row in eachrow(allocation_flow_data) if !iszero(row.link_id))
     @test flow_data_links == allocation_flow_data_links
+end
+
+@testitem "Tracer transport through Basins in series" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/tracer_chain/ribasim.toml")
+    @test ispath(toml_path) skip = true
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    # 10 instantaneously mixed Basins in series with a residence time of 1000 s each, so the
+    # FlowBoundary tracer in the last Basin follows the tanks in series solution
+    n_basin = 10
+    residence_time = 1000.0
+    tanks_in_series(t) = 1 - exp(-t / residence_time) *
+        sum((t / residence_time)^k / factorial(k) for k in 0:(n_basin - 1))
+
+    (; basin) = model.integrator.p.p_independent
+    substance_idx = Ribasim.find_index(:FlowBoundary, basin.concentration_data.substances)
+    # The concentration is saved at the end of each period, which starts at the saved time
+    t = model.saved.concentration.time[2:end]
+    concentration = Ribasim.concentration_data(model; table = false).concentration[end, substance_idx, :]
+    @test maximum(abs.(concentration[1:(end - 1)] .- tanks_in_series.(t))) < 1.0e-3
+    # The tracer passes through all Basins
+    @test last(concentration) ≈ 1 atol = 1.0e-3
+end
+
+@testitem "Tracer concentration changes in between timesteps" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/tracer_boundary_pulse/ribasim.toml")
+    @test ispath(toml_path) skip = true
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    # The solver stops at the start and end of the pulse, which take 4 h 24 min,
+    # and the timesteps ending there use the concentration from before the change
+    (; concentration_data) = model.integrator.p.p_independent.basin
+    substance_idx = Ribasim.find_index(:Pulse, concentration_data.substances)
+    @test only(concentration_data.mass[substance_idx, :]) ≈ 0.1 * 4.4 * 3600 rtol = 1.0e-10
+end
+
+@testitem "Tracers with evaporation that leaves the mass behind" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/tracer_evaporation/ribasim.toml")
+    @test ispath(toml_path) skip = true
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    # With storage S, throughflow q and evaporation e the FlowBoundary concentration follows
+    # from S dC/dt = q (1 - C) + e C with S decreasing linearly over time
+    q = 0.1
+    e = 1000 * 1.0e-6
+    S0 = 1000.0
+    exact(t) = q / (q - e) * (1 - ((S0 - e * t) / S0)^((q - e) / e))
+
+    (; basin) = model.integrator.p.p_independent
+    substance_idx = Ribasim.find_index(:FlowBoundary, basin.concentration_data.substances)
+    # The concentration is saved at the end of each period, which starts at the saved time
+    t = model.saved.concentration.time[2:end]
+    concentration = Ribasim.concentration_data(model; table = false).concentration[1, substance_idx, :]
+    @test maximum(abs.(concentration[1:(end - 1)] .- exact.(t))) < 1.0e-5
+    @test last(concentration) > 1
 end
 
 @testitem "Tracers through a UserDemand return flow" begin
@@ -415,7 +473,7 @@ end
     (; level) = level_boundary
     level = level[1]
 
-    t = model.saved.flow.t
+    t = Ribasim.tsaves(model)[2:end]
     flow = DataFrame(Ribasim.flow_data(model))
     outlet_flow =
         filter([:from_node_id, :to_node_id] => (from, to) -> from == 2 && to == 3, flow)
@@ -557,7 +615,7 @@ end
     @test Ribasim.get_flow(
         du.flow,
         (NodeID(:FlowBoundary, 1, p_independent), NodeID(:Basin, 2, p_independent)),
-        p;
+        p_independent;
         t,
     ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
     @test Ribasim.get_flow(
@@ -566,7 +624,7 @@ end
             NodeID(:ManningResistance, 101, p_independent),
             NodeID(:Basin, 102, p_independent),
         ),
-        p;
+        p_independent;
         t,
     ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
 end
@@ -591,6 +649,18 @@ end
     @test all(x -> abs(x) < 1.0e-3, level_2 .- level_4)
     @test all(x -> abs(x - 0.4) < 1.0e-3, level_2)
     @test maximum(abs, basin_table.balance_error) < 1.0e-6
+end
+
+@testitem "Pump pit between two Basins" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/pump_pit/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    # When the Newton iteration keeps a convergence rate measured for an earlier iteration
+    # matrix, the pit oscillates every time step after the pump stops, and the time step
+    # stays at about 0.2 s for 6 hours: 92,000 time steps instead of 185.
+    @test model.integrator.stats.naccept < 1000
 end
 
 @testitem "mean_flow" begin
@@ -774,6 +844,85 @@ end
     model = Ribasim.run(toml_path)
 end
 
+@testitem "junction bidirectional" begin
+    import SQLite
+    using DataFrames: DataFrame
+    import MetaGraphsNext: labels
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/junction_bidirectional/ribasim.toml",
+    )
+    config = Ribasim.Config(toml_path)
+    db = SQLite.DB(Ribasim.database_path(config))
+    graph = Ribasim.create_graph(db, config)
+    close(db)
+
+    (; internal_flow_links, external_flow_links, flow_link_map) = graph.graph_data
+    @test all(node.type != Ribasim.NodeType.Junction for node in labels(graph))
+    @test Set((Int(a.value), Int(b.value)) for (a, b) in getfield.(internal_flow_links, :link)) ==
+        Set(
+        [
+            (4, 1), (7, 1), (10, 1), (9, 1), (1, 5), (1, 8), (1, 9),
+            (5, 6), (8, 6), (11, 10),
+        ]
+    )
+    @test size(flow_link_map) == (length(external_flow_links), length(internal_flow_links))
+
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    # Which is what the control nodes get
+    (; integrator) = model
+    (; p, t) = integrator
+    du = Ribasim.get_du(integrator)
+    node_ids = Ribasim.get_node_ids(toml_path)
+    flow = DataFrame(Ribasim.flow_data(model))
+    # Basin 1 -> Junction 2 points away from the Basin, Junction 3 -> Junction 2 towards it
+    for (junction, link) in ((2, (1, 2)), (3, (3, 2)))
+        junction_id = only(filter(id -> id.value == junction, node_ids))
+        value = Ribasim.get_junction_flow(du.flow, junction_id, p, t)
+        q = flow.flow_rate[(flow.from_node_id .== link[1]) .& (flow.to_node_id .== link[2])]
+        @test value ≈ q[end] rtol = 1.0e-3
+        @test value < 0
+    end
+
+    # Allocation records the same signed flows as the physical layer
+    for flow in (
+            DataFrame(Ribasim.flow_data(model)),
+            DataFrame(Ribasim.allocation_flow_data(model)),
+        )
+        function q(from_node_id, to_node_id)
+            return flow.flow_rate[(flow.from_node_id .== from_node_id) .& (flow.to_node_id .== to_node_id)]
+        end
+        @test all(q(4, 2) .≈ 1.0e-3)
+        @test all(q(2, 5) .≈ 3.0e-4)
+        @test all(q(7, 3) .≈ 5.0e-4)
+        @test all(q(3, 8) .≈ 7.0e-4)
+        # The LinearResistance flows against the direction of its link: out of the group
+        @test all(q(10, 3) .< 0)
+        @test q(10, 3) ≈ q(11, 10)
+
+        # The net flow over the links of the tree
+        behind_junction_3 = q(7, 3) .+ q(9, 3) .+ q(10, 3) .- q(3, 8) .- q(3, 9)
+        @test q(3, 2) ≈ behind_junction_3
+        @test q(1, 2) ≈ q(2, 5) .- q(4, 2) .- behind_junction_3
+        # Which conserves the mass at each Junction
+        @test q(1, 2) .+ q(4, 2) .+ q(3, 2) ≈ q(2, 5)
+    end
+
+    # The demand is met at its upper bound, which is a lower bound on a link against the flow
+    allocation_flow = DataFrame(Ribasim.allocation_flow_data(model))
+    function row(from_node_id, to_node_id)
+        return (allocation_flow.from_node_id .== from_node_id) .&
+            (allocation_flow.to_node_id .== to_node_id)
+    end
+    @test all(allocation_flow.upper_bound_hit[row(3, 9)])
+    @test all(allocation_flow.upper_bound_hit[row(1, 2)])
+    @test all(allocation_flow.lower_bound_hit[row(3, 2)])
+    @test !any(allocation_flow.upper_bound_hit[row(3, 2)])
+end
+
 @testitem "Drought" begin
     using DataFrames
     toml_path = normpath(@__DIR__, "../../generated_testmodels/drought/ribasim.toml")
@@ -821,8 +970,8 @@ end
     (; interpolation) = model.config
 
     @test interpolation.flow_boundary == "block"
-    @test flow_rate isa Vector{<:ConstantInterpolation}
     itp = only(flow_rate)
+    @test itp isa ConstantInterpolation
     Ribasim.solve!(model)
 
     flow_rates_input = itp.u
@@ -837,7 +986,12 @@ end
     (; interpolation) = model.config
 
     @test interpolation.flow_boundary == "linear"
-    @test flow_rate isa Vector{<:LinearInterpolation}
+    @test only(flow_rate) isa LinearInterpolation
+
+    @test_throws "Invalid TOML config." Ribasim.Config(
+        toml_path;
+        interpolation_flow_boundary = "cubic",
+    )
 end
 
 @testitem "Init basin only storage" begin

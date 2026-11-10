@@ -299,7 +299,9 @@ end
     )
     model = Ribasim.Model(toml_path)
     (; flow_ranges) = model.integrator.p.p_independent
-    (; flow_input_ranges, ∂flow_∂flow_input) = model.integrator.cache.nlsolver.cache.W.J.cache
+    (; jac_flow) = model.integrator.cache.nlsolver.cache.W.J.cache
+    flow_input_ranges = jac_flow.ranges
+    ∂flow_∂flow_input = jac_flow.jac
     rows = rowvals(∂flow_∂flow_input)
 
     inflow_flow_idxs = flow_ranges.horizontal.user_demand_inflow
@@ -439,22 +441,6 @@ end
     @test atmp ≈ expected
 end
 
-@testitem "FlatVector" begin
-    vv = [[2.2, 3.2], [4.3, 5.3], [6.4, 7.4]]
-    fv = Ribasim.FlatVector(vv)
-    @test length(fv) == 6
-    @test size(fv) == (6,)
-    @test collect(fv) == [2.2, 3.2, 4.3, 5.3, 6.4, 7.4]
-    @test fv[begin] == 2.2
-    @test fv[5] == 6.4
-    @test fv[end] == 7.4
-
-    vv = Vector{Float64}[]
-    fv = Ribasim.FlatVector(vv)
-    @test isempty(fv)
-    @test length(fv) == 0
-end
-
 @testitem "reduction_factor" begin
     using Ribasim: reduction_factor
     @test reduction_factor(-2.0, 2.0) === 0.0
@@ -568,8 +554,8 @@ end
         :Terminal,
         :UserDemand,
     ]
-    # Junction, Terminal have no tables
-    no_tables = (:Terminal, :Junction)
+    # Terminal has no tables
+    no_tables = (:Terminal,)
     @test unique(node_type.(table_types)) == filter(!in(no_tables), node_types)
     @test collect(keys(node_kinds)) == node_types
     for node_type in node_types

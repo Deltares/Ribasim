@@ -2,6 +2,7 @@ import datetime
 import logging
 import shutil
 import warnings
+from collections import Counter, defaultdict
 from collections.abc import Generator
 from os import PathLike
 from pathlib import Path
@@ -16,7 +17,6 @@ import tomli_w
 import xarray as xr
 from matplotlib import pyplot as plt
 from packaging import version
-from pandera.typing.geopandas import GeoDataFrame
 from pydantic import (
     DirectoryPath,
     Field,
@@ -53,8 +53,8 @@ from ribasim.config import (
     UserDemand,
 )
 from ribasim.db_utils import _set_db_schema_version
-from ribasim.geometry.link import LinkSchema, LinkTable
-from ribasim.geometry.node import NodeModel, NodeSchema, NodeTable
+from ribasim.geometry.link import LinkTable
+from ribasim.geometry.node import NodeModel, NodeTable
 from ribasim.input_base import (
     FileModel,
     ParentModel,
@@ -177,18 +177,8 @@ class Model(FileModel, ParentModel):
         return self
 
     @model_validator(mode="after")
-    def _ensure_topology_tables_are_present(self) -> Self:
-        if self.link.df is None:
-            self.link.df = GeoDataFrame[LinkSchema](
-                index=pd.Index([], name="link_id"),
-                geometry=[],
-            )
+    def _set_topology_crs(self) -> Self:
         self.link.df = self.link.df.set_geometry("geometry", crs=self.crs)
-        if self.node.df is None:
-            self.node.df = GeoDataFrame[NodeSchema](
-                index=pd.Index([], name="node_id"),
-                geometry=[],
-            )
         self.node.df = self.node.df.set_geometry("geometry", crs=self.crs)
         return self
 
@@ -287,9 +277,7 @@ class Model(FileModel, ParentModel):
             db_path.unlink(missing_ok=True)
 
             self.link.write()
-            node = self.node
-            assert node.df is not None
-            node.write()
+            self.node.write()
 
             # Run after geopackage schema has been created
             _set_db_schema_version(db_path, ribasim.__schema_version__)
@@ -338,7 +326,6 @@ class Model(FileModel, ParentModel):
         node_id : int
             The node ID to remove from the model
         """
-        assert self.node.df is not None
         if node_id in self.node.df.index:
             # Remove from node table
             self.node.df = self.node.df.drop(node_id)
@@ -365,9 +352,6 @@ class Model(FileModel, ParentModel):
         Args:
             control_node_id (int): The ID of the control node to check for dangling listen links.
         """
-        if self.link.df is None or self.node.df is None:
-            return
-
         has_remaining_control_links = (
             (self.link.df["link_type"] == "control")
             & (self.link.df["from_node_id"] == control_node_id)
@@ -389,7 +373,7 @@ class Model(FileModel, ParentModel):
 
     def remove_link(self, link_id: int) -> None:
         """Remove a link from the model."""
-        if self.link.df is None or link_id not in self.link.df.index:
+        if link_id not in self.link.df.index:
             return
 
         removed_link = self.link.df.loc[link_id]
@@ -526,8 +510,6 @@ class Model(FileModel, ParentModel):
 
         df_link = self.link.df
         node = self.node.df
-        assert df_link is not None
-        assert node is not None
 
         existing_listen_pairs = (
             df_link.loc[
@@ -600,8 +582,6 @@ class Model(FileModel, ParentModel):
         """
         df_link = self.link.df
         df_node = self.node.df
-        assert df_link is not None
-        assert df_node is not None
 
         df_graph = df_link
         # Join df_link with df_node to get to_node_type
@@ -623,8 +603,114 @@ class Model(FileModel, ParentModel):
                     f"Minimum {link_type} inneighbor or outneighbor unsatisfied"
                 )
 
+        self._validate_junction_groups(df_graph, df_node["node_type"])
+
         for node_model in self._nodes():
             node_model._validate_node_ids()
+
+    def _validate_junction_groups(
+        self, df_graph: pd.DataFrame, nodes: pd.Series
+    ) -> None:
+        """Validate the connected groups of Junctions, ignoring the direction of the links.
+
+        The Junctions must form a tree, together with the Basin if the group has exactly one
+        Basin as a neighbor. Such a group connects each other neighbor to that Basin, so its
+        Junctions need at least two links, and the links to the Basin may not exist yet.
+        The Junctions of other groups connect their upstream with their downstream nodes,
+        so they need at least one of both.
+        """
+        node_types = cast(dict[int, str], nodes.to_dict())
+        # The Junction nodes with rows in the static table stay in the simulation
+        junction_ids = {
+            i for i, node_type in node_types.items() if node_type == "Junction"
+        } - self.junction._routed_node_ids()
+        if not junction_ids:
+            return
+
+        df_flow = df_graph.loc[df_graph["link_type"] == "flow"]
+        links = list(
+            zip(
+                df_flow["from_node_id"].tolist(),
+                df_flow["to_node_id"].tolist(),
+                strict=True,
+            )
+        )
+        junction_links: dict[int, list[tuple[int, int]]] = defaultdict(list)
+        for link in links:
+            for node_id in set(link) & junction_ids:
+                junction_links[node_id].append(link)
+
+        errors = []
+        existing_links = set(links)
+        visited: set[int] = set()
+        for start_id in sorted(junction_ids):
+            if start_id in visited:
+                continue
+            group = {start_id}
+            group_links: set[tuple[int, int]] = set()
+            stack = [start_id]
+            while stack:
+                for link in junction_links[stack.pop()]:
+                    group_links.add(link)
+                    for node_id in set(link) & (junction_ids - group):
+                        group.add(node_id)
+                        stack.append(node_id)
+            visited |= group
+
+            n_in = Counter(to_id for _, to_id in group_links)
+            n_out = Counter(from_id for from_id, _ in group_links)
+            basin_ids = {
+                node_id
+                for link in group_links
+                for node_id in link
+                if node_types[node_id] == "Basin"
+            }
+            has_one_basin = len(basin_ids) == 1
+            if has_one_basin:
+                errors.extend(
+                    f"Junction #{node_id} must have at least 2 flow links."
+                    for node_id in sorted(group)
+                    if n_in[node_id] + n_out[node_id] < 2
+                )
+            else:
+                errors.extend(
+                    f"Junction #{node_id} must have at least 1 flow inneighbor and 1 flow outneighbor, since its Junction group does not have exactly one Basin as a neighbor."
+                    for node_id in sorted(group)
+                    if n_in[node_id] < 1 or n_out[node_id] < 1
+                )
+
+            tree_ids = group | basin_ids if has_one_basin else group
+            n_tree_links = sum(
+                from_id in tree_ids and to_id in tree_ids
+                for from_id, to_id in group_links
+            )
+            if n_tree_links != len(tree_ids) - 1:
+                errors.append(
+                    f"The links of the Junction group {sorted(group)} must form a tree, without cycles."
+                )
+            if not has_one_basin:
+                continue
+
+            basin_id = next(iter(basin_ids))
+            for from_id, to_id in sorted(group_links):
+                if from_id in tree_ids and to_id in tree_ids:
+                    continue
+                link = (from_id, basin_id) if to_id in group else (basin_id, to_id)
+                if link in existing_links:
+                    errors.append(
+                        f"Junction group connects node #{link[0]} to node #{link[1]} through multiple links."
+                    )
+                elif (link[1], link[0]) in existing_links and "UserDemand" not in (
+                    node_types[from_id],
+                    node_types[to_id],
+                ):
+                    errors.append(
+                        f"Junction group connects nodes #{link[0]} and #{link[1]} in both directions, which is only allowed for UserDemand."
+                    )
+                existing_links.add(link)
+
+        if errors:
+            raise ValueError("\n".join(errors))
 
     def _has_valid_neighbor_amount(
         self,
@@ -891,9 +977,7 @@ class Model(FileModel, ParentModel):
         xugrid = cast(Any, _xugrid)
 
         node_df = self.node.df
-        assert node_df is not None
 
-        assert self.link.df is not None
         # We assume only the flow network is of interest.
         link_df = self.link.df[self.link.df.link_type == "flow"]
 
