@@ -1254,6 +1254,14 @@ function set_controlled_node_ids!(p_independent, node::Union{PidControl, Continu
 end
 
 """
+Whether the node is part of a PassDown subgraph: a PassDown node, or a UserDemand node that abstracts from one.
+"""
+function in_pass_down_subgraph(id::NodeID, user_demand::UserDemand)::Bool
+    return id.is_pass_down ||
+        (id.type == NodeType.UserDemand && user_demand.in_pass_down_subgraph[id.idx])
+end
+
+"""
 Mark the UserDemand nodes that are part of a PassDown subgraph, and store for those
 the indices in the `pass_down` flow component of their outflow links.
 """

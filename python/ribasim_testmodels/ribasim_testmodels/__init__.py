@@ -93,7 +93,7 @@ from ribasim_testmodels.junction import (
     junction_combined,
 )
 from ribasim_testmodels.observation import observation_model
-from ribasim_testmodels.pass_down import pass_down_model
+from ribasim_testmodels.pass_down import pass_down_model, pass_down_tracer_model
 from ribasim_testmodels.pid_control import (
     discrete_control_of_pid_control_model,
     pid_control_model,
@@ -182,6 +182,7 @@ __all__ = [
     "outlet_model",
     "pass_down_equation_model",
     "pass_down_model",
+    "pass_down_tracer_model",
     "pid_control_equation_model",
     "pid_control_model",
     "polder_management_model",

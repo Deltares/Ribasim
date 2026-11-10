@@ -27,6 +27,7 @@ from ribasim_testmodels.discrete_control import (
 )
 from ribasim_testmodels.junction import junction_combined
 from ribasim_testmodels.observation import observation_model
+from ribasim_testmodels.pass_down import pass_down_model
 from ribasim_testmodels.pid_control import (
     discrete_control_of_pid_control_model,
     pid_control_model,
@@ -34,9 +35,7 @@ from ribasim_testmodels.pid_control import (
 from ribasim_testmodels.time import transient_pump_outlet_model
 from ribasim_testmodels.two_basin import two_basin_model
 
-# Together these cover all node types and input tables, except the NetCDF inputs and the
-# PassDown node, which is covered by running pass_down in the workload.
-# (Tracers, which this workload enables, are not supported for PassDown yet.)
+# Together these cover all node types and input tables, except the NetCDF inputs
 PHYSICAL_COMPONENTS: list[Callable[[], Model]] = [
     basic_model,
     basic_basin_both_area_and_storage_model,
@@ -44,6 +43,7 @@ PHYSICAL_COMPONENTS: list[Callable[[], Model]] = [
     two_basin_model,
     junction_combined,
     observation_model,
+    pass_down_model,
     pid_control_model,
     discrete_control_of_pid_control_model,
     level_range_model,

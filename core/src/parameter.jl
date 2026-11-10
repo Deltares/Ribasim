@@ -1176,6 +1176,8 @@ state_links: The flow links that have a flow state in the `pass_down` flow compo
 inflow_state_idx: Per PassDown node the index in `state_links` of each of its inflow links
 outflow_state_idx: Per PassDown node the index in `state_links` of each of its outflow links,
     or 0 for the link towards a UserDemand node
+link_mass: The mass per substance that flowed over each link in `state_links` in the last timestep (substance, link)
+concentration: The concentration per substance of the flow through each PassDown node in the last timestep (substance, node)
 """
 @kwdef struct PassDown <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -1187,6 +1189,8 @@ outflow_state_idx: Per PassDown node the index in `state_links` of each of its o
     state_links::Vector{LinkMetadata} = LinkMetadata[]
     inflow_state_idx::Vector{Vector{Int}} = [Int[] for _ in node_id]
     outflow_state_idx::Vector{Vector{Int}} = [Int[] for _ in node_id]
+    link_mass::Matrix{Float64} = zeros(0, length(state_links))
+    concentration::Matrix{Float64} = zeros(0, length(node_id))
 end
 
 """
@@ -1228,6 +1232,8 @@ in_pass_down_subgraph: whether the UserDemand node is part of one of the PassDow
     in which case its flows are computed in `formulate_pass_down_flow!`
 pass_down_outflow_state_idx: for the UserDemand nodes in a PassDown subgraph, the index in the `pass_down` flow
     component of each outflow link, or 0 for outflow links that have no state there
+return_mass: The mass per substance in the return flow in the last timestep (substance, node), only computed
+    if the return flow goes to a Basin or a PassDown node, used for tracers
 """
 @kwdef struct UserDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
@@ -1250,6 +1256,7 @@ pass_down_outflow_state_idx: for the UserDemand nodes in a PassDown subgraph, th
     concentration_itp::Vector{Vector{ScalarConstantInterpolation}}
     in_pass_down_subgraph::Vector{Bool} = fill(false, length(node_id))
     pass_down_outflow_state_idx::Vector{Vector{Int}} = [Int[] for _ in node_id]
+    return_mass::Matrix{Float64} = zeros(0, length(node_id))
 end
 
 """
