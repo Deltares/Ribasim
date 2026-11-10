@@ -161,8 +161,9 @@ def test_offline_delwaq_coupling_user_demand(tmp_path):
     )
     assert np.allclose(df["Continuity"], 1.0)
     assert np.allclose(df["FlowBoundary"] + df["Initial"], 1.0)
-    # UserDemand #3 adds Cl to its return flow into Basin #2, which reaches Basin #6
-    # through the return flow of UserDemand #7
+    # The `UserDemand / concentration` table of UserDemand #3 adds 10 g/m³ of Cl to its
+    # return flow of 0.25 m³/s into Basin #2, which has a net outflow of 1 m³/s.
+    # The Cl reaches Basin #6 through the Pump and the return flow of UserDemand #7.
     final = df.loc[df.index.get_level_values("time").max()]
     assert np.allclose(final["Cl"], 2.5, rtol=0.05)
 

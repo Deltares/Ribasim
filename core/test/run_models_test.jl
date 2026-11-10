@@ -401,8 +401,8 @@ end
     # The return flows carry the concentrations of the abstracted water
     @test all(isapprox.(concentration("Continuity"), 1.0))
     @test all(isapprox.(concentration("FlowBoundary") .+ concentration("Initial"), 1.0))
-    # UserDemand #3 adds 10 g/m³ of Cl to its return flow of 0.25 m³/s,
-    # and Basin #2 only has outflows, of 1.25 m³/s
+    # The `UserDemand / concentration` table of UserDemand #3 adds 10 g/m³ of Cl to its
+    # return flow of 0.25 m³/s into Basin #2. That 2.5 g/s leaves with the net outflow of 1 m³/s.
     is_cl_2 = (table.substance .== "Cl") .& (table.node_id .== 2)
     @test last(table.concentration[is_cl_2]) ≈ 2.5 rtol = 1.0e-2
 end
