@@ -1,4 +1,5 @@
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -833,6 +834,7 @@ def junction_into_junction_model() -> Model:
     passes everything on to Basin #6. Junction #5 connects Basin #7 with LinearResistance #8,
     which drains into LevelBoundary #9, so it is a Junction group with one Basin.
     The rows of Junction #2 name #4 and #5, and apply to the links that replace them.
+    The `Junction / static` table is written to NetCDF rather than the database.
     """
     model = Model(
         starttime=datetime(2020, 1, 1),
@@ -875,4 +877,6 @@ def junction_into_junction_model() -> Model:
     model.link.add(jct_group, b2)
     model.link.add(jct_group, lr)
     model.link.add(lr, lb)
+
+    model.junction.static.filepath = Path("junction-static.nc")
     return model

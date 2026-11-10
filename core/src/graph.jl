@@ -6,7 +6,7 @@ and data of links (LinkMetadata):
 [`LinkMetadata`](@ref)
 """
 function create_graph(db::DB, config::Config)::MetaGraph
-    node_table = get_node_ids(db)
+    node_table = get_node_ids(db, config)
     node_rows = execute(
         db,
         "SELECT node_id, node_type, subnetwork_id, route_priority FROM Node ORDER BY node_type, node_id",
@@ -114,7 +114,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
 
     # Remove junctions and create new (internal) flow links
     flow_link_map, internal_flow_links, junction_flows, jerrors =
-        simplify_graph!(graph, db, external_flow_links, max_link_id + 1)
+        simplify_graph!(graph, db, config, external_flow_links, max_link_id + 1)
     errors |= jerrors
 
     if errors
@@ -144,6 +144,7 @@ end
 function simplify_graph!(
         graph::MetaGraph,
         db::DB,
+        config::Config,
         external_flow_links::Vector{LinkMetadata},
         new_link_id::Int,
     )
@@ -162,7 +163,7 @@ function simplify_graph!(
     V = ones(Int8, length(I))
     errors = false
 
-    all_junction_ids = get_node_ids(db, NodeType.Junction)
+    all_junction_ids = get_junction_ids(db, config)
     # The Junction nodes that divide the flow or supply a UserDemand stay in the graph
     junction_ids = filter(is_plain_junction, all_junction_ids)
 

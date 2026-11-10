@@ -49,6 +49,8 @@ end
     using DataFrames: DataFrame
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/junction_into_junction/ribasim.toml")
+    # The Junction / static table of this model is in NetCDF
+    @test Ribasim.Config(toml_path).junction.static == "junction-static.nc"
     model = Ribasim.run(toml_path)
     @test success(model)
 
