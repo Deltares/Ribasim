@@ -59,11 +59,9 @@ def test_offline_delwaq_coupling(tmp_path):
         "Precipitation",
         "SurfaceRunoff",
         "Tracer",
-        "UserDemand",
     ]
 
     assert all(df[df.substance == "Continuity"].concentration >= 1.0 - 1e-6)
-    assert all(np.isclose(df[df.substance == "UserDemand"].concentration, 0.0))
     assert any(
         df[df.substance == "Basic"].concentration > 0
     )  # MassLoad should be positive
@@ -123,11 +121,9 @@ def test_offline_delwaq_coupling_evaporate_mass(tmp_path):
         "SurfaceRunoff",
         "Terrible' &%20Name",
         "Tracer",
-        "UserDemand",
     ]
 
     assert all(np.isclose(df[df.substance == "Continuity"].concentration, 1.0))
-    assert all(np.isclose(df[df.substance == "UserDemand"].concentration, 0.0))
 
     model.write(tmp_path / "basic/ribasim.toml")
 

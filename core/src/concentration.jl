@@ -19,9 +19,6 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
             total_inflow = sum(inflows)
             return_flow = cumulative_flow_dt.horizontal.user_demand_outflow[node_idx]
 
-            # Exclude the UserDemand tracer from upstream: save before, restore after,
-            # so only the fresh tracer from add_substance_mass! ends up in the return flow.
-            ud_mass_before = mass[Substance.UserDemand, to_node.idx]
             if total_inflow > 0
                 for node_inflow_idx in eachindex(inflow_links)
                     from_node = inflow_links[node_inflow_idx].link[1]
@@ -31,7 +28,6 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
                         @view(concentration_state[:, from_node.idx]) .* return_flow .* fraction
                 end
             end
-            mass[Substance.UserDemand, to_node.idx] = ud_mass_before
 
             add_substance_mass!(
                 view(mass, :, to_node.idx),

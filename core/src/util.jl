@@ -1072,8 +1072,10 @@ function initialize_concentration_itp(
     # Default: concentration of 0
     concentration_itp = fill(zero_constant_itp, n_substance)
 
-    # Set the concentration corresponding to the node type to 1
-    concentration_itp[substance_idx_node_type] = unit_constant_itp
+    # Set the concentration corresponding to the node type to 1, if it has a tracer
+    if !isnothing(substance_idx_node_type)
+        concentration_itp[substance_idx_node_type] = unit_constant_itp
+    end
     if continuity_tracer
         # Set the concentration corresponding of the continuity tracer to 1
         concentration_itp[Substance.Continuity] = unit_constant_itp

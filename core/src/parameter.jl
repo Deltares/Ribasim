@@ -66,8 +66,8 @@ const ExactVerticalFlowCVector{T} = CVector{T, Vector{T}, ExactVerticalFlowTuple
 @enumx LinkType flow control listen observation none
 @eval @enumx NodeType $(node_types...)
 @enumx ContinuousControlType None Continuous PID
-@enumx Substance Continuity = 1 Initial = 2 LevelBoundary = 3 FlowBoundary = 4 UserDemand =
-    5 Drainage = 6 Precipitation = 7 SurfaceRunoff = 8 ResidenceTime = 9
+@enumx Substance Continuity = 1 Initial = 2 LevelBoundary = 3 FlowBoundary = 4 Drainage = 5 Precipitation =
+    6 SurfaceRunoff = 7 ResidenceTime = 8
 Base.to_index(id::Substance.T) = Int(id)  # used to index into concentration matrices
 
 const node_type_map::Dict{NodeType.T, Symbol} = Dict(

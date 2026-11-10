@@ -428,27 +428,25 @@ def _user_demand_loads(model, wide, user_demands, basin_mapping):
 
     Like in the core, the return flow of a UserDemand carries the concentrations of
     its source water plus the concentrations set in its concentration table.
-    The UserDemand tracer is set to 1 by default.
-    Unlike in the core, the UserDemand tracer of the source water is not excluded,
-    so it counts how many times water passed a UserDemand, and can exceed 1.
     """
-    table = model.user_demand.concentration.df
-
     loads = []
     substances = set()
+    table = model.user_demand.concentration.df
+    if table is None:
+        return loads, substances
+
     for node_id, _, returns in user_demands:
-        concentration = pd.DataFrame({"UserDemand": 1.0}, index=wide.index)
-        if table is not None and node_id in table.node_id.to_numpy():
-            node_table = table[table.node_id == node_id].pivot_table(
-                index="time", columns="substance", values="concentration"
-            )
-            node_table = (
-                node_table.reindex(node_table.index.union(wide.index))
-                .ffill()
-                .bfill()
-                .reindex(wide.index)
-            )
-            concentration[node_table.columns] = node_table
+        concentration = table[table.node_id == node_id].pivot_table(
+            index="time", columns="substance", values="concentration"
+        )
+        if concentration.empty:
+            continue
+        concentration = (
+            concentration.reindex(concentration.index.union(wide.index))
+            .ffill()
+            .bfill()
+            .reindex(wide.index)
+        )
         for to_id, link_ids in returns.items():
             load = concentration.mul(wide[link_ids].sum(axis=1), axis=0)
             rows = load.reset_index().melt(
@@ -702,7 +700,6 @@ def generate(
         "Initial": 1.0,
         "LevelBoundary": 0.0,
         "FlowBoundary": 0.0,
-        "UserDemand": 0.0,
         "Precipitation": 0.0,
         "Drainage": 0.0,
         "SurfaceRunoff": 0.0,

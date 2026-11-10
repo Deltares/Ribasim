@@ -1490,7 +1490,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)
         concentration_time,
         node_id,
         substances,
-        Substance.UserDemand,
+        nothing,
         cyclic_times,
         config;
         continuity_tracer = false,
