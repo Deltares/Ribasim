@@ -989,8 +989,6 @@ function ConcentrationData(
         error("Errors encountered when parsing Basin concentration data.")
     end
 
-    cumulative_in = zeros(n_basin)
-
     return ConcentrationData(;
         config.solver.evaporate_mass,
         concentration_state,
@@ -1001,7 +999,6 @@ function ConcentrationData(
         mass,
         concentration_external,
         substances,
-        cumulative_in,
     )
 end
 
