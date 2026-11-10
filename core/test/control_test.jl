@@ -255,6 +255,50 @@ end
     @test record.control_state == ["Off", "On"]
 end
 
+@testitem "Compound variable functions and nesting" begin
+    using StructArrays: StructVector
+    using Ribasim: CompoundVariable, NodeID, NodeType, Schema, compound_variable_value,
+        parse_subvariable_function
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/compound_variable_condition/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    (; p) = model.integrator
+    node_ids_all = Ribasim.get_node_ids(Ribasim.SQLite.DB(Ribasim.database_path(model.config)))
+
+    V = Schema.DiscreteControl.Variable
+    # 3 * (2 * flow_rate + 1)^2, which is 3 as the flow rate of FlowBoundary #2 is 0
+    inner = V(6, 1, 2, "flow_rate", 2.0, 0.0, "power(2)", 3.0, 1.0)
+    # 0.5 * exp(compound variable 1) + 1
+    outer = V(6, 2, missing, "compound_variable.1", 1.0, 0.0, "exponential", 0.5, 0.0)
+    cyclic = V(6, 3, missing, "compound_variable.3", 1.0, 0.0, "identity", 1.0, 0.0)
+    rows = StructVector([inner, outer, cyclic])
+    definitions = Dict{Int32, StructVector}(i => rows[[i]] for i in 1:3)
+    parse_compound(id) = CompoundVariable(
+        definitions[id],
+        NodeType.DiscreteControl,
+        node_ids_all;
+        definitions,
+    )
+
+    compound_variable = parse_compound(2)
+    @test only(compound_variable.subvariables).nested == 1
+    value = compound_variable_value(compound_variable, zeros(1), zeros(1), p, 0.0)
+    @test value ≈ 0.5 * exp(3.0)
+
+    @test_throws ErrorException parse_compound(3)
+
+    node_id = NodeID(:FlowBoundary, 2, p.p_independent)
+    @test parse_subvariable_function("identity", node_id) == (:identity, 1)
+    @test parse_subvariable_function("sin", node_id) == (:sin, 1)
+    @test parse_subvariable_function("power(-2)", node_id) == (:power, -2)
+    @test_throws ErrorException parse_subvariable_function("power(1.5)", node_id)
+    @test_throws ErrorException parse_subvariable_function("cos", node_id)
+end
+
 @testitem "Flow through node control" begin
     using DataFrames: DataFrame
 
@@ -308,6 +352,35 @@ end
     @test get_link_flow(4, 6) ≈ max.(0.6 .* inflow, 0) rtol = 1.0e-3
     @test get_link_flow(3, 5) ≈ max.(0.4 .* inflow, 0) rtol = 1.0e-3
     @test get_link_flow(5, 7) ≈ max.(0.4 .* inflow, 0) rtol = 1.0e-3
+end
+
+@testitem "Continuous control variable functions" begin
+    using DataFrames: DataFrame
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/continuous_control_functions/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+
+    # Compound variable 1 is the sum of the flow boundary flow rates 2 and 3, and the
+    # outlet flow rate is the sum of the terms with all functions applied
+    q_sum = 2.0 + 3.0
+    expected =
+        2 * (0.01 * q_sum + 0.5)^2 + # nested, power(2)
+        0.4 * exp(-0.5 * 2.0) + # exponential
+        0.3 / (2.0 * 3.0) + # inverse
+        0.1 * sin(0.5 * 2.0) + # sin
+        (0.0 * 2.0 + 0.1) # constant
+
+    flow_data = DataFrame(Ribasim.flow_data(model))
+    outlet_flow = filter(
+        [:from_node_id, :to_node_id] => (a, b) -> a == 3 && b == 4,
+        flow_data,
+    ).flow_rate
+    @test !isempty(outlet_flow)
+    @test all(isapprox.(outlet_flow, expected; rtol = 1.0e-3))
 end
 
 @testitem "Concentration discrete control" begin

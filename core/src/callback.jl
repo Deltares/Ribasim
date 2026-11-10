@@ -846,7 +846,15 @@ function compound_variable_value(
     for subvariable in compound_variable.subvariables
         (; listen_node_id, variable, weight, look_ahead) = subvariable
 
-        sub_value = if variable == "level"
+        sub_value = if !iszero(subvariable.nested)
+            compound_variable_value(
+                compound_variable.nested[subvariable.nested],
+                storage,
+                flow,
+                p,
+                t,
+            )
+        elseif variable == "level"
             if listen_node_id.is_basin
                 # Basin level
                 get_level(storage[listen_node_id.idx], p, listen_node_id, t)
@@ -888,9 +896,28 @@ function compound_variable_value(
             error("Unsupported listen variable $variable.")
         end
 
-        value += weight * sub_value
+        value += subvariable.coefficient *
+            apply_function(subvariable, weight * sub_value + subvariable.offset)
     end
     return value
+end
+
+"Apply the function of a subvariable to the weighted variable plus offset."
+function apply_function(subvariable::SubVariable, x)
+    (; func, power) = subvariable
+    return if func === :identity
+        x
+    elseif func === :exponential
+        exp(x)
+    elseif func === :inverse
+        inv(x)
+    elseif func === :power
+        x^power
+    elseif func === :sin
+        sin(x)
+    else
+        error("Unsupported function $func.")
+    end
 end
 
 function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)::Nothing

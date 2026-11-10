@@ -1028,17 +1028,35 @@ function get_cache_vector(
     end
 end
 
+"""
+A term of a compound variable: `coefficient * f(weight * variable + offset)`.
+listen_node_id: The node the variable is obtained from, or the listening node itself for a nested compound variable
+variable: The name of the variable
+weight: Factor multiplying the variable inside f
+look_ahead: Look ahead in time for time series variables
+func: The function f, one of :identity, :exponential, :inverse, :power, :sin
+power: The exponent for f = :power
+coefficient: Factor multiplying the outcome of f
+offset: Constant added to the weighted variable inside f
+nested: If nonzero, the index in `CompoundVariable.nested` of the compound variable used as the variable
+"""
 @kwdef struct SubVariable
     listen_node_id::NodeID
     variable::String
     weight::Float64
     look_ahead::Float64
+    func::Symbol = :identity
+    power::Int = 1
+    coefficient::Float64 = 1.0
+    offset::Float64 = 0.0
+    nested::Int = 0
 end
 
 """
 The data for a single compound variable for DiscreteControl.
 node_id:: The ID of the DiscreteControl that listens to this variable
 subvariables: data for one single subvariable
+nested: the compound variables that subvariables refer to, see `SubVariable.nested`
 threshold_high: the thresholds this compound variable will be
     compared against when the condition in the previous timestep is false
 threshold_low: the thresholds this compound variable will be
@@ -1047,6 +1065,7 @@ threshold_low: the thresholds this compound variable will be
 @kwdef struct CompoundVariable
     node_id::NodeID
     subvariables::Vector{SubVariable} = SubVariable[]
+    nested::Vector{CompoundVariable} = CompoundVariable[]
     threshold_high::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
     threshold_low::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
 end

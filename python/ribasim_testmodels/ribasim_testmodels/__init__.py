@@ -47,7 +47,10 @@ from ribasim_testmodels.basic import (
     tabulated_rating_curve_model,
 )
 from ribasim_testmodels.bucket import bucket_model, leaky_bucket_model
-from ribasim_testmodels.continuous_control import outlet_continuous_control_model
+from ribasim_testmodels.continuous_control import (
+    continuous_control_functions_model,
+    outlet_continuous_control_model,
+)
 from ribasim_testmodels.discrete_control import (
     circular_flow_model,
     compound_variable_condition_model,
@@ -126,6 +129,7 @@ __all__ = [
     "concentration_condition_model",
     "connector_node_flow_condition_model",
     "continuous_concentration_condition_model",
+    "continuous_control_functions_model",
     "cyclic_demand_model",
     "cyclic_time_model",
     "discrete_control_of_pid_control_model",
