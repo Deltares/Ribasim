@@ -584,6 +584,23 @@ def junction_no_basin_model() -> Model:
     return model
 
 
+def junction_no_basin_allocation_model() -> Model:
+    """Create a model without Basins with allocation: the chain of `junction_no_basin_model`.
+
+    Allocation gives the boundary flow to the downstream UserDemand #6, which has the
+    higher demand priority.
+    """
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 1, 10),
+        crs="EPSG:28992",
+        allocation=Allocation(),
+        experimental=Experimental(allocation=True),
+    )
+    _junction_chain(model, 2)
+    return model
+
+
 def junction_level_model() -> Model:
     """Create a model that shows which downstream level a structure feeding a Junction sees.
 
