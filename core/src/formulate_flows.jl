@@ -18,6 +18,7 @@ function water_balance!(
 
     # Compute cumulative boundary flows up to the current t
     formulate_cumulative_boundary_flow!(p_independent.flow_boundary, p, t)
+    set_current_boundary_flow_rate!(p_independent.flow_boundary, p, t)
 
     # Compute and cache Basin level, area, low_storage_factor
     set_current_basin_properties!(u.flow, p, t)
@@ -54,9 +55,9 @@ function water_balance!(
     # Formulate intermediate flows (non continuously controlled)
     formulate_flows!(formulate_flows_args...)
 
-    # Provisional PassDown flows, so that the derivative term of PID control sees the
-    # flow into the listened Basin via PassDown nodes
-    formulate_provisional_pass_down_flow!(du.flow, p, t)
+    # Provisional Junction flows, so that the derivative term of PID control sees the
+    # flow into the listened Basin via Junction nodes
+    formulate_provisional_junction_flow!(du.flow, p, t)
 
     # Formulate the PID control integral term rate
     formulate_PID_control!(
@@ -88,8 +89,8 @@ function water_balance!(
         control_type = ContinuousControlType.Continuous,
     )
 
-    # Formulate PassDown flows and the UserDemand flows in the PassDown subgraphs
-    formulate_pass_down_flow!(du.flow, p, t)
+    # Formulate Junction flows and the UserDemand flows in the Junction subgraphs
+    formulate_junction_flow!(du.flow, p, t)
     return nothing
 end
 
@@ -175,9 +176,14 @@ function set_current_storage!(
 
         for idx in eachindex(flow_boundary.node_id)
             downstream_id = flow_boundary.outflow_link[idx].link[2]
-            # The flow into a PassDown node is a state
-            downstream_id.is_pass_down && continue
-            storage[downstream_id.idx] += time_dependent_cache.flow_boundary.current_cumulative_boundary_flow[idx]
+            cumulative_flow = time_dependent_cache.flow_boundary.current_cumulative_boundary_flow[idx]
+            if downstream_id.is_routed
+                for (basin_idx, weight) in p_independent.routed_basins_boundary[idx]
+                    storage[basin_idx] += weight * cumulative_flow
+                end
+            else
+                storage[downstream_id.idx] += cumulative_flow
+            end
         end
     else
         aggregate_flows!(
@@ -387,6 +393,12 @@ function formulate_dstorage_single_basin(
                 result += flow_boundary.flow_rate[inflow_id.idx](t)
             end
         end
+        # FlowBoundary flows that reach the Basin via Junction nodes
+        for (boundary_idx, routed) in enumerate(p_independent.routed_basins_boundary)
+            for (basin_idx, weight) in routed
+                basin_idx == node_id.idx && (result += weight * flow_boundary.flow_rate[boundary_idx](t))
+            end
+        end
     end
 
     return result
@@ -405,8 +417,8 @@ function formulate_flow!(
     (; level_difference_threshold) = p_independent
 
     for node_idx in eachindex(user_demand.node_id)
-        # UserDemands fed by PassDown nodes are handled separately
-        user_demand.in_pass_down_subgraph[node_idx] && continue
+        # UserDemands fed by Junction nodes are handled separately
+        user_demand.in_routed_subgraph[node_idx] && continue
 
         id = user_demand.node_id[node_idx]
         inflow_links = user_demand.inflow_links[node_idx]
@@ -485,7 +497,7 @@ function linear_resistance_flow(
     inflow_link = linear_resistance.inflow_link[node_id.idx]
 
     inflow_id = inflow_link.link[1]
-    downstream_id = linear_resistance.outflow_link[node_id.idx].link[2]
+    downstream_id = linear_resistance.downstream_level_id[node_id.idx]
 
     h_a = get_level(s_a, p, inflow_id, t)
     h_b = get_level(s_b, p, downstream_id, t)
@@ -508,7 +520,7 @@ function tabulated_rating_curve_flow(
     (; current_interpolation_index, interpolations) = tabulated_rating_curve
     (; level_difference_threshold) = p.p_independent
     inflow_link = tabulated_rating_curve.inflow_link[node_id.idx]
-    downstream_id = tabulated_rating_curve.outflow_link[node_id.idx].link[2]
+    downstream_id = tabulated_rating_curve.downstream_level_id[node_id.idx]
     inflow_id = inflow_link.link[1]
 
     h_a = get_level(s_a, p, inflow_id, t)
@@ -535,7 +547,7 @@ function allocated_rating_curve_flow(
     )::Number
     (; level_difference_threshold) = p.p_independent
     inflow_link = tabulated_rating_curve.inflow_link[node_id.idx]
-    downstream_id = tabulated_rating_curve.outflow_link[node_id.idx].link[2]
+    downstream_id = tabulated_rating_curve.downstream_level_id[node_id.idx]
 
     inflow_id = inflow_link.link[1]
 
@@ -714,7 +726,7 @@ function manning_resistance_flow(
         apply_low_storage_factor::Bool = true,
     )::Number
     inflow_id = manning_resistance.inflow_link[node_id.idx].link[1]
-    downstream_id = manning_resistance.outflow_link[node_id.idx].link[2]
+    downstream_id = manning_resistance.downstream_level_id[node_id.idx]
 
     h_a = get_level(s_a, p, inflow_id, t)
     h_b = get_level(s_b, p, downstream_id, t)
@@ -885,7 +897,7 @@ function pump_or_outlet_flow(
 
     node_idx = node_id.idx
     inflow_id = node.inflow_link[node_idx].link[1]
-    downstream_id = node.outflow_link[node_idx].link[2]
+    downstream_id = node.downstream_level_id[node_idx]
     min_flow_rate = node.min_flow_rate[node_idx]
     max_flow_rate = node.max_flow_rate[node_idx]
     min_upstream_level = node.min_upstream_level[node_idx]
@@ -1098,77 +1110,68 @@ function formulate_flows!(
 end
 
 """
-The flow from a node outside of a PassDown subgraph into the subgraph.
+Cache the current FlowBoundary flow rates for the Junction subgraphs, like the other time
+series in the right hand side: a flow rate set via BMI takes precedence, and a block series
+is evaluated left-continuously within the timestep.
 """
-function get_source_flow(
-        flow::FlowCVector{T},
-        source_id::NodeID,
-        p::Parameters,
-        t::Number,
-    )::T where {T}
-    (; p_independent, time_dependent_cache) = p
-    (; flow_boundary) = p_independent
-    return if source_id.type == NodeType.UserDemand
-        flow.horizontal.user_demand_outflow[source_id.idx]
-    elseif source_id.type == NodeType.FlowBoundary
-        # Like the other time series in the right hand side: a flow rate set via BMI takes
-        # precedence, and a block series is evaluated left-continuously within the timestep
-        idx = source_id.idx
-        flow_rate_bmi = flow_boundary.flow_rate_bmi[idx]
-        if isnan(flow_rate_bmi)
-            eval_time_interpolation(
-                flow_boundary.flow_rate[idx],
-                time_dependent_cache.flow_boundary.current_flow_rate,
-                idx,
-                p,
-                t,
-            )
-        else
-            flow_rate_bmi
+function set_current_boundary_flow_rate!(flow_boundary::FlowBoundary, p::Parameters, t::Number)::Nothing
+    (; p_independent, p_mutable, time_dependent_cache) = p
+    isempty(p_independent.junction.routed_ids) && return nothing
+    (; current_flow_rate) = time_dependent_cache.flow_boundary
+    if p_mutable.new_time_dependent_cache
+        for idx in eachindex(flow_boundary.node_id)
+            flow_rate_bmi = flow_boundary.flow_rate_bmi[idx]
+            current_flow_rate[idx] = if isnan(flow_rate_bmi)
+                itp = flow_boundary.flow_rate[idx]
+                itp(interpolation_time(itp, p, t))
+            else
+                flow_rate_bmi
+            end
         end
-    else
-        get_node_flow(flow, source_id)[1]
-    end
-end
-
-"""
-The PID derivative term uses the storage rate of the listened Basin, which includes the
-flows into it via PassDown nodes. These are computed after the controlled flows, so they are
-computed provisionally before PID control from the flows known at that point. The flows of
-PID and ContinuousControl controlled nodes are still zero then, so a controlled flow that
-reaches the listened Basin via PassDown nodes is not part of the derivative term.
-"""
-function formulate_provisional_pass_down_flow!(flow::FlowCVector, p::Parameters, t::Number)::Nothing
-    (; pass_down, pid_control) = p.p_independent
-    if !isempty(pass_down.node_id) && !isempty(pid_control.node_id)
-        formulate_pass_down_flow!(flow, p, t)
     end
     return nothing
 end
 
 """
-Compute the flows over the links in the PassDown subgraphs, see `PassDown.state_links`,
-and the UserDemand flows in the PassDown subgraphs.
-
-- A PassDown node gets the flow from its inflow links, which come from other PassDown nodes (confluences are
-  allowed) or from outside the subgraph, where the flow is the state of the source node.
-- The UserDemand node downstream of the PassDown node, if present, takes precedence: it
-  abstracts the minimum of the flow into the PassDown node and its demand.
-- The remaining flow is divided over the downstream links of the PassDown node by the fractions of these links.
-- The return flow of a UserDemand node flows into a single PassDown node.
+The PID derivative term uses the storage rate of the listened Basin, which includes the
+flows into it via Junction nodes. These are computed after the controlled flows, so they are
+computed provisionally before PID control from the flows known at that point. The flows of
+PID and ContinuousControl controlled nodes are still zero then, so a controlled flow that
+reaches the listened Basin via Junction nodes is not part of the derivative term.
 """
-function formulate_pass_down_flow!(
+function formulate_provisional_junction_flow!(flow::FlowCVector, p::Parameters, t::Number)::Nothing
+    (; junction, pid_control) = p.p_independent
+    if !isempty(junction.routed_ids) && !isempty(pid_control.node_id)
+        formulate_junction_flow!(flow, p, t)
+    end
+    return nothing
+end
+
+"""
+Compute the flows of the UserDemand nodes in the Junction subgraphs. The flows over the links
+in the subgraphs are weighted sums of the flows that enter the subgraphs and these UserDemand
+flows, see `set_routing!`, so they need no computation of their own: the Basins behind the
+subgraphs receive them through the incidence matrix.
+
+- The total inflow of a Junction node is the weighted sum of the flows that enter the
+  subgraph upstream of it, minus the abstractions of the UserDemand nodes upstream.
+- The UserDemand node downstream of the Junction node, if present, takes precedence: it
+  abstracts the minimum of the total inflow of the Junction node and its demand.
+- The remainder is divided over the outflow links by their fractions, which is in the weights.
+"""
+function formulate_junction_flow!(
         flow::FlowCVector{T},
         p::Parameters,
         t::Number;
         flow_in::FlowCVector{T} = flow,
     )::Nothing where {T}
     (; p_independent, time_dependent_cache) = p
-    (; pass_down, user_demand) = p_independent
-    (; inflow_links, outflow_state_idx, inflow_state_idx, fraction, pass_down_subgraphs) = pass_down
+    (; junction, user_demand) = p_independent
+    (; inflow_weights, routed_subgraphs) = junction
     (; current_return_factor) = time_dependent_cache.user_demand
+    boundary_flow = time_dependent_cache.flow_boundary.current_flow_rate
 
-    isempty(pass_down_subgraphs) && return nothing
+    isempty(routed_subgraphs) && return nothing
 
     # Needed for AD, where the output is a different vector than the input
     if flow !== flow_in
@@ -1176,46 +1179,22 @@ function formulate_pass_down_flow!(
         flow.vertical .= flow_in.vertical
     end
 
-    # Different PassDown subgraphs are independent from eachother
-    @threaded for subgraph in pass_down_subgraphs
+    # Different Junction subgraphs are independent from eachother, and the nodes in a subgraph
+    # are in topological order, so the flows of the UserDemand nodes upstream are known
+    @threaded for subgraph in routed_subgraphs
         for id in subgraph
-            if id.is_pass_down
-                inflow = zero(T)
-                for (inflow_link, state_idx) in zip(inflow_links[id.idx], inflow_state_idx[id.idx])
-                    inflow += if iszero(state_idx)
-                        # From a node outside the subgraph, computed before
-                        get_source_flow(flow, inflow_link.link[1], p, t)
-                    else
-                        flow.pass_down[state_idx]
-                    end
-                end
+            id.type == NodeType.UserDemand || continue
+            junction_id = only(user_demand.inflow_links[id.idx]).link[1]
+            inflow = routed_flow(inflow_weights[junction_id.idx], flow, boundary_flow)
 
-                abstraction = zero(T)
-                user_demand_id = pass_down.user_demand_id[id.idx]
-                if user_demand_id.type == NodeType.UserDemand
-                    # Flow is minimum of PassDown flow and effective demand
-                    q_total_demand = get_effective_user_demand(p_independent, user_demand_id.idx, t)
-                    abstraction = min(q_total_demand, inflow)
-                    inflow_idx = user_demand.inflow_link_offsets[user_demand_id.idx] + 1
-                    flow.horizontal.user_demand_inflow[inflow_idx] = abstraction
-                end
-
-                remainder = inflow - abstraction
-                for (state_idx, link_fraction) in zip(outflow_state_idx[id.idx], fraction[id.idx])
-                    # The UserDemand inflow state is already set
-                    iszero(state_idx) && continue
-                    flow.pass_down[state_idx] = link_fraction * remainder
-                end
-            elseif id.type == NodeType.UserDemand
-                # UserDemand abstracting from a single PassDown node
-                inflow_idx = user_demand.inflow_link_offsets[id.idx] + 1
-                outflow = flow.horizontal.user_demand_inflow[inflow_idx] * eval_time_interpolation(
-                    user_demand.return_factor[id.idx], current_return_factor, id.idx, p, t
-                )
-                flow.horizontal.user_demand_outflow[id.idx] = outflow
-            else
-                error("Unsupported node $id in PassDown subgraph.")
-            end
+            # Flow is minimum of Junction flow and effective demand
+            q_total_demand = get_effective_user_demand(p_independent, id.idx, t)
+            abstraction = min(q_total_demand, inflow)
+            inflow_idx = user_demand.inflow_link_offsets[id.idx] + 1
+            flow.horizontal.user_demand_inflow[inflow_idx] = abstraction
+            flow.horizontal.user_demand_outflow[id.idx] = abstraction * eval_time_interpolation(
+                user_demand.return_factor[id.idx], current_return_factor, id.idx, p, t
+            )
         end
     end
     return nothing

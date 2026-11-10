@@ -220,6 +220,14 @@ class FlowDemandTimeSchema(_BaseSchema):
     demand_priority: pd.Int32Dtype = pa.Field(nullable=True)
 
 
+class JunctionStaticSchema(_BaseSchema):
+    _node_id_relation: str = "subset"
+    fid: Index[np.int32] = pa.Field(default=1, check_name=True, coerce=True)
+    node_id: np.int32 = pa.Field(nullable=False, default=0)
+    to_node_id: np.int32 = pa.Field(nullable=False)
+    fraction: float = pa.Field(nullable=True)
+
+
 class LevelBoundaryConcentrationSchema(_BaseSchema):
     _node_id_relation: str = "subset"
     fid: Index[np.int32] = pa.Field(default=1, check_name=True, coerce=True)
@@ -315,14 +323,6 @@ class OutletTimeSchema(_BaseSchema):
     max_flow_rate: float = pa.Field(nullable=True)
     min_upstream_level: float = pa.Field(nullable=True)
     max_downstream_level: float = pa.Field(nullable=True)
-
-
-class PassDownStaticSchema(_BaseSchema):
-    _node_id_relation: str = "subset"
-    fid: Index[np.int32] = pa.Field(default=1, check_name=True, coerce=True)
-    node_id: np.int32 = pa.Field(nullable=False, default=0)
-    to_node_id: np.int32 = pa.Field(nullable=False)
-    fraction: float = pa.Field(nullable=True)
 
 
 class PidControlStaticSchema(_BaseSchema):

@@ -443,15 +443,6 @@ module Schema
 
     end
 
-    module PassDown
-        using ...Ribasim: Table
-        struct Static <: Table
-            node_id::Int32
-            to_node_id::Int32
-            fraction::Union{Missing, Float64}
-        end
-    end
-
     module Observation
 
         using ...Ribasim: DateTime, Table
@@ -466,7 +457,14 @@ module Schema
     end
 
     # these node types have no tables
-    module Junction end
+    module Junction
+        using ...Ribasim: Table
+        struct Static <: Table
+            node_id::Int32
+            to_node_id::Int32
+            fraction::Union{Missing, Float64}
+        end
+    end
     module Terminal end
 
 end

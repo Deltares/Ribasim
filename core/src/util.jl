@@ -159,7 +159,7 @@ end
 
 """
 Get the current water level of a node ID.
-The ID can belong to either a Basin, PassDown or a LevelBoundary.
+The ID can belong to either a Basin, Junction or a LevelBoundary.
 """
 function get_level(
         storage::Number,
@@ -192,12 +192,12 @@ function get_level(
         # Terminal is like a bottomless pit.
         # A level at -Inf ensures we don't hit `max_downstream_level` reduction factors.
         -Inf
-    elseif node_id.is_pass_down
-        # A PassDown node is only downstream of connector nodes. Like Terminal it does not
+    elseif node_id.is_routed
+        # A Junction node is only downstream of connector nodes. Like Terminal it does not
         # limit the flow, and its inflow is passed on regardless of the level downstream.
         -Inf
     else
-        error("Node ID $node_id is not a Basin, PassDown, LevelBoundary or Terminal.")
+        error("Node ID $node_id is not a Basin, Junction, LevelBoundary or Terminal.")
     end
 end
 
@@ -562,7 +562,6 @@ function get_ns_flow_horizontal(nodes::NamedTuple)
         linear_resistance,
         manning_resistance,
         user_demand,
-        pass_down,
     ) = nodes
     return [
         length(pump),
@@ -582,10 +581,7 @@ function get_ns_flow_vertical(nodes::NamedTuple)
     ]
 end
 
-get_n_flow(nodes::NamedTuple) =
-    sum(get_ns_flow_horizontal(nodes)) +
-    sum(get_ns_flow_vertical(nodes)) +
-    length(nodes.pass_down.state_links)
+get_n_flow(nodes::NamedTuple) = sum(get_ns_flow_horizontal(nodes)) + sum(get_ns_flow_vertical(nodes))
 
 function count_flow_ranges(nodes::Union{NamedTuple, ParametersIndependent})::FlowTuple
     ns_flow_horizontal = get_ns_flow_horizontal(nodes)
@@ -599,9 +595,7 @@ function count_flow_ranges(nodes::Union{NamedTuple, ParametersIndependent})::Flo
         state_vertical_flow_components,
         ns_flow_vertical
     )
-    return concatenate_axes(
-        (; horizontal), (; vertical), (; pass_down = 1:length(nodes.pass_down.state_links))
-    )
+    return concatenate_axes((; horizontal), (; vertical))
 end
 
 "Create the axis of the state vector"
@@ -633,16 +627,6 @@ function set_flow_ids!(inflow_id, outflow_id, basin::Basin)
     return nothing
 end
 
-"""
-Every PassDown flow state is the flow over a link out of a PassDown node,
-see `PassDown.state_links`.
-"""
-function set_flow_ids!(inflow_id, outflow_id, pass_down::PassDown)
-    inflow_id .= [link.link[1] for link in pass_down.state_links]
-    outflow_id .= [link.link[2] for link in pass_down.state_links]
-    return nothing
-end
-
 function get_flow_ids(nodes::NamedTuple, flow_ranges::FlowTuple)
     (;
         pump,
@@ -652,7 +636,6 @@ function get_flow_ids(nodes::NamedTuple, flow_ranges::FlowTuple)
         manning_resistance,
         user_demand,
         basin,
-        pass_down,
     ) = nodes
     n_flows = get_n_flow(nodes)
     dummy_node = NodeID(:Terminal, 0, 0)
@@ -668,7 +651,6 @@ function get_flow_ids(nodes::NamedTuple, flow_ranges::FlowTuple)
     set_flow_ids!(inflow_id.horizontal.manning_resistance, outflow_id.horizontal.manning_resistance, manning_resistance)
     set_flow_ids!(inflow_id.horizontal.user_demand_inflow, outflow_id.horizontal.user_demand_outflow, user_demand)
     set_flow_ids!(inflow_id.vertical, outflow_id.vertical, basin)
-    set_flow_ids!(inflow_id.pass_down, outflow_id.pass_down, pass_down)
 
     # The UserDemand node itself is the outflow of its inflow state and the inflow of its outflow state
     outflow_id.horizontal.user_demand_inflow .=
@@ -685,7 +667,6 @@ function get_flow_ids(nodes::NamedTuple, flow_ranges::FlowTuple)
     state_id.horizontal.user_demand_outflow .= user_demand.node_id
     state_id.vertical.evaporation .= basin.node_id
     state_id.vertical.infiltration .= basin.node_id
-    state_id.pass_down .= [link.link[1] for link in pass_down.state_links]
 
     return inflow_id, outflow_id, state_id
 end
@@ -703,21 +684,129 @@ function get_state_node_id(p_independent::ParametersIndependent, state_idx::Int)
     end
 end
 
-function get_incidence_matrix(inflow_id::FlowCVector{NodeID}, outflow_id::FlowCVector{NodeID})::SparseMatrixCSC
+"""
+The incidence matrix M of the flows: -1 for the Basin a flow comes from, +1 for the Basin it goes to,
+and the routing weights for the Basins a flow reaches via Junction nodes, see `set_routing!`.
+"""
+function get_incidence_matrix(
+        inflow_id::FlowCVector{NodeID},
+        outflow_id::FlowCVector{NodeID},
+        routed_basins::Vector{Vector{Tuple{Int, Float64}}},
+    )::SparseMatrixCSC
     n_flow = length(inflow_id)
     n_basin = length(inflow_id.vertical.evaporation)
-    incidence_matrix = spzeros(Int, n_basin, n_flow)
+    incidence_matrix = spzeros(Float64, n_basin, n_flow)
 
-    # A flow into a PassDown node has no Basin downstream, the links out of the
-    # PassDown subgraph credit the Basins
     for flow_idx in 1:n_flow
         in_id = inflow_id[flow_idx]
         out_id = outflow_id[flow_idx]
 
-        in_id.is_basin && (incidence_matrix[in_id.idx, flow_idx] = -1)
-        out_id.is_basin && (incidence_matrix[out_id.idx, flow_idx] = 1)
+        in_id.is_basin && (incidence_matrix[in_id.idx, flow_idx] = -1.0)
+        out_id.is_basin && (incidence_matrix[out_id.idx, flow_idx] = 1.0)
+        for (basin_idx, weight) in routed_basins[flow_idx]
+            incidence_matrix[basin_idx, flow_idx] += weight
+        end
     end
     return incidence_matrix
+end
+
+"""
+Set the routing weights of the Junction subgraphs: the flow over each routed link (see `Junction.routed_links`)
+and the total inflow of each Junction node as a weighted sum of the flows that enter the subgraphs
+(the states of connector nodes and UserDemand outflows, and the FlowBoundary flows), with the
+inflows of the UserDemand nodes in the subgraphs subtracted. The weights are products of the
+fractions along the way, and are constant since the fractions are.
+
+Returns per flow state and per FlowBoundary the Basins they flow into via Junction nodes, with
+the weights, and the indices of the flow states that have such Basins.
+"""
+function set_routing!(nodes::NamedTuple, flow_ranges::FlowTuple)
+    (; junction, user_demand, flow_boundary) = nodes
+    (;
+        inflow_links,
+        inflow_link_idx,
+        outflow_link_idx,
+        fraction,
+        link_weights,
+        inflow_weights,
+        routed_links,
+        user_demand_id,
+        routed_subgraphs,
+    ) = junction
+    n_flow = get_n_flow(nodes)
+    routed_basins = [Tuple{Int, Float64}[] for _ in 1:n_flow]
+    routed_basins_boundary = [Tuple{Int, Float64}[] for _ in flow_boundary.node_id]
+    isempty(junction.routed_ids) && return routed_basins, Int[], routed_basins_boundary
+
+    # The flow state of a node that flows into a Junction node
+    function entry_state_idx(id::NodeID)::Int
+        return if id.type == NodeType.UserDemand
+            flow_ranges.horizontal.user_demand_outflow[id.idx]
+        else
+            flow_ranges.horizontal[node_type_map[id.type]][id.idx]
+        end
+    end
+    user_demand_inflow_idx(id::NodeID) =
+        flow_ranges.horizontal.user_demand_inflow[user_demand.inflow_link_offsets[id.idx] + 1]
+
+    link_state = [Dict{Int, Float64}() for _ in routed_links]
+    link_boundary = [Dict{Int, Float64}() for _ in routed_links]
+    # The subgraphs are in topological order, so the weights of the links into a Junction node are known
+    for subgraph in routed_subgraphs, id in subgraph
+        id.is_routed || continue
+        state = Dict{Int, Float64}()
+        boundary = Dict{Int, Float64}()
+        for (link, idx) in zip(inflow_links[id.idx], inflow_link_idx[id.idx])
+            if iszero(idx)
+                source_id = link.link[1]
+                if source_id.type == NodeType.FlowBoundary
+                    boundary[source_id.idx] = get(boundary, source_id.idx, 0.0) + 1.0
+                else
+                    state_idx = entry_state_idx(source_id)
+                    state[state_idx] = get(state, state_idx, 0.0) + 1.0
+                end
+            else
+                mergewith!(+, state, link_state[idx])
+                mergewith!(+, boundary, link_boundary[idx])
+            end
+        end
+        inflow_weights[id.idx] = RoutingWeights(state, boundary)
+
+        # The UserDemand abstracts before the remainder is divided over the outflow links
+        remainder = copy(state)
+        if user_demand_id[id.idx].type == NodeType.UserDemand
+            state_idx = user_demand_inflow_idx(user_demand_id[id.idx])
+            remainder[state_idx] = get(remainder, state_idx, 0.0) - 1.0
+        end
+        for (idx, link_fraction) in zip(outflow_link_idx[id.idx], fraction[id.idx])
+            iszero(idx) && continue
+            link_state[idx] = Dict(k => link_fraction * v for (k, v) in remainder)
+            link_boundary[idx] = Dict(k => link_fraction * v for (k, v) in boundary)
+            link_weights[idx] = RoutingWeights(link_state[idx], link_boundary[idx])
+        end
+    end
+
+    # The Basins that the routed links flow into
+    basin_state = [Dict{Int, Float64}() for _ in 1:n_flow]
+    basin_boundary = [Dict{Int, Float64}() for _ in flow_boundary.node_id]
+    for (idx, link) in enumerate(routed_links)
+        target_id = link.link[2]
+        target_id.is_basin || continue
+        for (state_idx, weight) in link_state[idx]
+            basin_state[state_idx][target_id.idx] = get(basin_state[state_idx], target_id.idx, 0.0) + weight
+        end
+        for (boundary_idx, weight) in link_boundary[idx]
+            basin_boundary[boundary_idx][target_id.idx] = get(basin_boundary[boundary_idx], target_id.idx, 0.0) + weight
+        end
+    end
+    for flow_idx in 1:n_flow
+        routed_basins[flow_idx] = sort!([(k, v) for (k, v) in basin_state[flow_idx] if !iszero(v)])
+    end
+    for boundary_idx in eachindex(flow_boundary.node_id)
+        routed_basins_boundary[boundary_idx] = sort!([(k, v) for (k, v) in basin_boundary[boundary_idx] if !iszero(v)])
+    end
+    routed_flow_idxs = findall(!isempty, routed_basins)
+    return routed_basins, routed_flow_idxs, routed_basins_boundary
 end
 
 """
@@ -814,7 +903,7 @@ function aggregate_flows!(
         positive_vertical_forcing::Union{ExactVerticalFlowCVector, Nothing} = nothing,
         boundary_flow::Union{Vector{Float64}, Nothing} = nothing
     )
-    (; flow_boundary, inflow_id, outflow_id) = p_independent
+    (; flow_boundary, inflow_id, outflow_id, routed_basins, routed_flow_idxs, routed_basins_boundary) = p_independent
 
     from_zero && (aggregate .= 0)
 
@@ -823,19 +912,27 @@ function aggregate_flows!(
             aggregate, flow.horizontal, inflow_id.horizontal, outflow_id.horizontal,
             do_inflows, do_outflows, weight,
         )
-        # The flows through the PassDown nodes that end up in a Basin
-        aggregate_link_flows!(
-            aggregate, flow.pass_down, inflow_id.pass_down, outflow_id.pass_down,
-            do_inflows, do_outflows, weight,
-        )
+        # The flows that reach Basins via Junction nodes
+        for flow_idx in routed_flow_idxs
+            flow_ = flow[flow_idx]
+            positive_flow = (flow_ > 0)
+            ((positive_flow && do_inflows) || (!positive_flow && do_outflows)) || continue
+            for (basin_idx, routing_weight) in routed_basins[flow_idx]
+                aggregate[basin_idx] += weight * routing_weight * flow_
+            end
+        end
     end
 
     if do_horizontal_flows && do_inflows && !isnothing(boundary_flow)
         for idx in eachindex(flow_boundary.node_id)
             downstream_id = flow_boundary.outflow_link[idx].link[2]
-            # The flow into a PassDown node is a state
-            downstream_id.is_pass_down && continue
-            aggregate[downstream_id.idx] += boundary_flow[idx]
+            if downstream_id.is_routed
+                for (basin_idx, routing_weight) in routed_basins_boundary[idx]
+                    aggregate[basin_idx] += routing_weight * boundary_flow[idx]
+                end
+            else
+                aggregate[downstream_id.idx] += boundary_flow[idx]
+            end
         end
     end
 
@@ -1194,11 +1291,11 @@ function set_uplink_downlink_storage!(
         storage::AbstractVector,
         p_independent::ParametersIndependent,
     )
-    (; inflow_id, outflow_id) = p_independent
+    (; inflow_id, downlink_level_id) = p_independent
 
     @threaded CHEAP_LOOP_MIN_CHUNK_SIZE for idx in eachindex(storage_uplink)
         in_id = inflow_id[idx]
-        out_id = outflow_id[idx]
+        out_id = downlink_level_id[idx]
         storage_uplink[idx] = in_id.is_basin ? storage[in_id.idx] : zero(eltype(storage_uplink))
         storage_downlink[idx] = out_id.is_basin ? storage[out_id.idx] : zero(eltype(storage_downlink))
     end
@@ -1234,11 +1331,39 @@ function set_controlled_node_ids!(p_independent, node::Union{PidControl, Continu
     return nothing
 end
 
-"Mark the UserDemand nodes that are part of a PassDown subgraph."
-function set_in_pass_down_subgraph!(user_demand::UserDemand, pass_down::PassDown)::Nothing
-    for subgraph in pass_down.pass_down_subgraphs, id in subgraph
+"""
+Set per connector node the node whose level is the downstream level: the node downstream, or
+for a Junction node downstream the single Basin or LevelBoundary behind it (`Junction.level_node_id`).
+A structure that flows into a Junction node that divides the flow has free outflow.
+"""
+function set_downstream_level_ids!(nodes::NamedTuple)::Nothing
+    (; junction) = nodes
+    for node in (nodes.pump, nodes.outlet, nodes.tabulated_rating_curve, nodes.linear_resistance, nodes.manning_resistance)
+        for (idx, outflow_link) in enumerate(node.outflow_link)
+            downstream_id = outflow_link.link[2]
+            node.downstream_level_id[idx] =
+                downstream_id.is_routed ? junction.level_node_id[downstream_id.idx] : downstream_id
+        end
+    end
+    return nothing
+end
+
+"Per flow state the node whose level is the downstream level, see `set_downstream_level_ids!`."
+function get_downlink_level_ids(nodes::NamedTuple, outflow_id::FlowCVector{NodeID})::FlowCVector{NodeID}
+    downlink_level_id = copy(outflow_id)
+    downlink_level_id.horizontal.pump .= nodes.pump.downstream_level_id
+    downlink_level_id.horizontal.outlet .= nodes.outlet.downstream_level_id
+    downlink_level_id.horizontal.tabulated_rating_curve .= nodes.tabulated_rating_curve.downstream_level_id
+    downlink_level_id.horizontal.linear_resistance .= nodes.linear_resistance.downstream_level_id
+    downlink_level_id.horizontal.manning_resistance .= nodes.manning_resistance.downstream_level_id
+    return downlink_level_id
+end
+
+"Mark the UserDemand nodes that are part of a Junction subgraph."
+function set_in_routed_subgraph!(user_demand::UserDemand, junction::Junction)::Nothing
+    for subgraph in junction.routed_subgraphs, id in subgraph
         id.type == NodeType.UserDemand || continue
-        user_demand.in_pass_down_subgraph[id.idx] = true
+        user_demand.in_routed_subgraph[id.idx] = true
     end
     return nothing
 end

@@ -38,7 +38,7 @@ Secondary networks:
 - Can only connect to the primary network via Pump or Outlet nodes, which must be allocation controlled
 - Cannot connect directly to other secondary networks
 - Cannot flow into the primary network
-- Cannot have a [PassDown](/reference/node/pass-down.qmd) node at the connection with the primary network, or with another subnetwork
+- Cannot have a [Junction](/reference/node/junction.qmd) with fractions at the connection with the primary network, or with another subnetwork
 - The demand of a subnetwork to the primary network is the sum of all unmet demands within the subnetwork
 - Must have a subnetwork greater than 1.
 
@@ -410,7 +410,7 @@ $$
     Q_{ij}(t).
 $$
 
-For the definition of $Q_{ij}$ see [the formal model description](/concept/equations.qmd#formal-model-description). If the FlowBoundary flows into a PassDown node, the boundary flow goes to that node. LevelBoundary nodes instead enter the problem through their level, which is evaluated at the end of the allocation timestep and enters the constant terms of the linearized connector nodes (see [Boundary nodes](#boundary-nodes)).
+For the definition of $Q_{ij}$ see [the formal model description](/concept/equations.qmd#formal-model-description). If the FlowBoundary flows into a Junction in `Junction / static`, the boundary flow goes to that node. LevelBoundary nodes instead enter the problem through their level, which is evaluated at the end of the allocation timestep and enters the constant terms of the linearized connector nodes (see [Boundary nodes](#boundary-nodes)).
 
 ### User demands
 
@@ -440,11 +440,13 @@ for all $i \in FD_S$. Here $d^{p_{\text{df}}}$ is given by the original flow dem
 ### UserDemand return flows
 UserDemand nodes dictate proportional relationships between flows over links in the subnetwork. The return factor is given by $0 \le r_i(t) \le 1, i \in U_S$: the outflow of a UserDemand node is $r_i$ times the sum of the flows over all its inflow links.
 
-### PassDown nodes {#sec-allocation-pass-down}
-A PassDown node does not store water, so all flow into a [PassDown](/reference/node/pass-down.qmd) node $i \in P_S$ is passed on, except for the flow abstracted by the UserDemand node $u$ that abstracts from it, if there is one. All these relations are linear equalities with constant coefficients, so the problem remains a linear optimization problem:
+### Junction nodes {#sec-allocation-junction}
+A [Junction](/reference/node/junction.qmd) in `Junction / static` does not store water, so all flow into such a Junction $i \in P_S$ is passed on, except for the flow abstracted by the UserDemand node $u$ that abstracts from it, if there is one. All these relations are linear equalities with constant coefficients, so the problem remains a linear optimization problem:
 
-- A node $j$ that flows into a PassDown node (a Pump, Outlet, TabulatedRatingCurve, FlowBoundary or UserDemand) passes its full outflow $Q_j$ on to that PassDown node $i$: $Q_{ji} = Q_j$. For a UserDemand $Q_j$ is the return flow, see above, and for a FlowBoundary it is the boundary flow.
-- The flow from a PassDown node $i$ over a link to a node $k$ is $Q_{ik} = f_{ik} \left(\sum_j Q_{ji} - Q_{iu}\right)$, where $f_{ik}$ is the fraction of the link, $f_{ik} = 1$ for a single outflow link, and $Q_{iu} = 0$ if there is no UserDemand abstracting from $i$.
+- A node $j$ that flows into such a Junction (a Pump, Outlet, TabulatedRatingCurve, FlowBoundary or UserDemand) passes its full outflow $Q_j$ on to that Junction $i$: $Q_{ji} = Q_j$. For a UserDemand $Q_j$ is the return flow, see above, and for a FlowBoundary it is the boundary flow.
+- The flow from a Junction $i$ over a link to a node $k$ is $Q_{ik} = f_{ik} \left(\sum_j Q_{ji} - Q_{iu}\right)$, where $f_{ik}$ is the fraction of the link, $f_{ik} = 1$ for a single outflow link, and $Q_{iu} = 0$ if there is no UserDemand abstracting from $i$.
+
+The Junction nodes that are not in `Junction / static` are removed from the network before the allocation problem is set up, like in the simulation.
 
 The abstraction $Q_{iu}$ is a decision variable, like the inflow of a UserDemand from a Basin. It is bounded by the allocated demand of the UserDemand, and the allocation algorithm can allocate less than is available to leave more for demands further downstream.
 
@@ -458,7 +460,7 @@ For each flow link, the bounds are the intersection of the bounds imposed by the
 - **Allocation controlled Pump and Outlet**: bounded by `min_flow_rate` and `max_flow_rate`, where `max_flow_rate` is [required to be finite](#control-by-allocation). Since allocation assigns a single flow rate for the whole timestep, the tightest bounds over $[t, t + \Delta t]$ are used, i.e. the largest minimum and the smallest maximum of the two interpolated endpoints.
 - **Allocation controlled TabulatedRatingCurve**: bounded below by $0$. The upper bound is a constraint rather than a bound on the variable: the flow is at most $Q(h_a)$, linearized around the current upstream level. Because $Q(h)$ is validated to be non-decreasing and all reduction factors applied in the physical layer are in $[0, 1]$, this is a valid upper bound.
 - **UserDemand**: both the inflow links and the return flow links are bounded between $0$ and the total demand of the node summed over all its demand priorities. For the upper bound the return factor is conservatively assumed to be $1$.
-- **PassDown**: the flows over the links from and to PassDown nodes get no bounds of their own, they follow from the [constraints](#sec-allocation-pass-down) and the bounds of the nodes upstream.
+- **Junction**: the flows over the links from and to Junction nodes in `Junction / static` are non-negative, otherwise they follow from the [constraints](#sec-allocation-junction) and the bounds of the nodes upstream. So a UserDemand abstracting from such a Junction gets at most its inflow.
 - **LinearResistance, ManningResistance, and Pump, Outlet and TabulatedRatingCurve that are not allocation controlled**: the flow of these nodes is given by the linearized relation
 
   $$Q \approx Q^n + \frac{\partial Q}{\partial h_a}\Delta h_a + \frac{\partial Q}{\partial h_b}\Delta h_b,$$

@@ -50,8 +50,8 @@ see the RibasmimJacobian docstring.
     jac_flow::SubJacobian{FlowInputCVector{Float64}, FlowInputCVector{Int}, M}
     # # Jacobian of mapping (storage, flow) -> continuous_control_compound
     jac_continuous_control::SubJacobian{ContinuousControlInputCVector{Float64}, ContinuousControlInputCVector{Int}, M}
-    # Jacobian of mapping flow -> PassDown subnetwork flow
-    jac_pass_down::SubJacobian{FlowCVector{Float64}, FlowCVector{Int}, M}
+    # Jacobian of mapping flow -> Junction subnetwork flow
+    jac_junction::SubJacobian{FlowCVector{Float64}, FlowCVector{Int}, M}
 end
 
 function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
@@ -85,6 +85,7 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
 
     function formulate_flows_closure!(du, flow_input, t)
         check_new_t!(p, t)
+        set_current_boundary_flow_rate!(p_independent.flow_boundary, p, t)
         du .= 0.0
 
         formulate_flows_args = (
@@ -98,7 +99,7 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
 
         formulate_vertical_flux!(du.flow, flow_input.storage_uplink, p, t)
         formulate_flows!(formulate_flows_args...)
-        formulate_provisional_pass_down_flow!(du.flow, p, t)
+        formulate_provisional_junction_flow!(du.flow, p, t)
         formulate_PID_control!(du.pid_integral, flow_input.storage_uplink, flow_input.storage_downlink, p, t)
         formulate_flows!(formulate_flows_args...; control_type = ContinuousControlType.PID)
         formulate_flows!(formulate_flows_args...; control_type = ContinuousControlType.Continuous)
@@ -183,50 +184,50 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
     )
 
     ###
-    #### jac_pass_down
+    #### jac_junction
     ###
 
-    non_pass_down_flow = cvector_from_axes(p_independent.flow_ranges)
-    pass_down_flow = zero(non_pass_down_flow)
+    non_junction_flow = cvector_from_axes(p_independent.flow_ranges)
+    junction_flow = zero(non_junction_flow)
 
-    function pass_down_closure!(pass_down_flow, non_pass_down_flow, t)
-        formulate_pass_down_flow!(pass_down_flow, p, t; flow_in = non_pass_down_flow)
+    function junction_closure!(junction_flow, non_junction_flow, t)
+        formulate_junction_flow!(junction_flow, p, t; flow_in = non_junction_flow)
         return nothing
     end
 
-    jac_pass_down = if isempty(p_independent.pass_down.node_id)
-        # Without PassDown nodes K is the identity and is never evaluated, see `has_pass_down`
+    jac_junction = if isempty(p_independent.junction.routed_ids)
+        # Without routed Junction nodes K is the identity and is never evaluated, see `has_routed_junctions`
         SubJacobian(;
-            input = non_pass_down_flow,
+            input = non_junction_flow,
             jac = solver.sparse ? spzeros(0, 0) : zeros(0, 0),
             jac_func! = Returns(nothing),
         )
     else
-        ∂pass_down_flow_∂flow_prep = @ad_active p prepare_jacobian(
-            pass_down_closure!,
-            pass_down_flow,
+        ∂junction_flow_∂flow_prep = @ad_active p prepare_jacobian(
+            junction_closure!,
+            junction_flow,
             backend_jac,
-            non_pass_down_flow,
+            non_junction_flow,
             Constant(t)
         )
 
-        ∂pass_down_flow_∂flow = solver.sparse ? ∂pass_down_flow_∂flow_prep.sparsity * 1.0 :
-            zeros(length(pass_down_flow), length(non_pass_down_flow))
+        ∂junction_flow_∂flow = solver.sparse ? ∂junction_flow_∂flow_prep.sparsity * 1.0 :
+            zeros(length(junction_flow), length(non_junction_flow))
 
-        eval_∂pass_down_flow_∂flow!(t) = @ad_active p jacobian!(
-            pass_down_closure!,
-            pass_down_flow,
-            ∂pass_down_flow_∂flow,
-            ∂pass_down_flow_∂flow_prep,
+        eval_∂junction_flow_∂flow!(t) = @ad_active p jacobian!(
+            junction_closure!,
+            junction_flow,
+            ∂junction_flow_∂flow,
+            ∂junction_flow_∂flow_prep,
             backend_jac,
-            non_pass_down_flow,
+            non_junction_flow,
             Constant(t)
         )
 
         SubJacobian(;
-            input = non_pass_down_flow,
-            jac = ∂pass_down_flow_∂flow,
-            jac_func! = eval_∂pass_down_flow_∂flow!
+            input = non_junction_flow,
+            jac = ∂junction_flow_∂flow,
+            jac_func! = eval_∂junction_flow_∂flow!
         )
     end
 
@@ -234,7 +235,7 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
         du_cache = du,
         jac_flow,
         jac_continuous_control,
-        jac_pass_down
+        jac_junction
     )
 end
 
@@ -251,7 +252,7 @@ The rhs of the ODE problem is composed of:
 - Computing flows from the levels and areas
 - Computing continuously controlled variables via ContinuousControl and PidControl
 - Computing Continuously controlled flows (both ContinuousControl and PidControl)
-- Computing the PassDown flows as the function of the input flows
+- Computing the Junction flows as the function of the input flows
 
 The full Jacobian is of the form
 
@@ -288,20 +289,20 @@ Here:
 The reason we do this is because of sparse matrix coloring (https://github.com/JuliaDiff/SparseMatrixColorings.jl);
 this formulation requires far fewer right hand side calls in the Jacobian computation than the standard way.
 
-### PassDown
-If there are PassDown nodes present there is another step at the end of `water_balance!`, which computes the flows
-in the PassDown subgraphs (the `pass_down` flow component and the UserDemand flows in the subgraphs) as a function of
-the other flows. Call the flows from the above `q_np` (non-PassDown), then all flows are
+### Junction
+If there are routed Junction nodes (with rows in `Junction / static`) there is another step at the end of `water_balance!`, which computes the flows
+in the Junction subgraphs (the `junction` flow component and the UserDemand flows in the subgraphs) as a function of
+the other flows. Call the flows from the above `q_np` (non-Junction), then all flows are
 
-q = K * q_np,    K = ∂q_∂q_np (`cache.jac_pass_down.jac`)
+q = K * q_np,    K = ∂q_∂q_np (`cache.jac_junction.jac`)
 
-where K is the identity for the flows that are not computed in the PassDown subgraphs. As such, we obtain
+where K is the identity for the flows that are not computed in the Junction subgraphs. As such, we obtain
 
 ∂q_∂Q = K * ∂q_np_∂Q,    ∂q_∂pid_integral = K * ∂q_np_∂pid_integral
 
 where ∂q_np_∂Q is equivalent to ∂q_∂Q in the above. The incidence matrix M is defined for all flows, including the flows
-over the links in the PassDown subgraphs, so the reduced linear solve only has the extra factor K, see `dolinsolve`.
-Without PassDown nodes K is the identity, and it is not evaluated.
+over the links in the Junction subgraphs, so the reduced linear solve only has the extra factor K, see `dolinsolve`.
+Without routed Junction nodes K is the identity, and it is not evaluated.
 
 A mutable struct with only const fields, like [`ParametersIndependent`](@ref).
 """
@@ -319,12 +320,12 @@ A mutable struct with only const fields, like [`ParametersIndependent`](@ref).
     const J_inner_local::SparseMatrixCSC{Float64, Int} = spzeros(n_basin, n_basin)
     # The area of PID controlled Basins
     const area_pid_controlled::Vector{Float64} = zeros(n_pid)
-    # Work vector for the flows before applying the PassDown Jacobian in the linear solve
+    # Work vector for the flows before applying the Junction Jacobian in the linear solve
     const flow_buffer::FlowCVector{Float64} = cvector_from_axes(p_independent.flow_ranges)
 end
 
-"Whether the model has PassDown nodes, which are the reason for the flows to depend on each other."
-has_pass_down(J::RibasimJacobian)::Bool = !isempty(J.p_independent.pass_down.node_id)
+"Whether the model has routed Junction nodes, which are the reason for the flows to depend on each other."
+has_routed_junctions(J::RibasimJacobian)::Bool = !isempty(J.p_independent.junction.routed_ids)
 
 # SciMLOperators interface
 SciMLOperators.isconstant(::RibasimJacobian) = false
@@ -345,7 +346,7 @@ function SciMLOperators.update_coefficients!(
         t::Number,
     )
     (; cache, area_pid_controlled, n_pid) = J
-    (; du_cache, jac_flow, jac_continuous_control, jac_pass_down) = cache
+    (; du_cache, jac_flow, jac_continuous_control, jac_junction) = cache
     flow_input = jac_flow.input
     (; storage_uplink, storage_downlink) = flow_input
     (; p_independent, p_mutable, current_basin_properties) = p
@@ -383,10 +384,10 @@ function SciMLOperators.update_coefficients!(
     jac_continuous_control.input.flow .= du_cache.flow
     jac_continuous_control.jac_func!(t)
 
-    # Compute the PassDown Jacobian at the flows cached by jac_flow.jac_func!
-    if has_pass_down(J)
-        jac_pass_down.input .= du_cache.flow
-        jac_pass_down.jac_func!(t)
+    # Compute the Junction Jacobian at the flows cached by jac_flow.jac_func!
+    if has_routed_junctions(J)
+        jac_junction.input .= du_cache.flow
+        jac_junction.jac_func!(t)
     end
 
     # Compute local part of the reduced linear solve Jacobian
@@ -440,7 +441,7 @@ function foreach_∂flow_∂storage(f::F, J::RibasimJacobian) where {F}
     continuous_control_input_ranges = jac_continuous_control.ranges
     ∂continuous_control_compound_∂continuous_control_input = jac_continuous_control.jac
 
-    (; inflow_id, outflow_id) = p_independent
+    (; inflow_id, downlink_level_id) = p_independent
     n_flow = length(inflow_id)
 
     # Dependence via the up- and downlink storages
@@ -455,7 +456,7 @@ function foreach_∂flow_∂storage(f::F, J::RibasimJacobian) where {F}
         return nothing
     end
     foreach_storage_dependence(flow_input_ranges.storage_uplink, inflow_id)
-    foreach_storage_dependence(flow_input_ranges.storage_downlink, outflow_id)
+    foreach_storage_dependence(flow_input_ranges.storage_downlink, downlink_level_id)
 
     # Dependence via the ContinuousControl compound variables
     # The storage input comes first, and can be empty in a model without Basins
@@ -473,7 +474,7 @@ function foreach_∂flow_∂storage(f::F, J::RibasimJacobian) where {F}
                 else
                     listen_flow_idx = input_idx - flow_offset
                     id_in_listen = inflow_id[listen_flow_idx]
-                    id_out_listen = outflow_id[listen_flow_idx]
+                    id_out_listen = downlink_level_id[listen_flow_idx]
                     if id_in_listen.is_basin
                         ∂q_listen_∂storage = ∂flow_∂flow_input[listen_flow_idx, flow_input_ranges.storage_uplink[listen_flow_idx]]
                         f(flow_idx, id_in_listen.idx, val * cc_val * ∂q_listen_∂storage)
@@ -509,12 +510,12 @@ end
 
 """
 Call `f(flow_idx_all, ∂q_all_∂q_np)` for the flows that depend on the flow `flow_idx` computed
-before the PassDown subgraphs, i.e. the nonzeros of column `flow_idx` of K, see `RibasimJacobian`.
-Without PassDown nodes K is the identity.
+before the Junction subgraphs, i.e. the nonzeros of column `flow_idx` of K, see `RibasimJacobian`.
+Without routed Junction nodes K is the identity.
 """
 @inline function foreach_∂flow_∂flow_np(f::F, J::RibasimJacobian, flow_idx::Int) where {F}
-    if has_pass_down(J)
-        foreach_column_entry(f, J.cache.jac_pass_down.jac, flow_idx)
+    if has_routed_junctions(J)
+        foreach_column_entry(f, J.cache.jac_junction.jac, flow_idx)
     else
         f(flow_idx, 1.0)
     end
@@ -527,15 +528,13 @@ If `structural`, all contributions are set to 1.0 to initialize the sparsity pat
 """
 function update_J_inner_local!(J::RibasimJacobian; structural::Bool = false)
     (; p_independent, J_inner_local) = J
-    (; inflow_id, outflow_id) = p_independent
-
     J_inner_local .= 0.0
     foreach_∂flow_∂storage(J) do flow_idx, basin_idx, ∂q_np_∂storage
         foreach_∂flow_∂flow_np(J, flow_idx) do flow_idx_all, ∂q_all_∂q_np
             add_flow_contribution!(
                 J_inner_local,
-                inflow_id[flow_idx_all],
-                outflow_id[flow_idx_all],
+                p_independent,
+                flow_idx_all,
                 basin_idx,
                 structural ? 1.0 : ∂q_all_∂q_np * ∂q_np_∂storage,
             )
@@ -561,7 +560,7 @@ function ∂flow_∂storage_mul!(
 end
 
 """
-Compute v_out = K * v_in, see `RibasimJacobian`. Only used with PassDown nodes, v_in and v_out
+Compute v_out = K * v_in, see `RibasimJacobian`. Only used with routed Junction nodes, v_in and v_out
 must be different vectors.
 """
 function ∂flow_∂flow_np_mul!(
@@ -591,7 +590,7 @@ function build_J_inner!(
         structural::Bool = false,
     )
     (; p_independent, J_inner_local, area_pid_controlled) = J
-    (; pid_control, inflow_id, outflow_id) = p_independent
+    (; pid_control) = p_independent
 
     # Add J_inner_local into J_inner rather than copying it, which would reset the sparsity
     # pattern of J_inner and drop the entries that are only structurally nonzero
@@ -611,8 +610,8 @@ function build_J_inner!(
                 -gamma * ∂q_all_∂q_np * ∂q_np_∂pid_integral / area_pid_controlled[pid_idx]
             add_flow_contribution!(
                 J_inner,
-                inflow_id[flow_idx_all],
-                outflow_id[flow_idx_all],
+                p_independent,
+                flow_idx_all,
                 listen_node_id.idx,
                 contribution,
             )
@@ -622,31 +621,40 @@ function build_J_inner!(
 end
 
 """
-Add `∂q_∂storage` times the column of the incidence matrix M of a flow state to a column of J_inner.
-A flow into a PassDown node is not credited to a Basin, that is done by the flow states
-over the links out of the PassDown subgraph.
+Add `∂q_∂storage` times the column of the incidence matrix M of a flow state to a column of J_inner,
+including the Basins the flow reaches via Junction nodes.
 """
 function add_flow_contribution!(
         J_inner::AbstractMatrix{Float64},
-        id_in::NodeID,
-        id_out::NodeID,
+        p_independent::ParametersIndependent,
+        flow_idx::Int,
         basin_idx::Int,
         ∂q_∂storage::Float64,
     )
+    id_in = p_independent.inflow_id[flow_idx]
+    id_out = p_independent.outflow_id[flow_idx]
     id_in.is_basin && (J_inner[id_in.idx, basin_idx] -= ∂q_∂storage)
     id_out.is_basin && (J_inner[id_out.idx, basin_idx] += ∂q_∂storage)
+    for (routed_basin_idx, weight) in p_independent.routed_basins[flow_idx]
+        J_inner[routed_basin_idx, basin_idx] += weight * ∂q_∂storage
+    end
     return nothing
 end
 
 "Add `value` times the column of the incidence matrix M of a flow state to a vector in storage space."
 function add_flow_contribution!(
         v::AbstractVector{Float64},
-        id_in::NodeID,
-        id_out::NodeID,
+        p_independent::ParametersIndependent,
+        flow_idx::Int,
         value::Float64,
     )
+    id_in = p_independent.inflow_id[flow_idx]
+    id_out = p_independent.outflow_id[flow_idx]
     id_in.is_basin && (v[id_in.idx] -= value)
     id_out.is_basin && (v[id_out.idx] += value)
+    for (routed_basin_idx, weight) in p_independent.routed_basins[flow_idx]
+        v[routed_basin_idx] += weight * value
+    end
     return nothing
 end
 
@@ -733,8 +741,8 @@ and then computing
 linu.pid_integral = -γ * [b.pid_integral + x_inner[listen_node_id] / area]
 linu.flow         = γ * [K * (∂q_np_∂storage * x_inner + ∂q_np_∂pid_integral * linu.pid_integral) - b.flow]
 
-where K is the Jacobian of the flows in the PassDown subgraphs with respect to the other flows, see
-`RibasimJacobian`. Without PassDown nodes K is the identity.
+where K is the Jacobian of the flows in the Junction subgraphs with respect to the other flows, see
+`RibasimJacobian`. Without routed Junction nodes K is the identity.
 """
 function OrdinaryDiffEqDifferentiation.dolinsolve(
         integrator::DEIntegrator,
@@ -749,7 +757,7 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
     (; cache_inner, W) = linsolve
     (; gamma, J) = W
     (; p_independent, area_pid_controlled, n_pid) = J
-    (; pid_control, inflow_id, outflow_id) = p_independent
+    (; pid_control) = p_independent
 
     W_inner = cache_inner.A
     J_inner = W_inner.J
@@ -765,8 +773,8 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
         foreach_∂flow_∂flow_np(J, flow_idx) do flow_idx_all, ∂q_all_∂q_np
             add_flow_contribution!(
                 b_inner,
-                inflow_id[flow_idx_all],
-                outflow_id[flow_idx_all],
+                p_independent,
+                flow_idx_all,
                 gamma * ∂q_all_∂q_np * ∂q_np_∂pid_integral * b_pid_integral[pid_idx],
             )
         end
@@ -807,14 +815,14 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
         )
     end
 
-    # Compute flow component solution, where the flows computed before the PassDown subgraphs
+    # Compute flow component solution, where the flows computed before the Junction subgraphs
     # are accumulated in y and K is applied to those
-    y = has_pass_down(J) ? J.flow_buffer : linu_flow
+    y = has_routed_junctions(J) ? J.flow_buffer : linu_flow
     ∂flow_∂storage_mul!(y, J, cache_inner.u)
     foreach_∂flow_∂pid_integral(J) do flow_idx, pid_idx, ∂q_∂pid_integral
         y[flow_idx] += ∂q_∂pid_integral * linu_pid_integral[pid_idx]
     end
-    has_pass_down(J) && ∂flow_∂flow_np_mul!(linu_flow, J, y)
+    has_routed_junctions(J) && ∂flow_∂flow_np_mul!(linu_flow, J, y)
     linu_flow .-= b.flow
     linu_flow .*= gamma
 

@@ -349,9 +349,10 @@ end
 
     (; basin) = model.integrator.p.p_independent
     substance_idx = Ribasim.find_index(:FlowBoundary, basin.concentration_data.substances)
-    (; t, saveval) = model.saved.flow
-    concentration = [saved.concentration[end, substance_idx] for saved in saveval]
-    @test maximum(abs.(concentration .- tanks_in_series.(t))) < 1.0e-3
+    # The concentration is saved at the end of each period, which starts at the saved time
+    t = model.saved.concentration.time[2:end]
+    concentration = Ribasim.concentration_data(model; table = false).concentration[end, substance_idx, :]
+    @test maximum(abs.(concentration[1:(end - 1)] .- tanks_in_series.(t))) < 1.0e-3
     # The tracer passes through all Basins
     @test last(concentration) ≈ 1 atol = 1.0e-3
 end
@@ -384,9 +385,10 @@ end
 
     (; basin) = model.integrator.p.p_independent
     substance_idx = Ribasim.find_index(:FlowBoundary, basin.concentration_data.substances)
-    (; t, saveval) = model.saved.flow
-    concentration = [only(saved.concentration[:, substance_idx]) for saved in saveval]
-    @test maximum(abs.(concentration .- exact.(t))) < 1.0e-5
+    # The concentration is saved at the end of each period, which starts at the saved time
+    t = model.saved.concentration.time[2:end]
+    concentration = Ribasim.concentration_data(model; table = false).concentration[1, substance_idx, :]
+    @test maximum(abs.(concentration[1:(end - 1)] .- exact.(t))) < 1.0e-5
     @test last(concentration) > 1
 end
 
@@ -828,6 +830,85 @@ end
     @test SparseArrays.nnz(flow_link_map) == 8
 
     model = Ribasim.run(toml_path)
+end
+
+@testitem "junction bidirectional" begin
+    import SQLite
+    using DataFrames: DataFrame
+    import MetaGraphsNext: labels
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/junction_bidirectional/ribasim.toml",
+    )
+    config = Ribasim.Config(toml_path)
+    db = SQLite.DB(Ribasim.database_path(config))
+    graph = Ribasim.create_graph(db, config)
+    close(db)
+
+    (; internal_flow_links, external_flow_links, flow_link_map) = graph.graph_data
+    @test all(node.type != Ribasim.NodeType.Junction for node in labels(graph))
+    @test Set((Int(a.value), Int(b.value)) for (a, b) in getfield.(internal_flow_links, :link)) ==
+        Set(
+        [
+            (4, 1), (7, 1), (10, 1), (9, 1), (1, 5), (1, 8), (1, 9),
+            (5, 6), (8, 6), (11, 10),
+        ]
+    )
+    @test size(flow_link_map) == (length(external_flow_links), length(internal_flow_links))
+
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    # Which is what the control nodes get
+    (; integrator) = model
+    (; p, t) = integrator
+    du = Ribasim.get_du(integrator)
+    node_ids = Ribasim.get_node_ids(toml_path)
+    flow = DataFrame(Ribasim.flow_data(model))
+    # Basin 1 -> Junction 2 points away from the Basin, Junction 3 -> Junction 2 towards it
+    for (junction, link) in ((2, (1, 2)), (3, (3, 2)))
+        junction_id = only(filter(id -> id.value == junction, node_ids))
+        value = Ribasim.get_junction_flow(du.flow, junction_id, p, t)
+        q = flow.flow_rate[(flow.from_node_id .== link[1]) .& (flow.to_node_id .== link[2])]
+        @test value ≈ q[end] rtol = 1.0e-3
+        @test value < 0
+    end
+
+    # Allocation records the same signed flows as the physical layer
+    for flow in (
+            DataFrame(Ribasim.flow_data(model)),
+            DataFrame(Ribasim.allocation_flow_data(model)),
+        )
+        function q(from_node_id, to_node_id)
+            return flow.flow_rate[(flow.from_node_id .== from_node_id) .& (flow.to_node_id .== to_node_id)]
+        end
+        @test all(q(4, 2) .≈ 1.0e-3)
+        @test all(q(2, 5) .≈ 3.0e-4)
+        @test all(q(7, 3) .≈ 5.0e-4)
+        @test all(q(3, 8) .≈ 7.0e-4)
+        # The LinearResistance flows against the direction of its link: out of the group
+        @test all(q(10, 3) .< 0)
+        @test q(10, 3) ≈ q(11, 10)
+
+        # The net flow over the links of the tree
+        behind_junction_3 = q(7, 3) .+ q(9, 3) .+ q(10, 3) .- q(3, 8) .- q(3, 9)
+        @test q(3, 2) ≈ behind_junction_3
+        @test q(1, 2) ≈ q(2, 5) .- q(4, 2) .- behind_junction_3
+        # Which conserves the mass at each Junction
+        @test q(1, 2) .+ q(4, 2) .+ q(3, 2) ≈ q(2, 5)
+    end
+
+    # The demand is met at its upper bound, which is a lower bound on a link against the flow
+    allocation_flow = DataFrame(Ribasim.allocation_flow_data(model))
+    function row(from_node_id, to_node_id)
+        return (allocation_flow.from_node_id .== from_node_id) .&
+            (allocation_flow.to_node_id .== to_node_id)
+    end
+    @test all(allocation_flow.upper_bound_hit[row(3, 9)])
+    @test all(allocation_flow.upper_bound_hit[row(1, 2)])
+    @test all(allocation_flow.lower_bound_hit[row(3, 2)])
+    @test !any(allocation_flow.upper_bound_hit[row(3, 2)])
 end
 
 @testitem "Drought" begin

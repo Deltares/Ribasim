@@ -20,7 +20,7 @@ function set_simulation_data!(
         pump,
         outlet,
         user_demand,
-        pass_down,
+        junction,
         tabulated_rating_curve,
     ) = p.p_independent
 
@@ -36,7 +36,7 @@ function set_simulation_data!(
     set_simulation_data!(allocation_model, tabulated_rating_curve, p, t_level)
     set_simulation_data!(allocation_model, pump, p, u, du, t_level)
     set_simulation_data!(allocation_model, outlet, p, u, du, t_level)
-    set_simulation_data!(allocation_model, user_demand, pass_down, t)
+    set_simulation_data!(allocation_model, user_demand, junction, t)
 
     if errors
         error(
@@ -187,7 +187,7 @@ function linearize_connector_node!(
         t_level::Float64,
     )
     (; problem, scaling) = allocation_model
-    (; inflow_link, outflow_link) = connector_node
+    (; inflow_link, downstream_level_id) = connector_node
     (; current_storage, current_area) = p.current_basin_properties
 
     # Mathematical formulation: Taylor series linearization around current state
@@ -202,7 +202,7 @@ function linearize_connector_node!(
     # Without ad_active, get_level ignores the storage argument, giving zero derivatives
     @ad_active p for node_id in only(flow_constraint.axes)
         inflow_id = inflow_link[node_id.idx].link[1]
-        downstream_id = outflow_link[node_id.idx].link[2]
+        downstream_id = downstream_level_id[node_id.idx]
 
         # Flow functions expect storage values (not levels) and internally convert to levels
         s_a = inflow_id.is_basin ? current_storage[inflow_id.idx] : 0.0
@@ -424,12 +424,12 @@ end
 function set_simulation_data!(
         allocation_model::AllocationModel,
         user_demand::UserDemand,
-        pass_down::PassDown,
+        junction::Junction,
         t::Float64,
     )::Nothing
     (; problem) = allocation_model
     constraints = problem[:user_demand_return_flow]
-    constraints_pass_down = problem[:user_demand_return_flow_pass_down]
+    constraints_junction = problem[:user_demand_return_flow_junction]
     flow = problem[:flow]
 
     # Set the return factor, a rate, at the start of the time step.
@@ -443,9 +443,9 @@ function set_simulation_data!(
         end
     end
 
-    # The return flow into a PassDown node is the total return flow
-    for link in only(constraints_pass_down.axes)
-        constraint = constraints_pass_down[link]
+    # The return flow into a Junction node is the total return flow
+    for link in only(constraints_junction.axes)
+        constraint = constraints_junction[link]
         node_id = link[1]
         return_factor = user_demand.return_factor[node_id.idx](t)
         for inflow_link_metadata in user_demand.inflow_links[node_id.idx]
@@ -1311,13 +1311,18 @@ function save_flows!(
         flow_value = JuMP.value(flow_variable) * scaling.flow
         hit_lower_bound, hit_upper_bound = get_bounds_hit(flow_variable)
 
-        for external_flow_link_idx in rowvals(flow_link_map)[nzrange(flow_link_map, internal_flow_link_idx)]
-            external_flow_link = external_flow_links[external_flow_link_idx]
+        for nz_idx in nzrange(flow_link_map, internal_flow_link_idx)
+            external_flow_link = external_flow_links[rowvals(flow_link_map)[nz_idx]]
+            # A flow against the direction of the external link swaps its bounds
+            sign = nonzeros(flow_link_map)[nz_idx]
+            external_flow_value = sign * flow_value
+            external_hit_lower_bound = sign > 0 ? hit_lower_bound : hit_upper_bound
+            external_hit_upper_bound = sign > 0 ? hit_upper_bound : hit_lower_bound
             if haskey(horizontal_flow_record, external_flow_link.link)
                 datum = horizontal_flow_record[external_flow_link.link]
-                datum.flow_rate += flow_value
-                datum.lower_bound_hit |= hit_lower_bound
-                datum.upper_bound_hit |= hit_upper_bound
+                datum.flow_rate += external_flow_value
+                datum.lower_bound_hit |= external_hit_lower_bound
+                datum.upper_bound_hit |= external_hit_upper_bound
             else
                 horizontal_flow_record[external_flow_link.link] = FlowRecordDatum(
                     t,
@@ -1327,9 +1332,9 @@ function save_flows!(
                     string(external_flow_link.link[2].type),
                     Int32(external_flow_link.link[2]),
                     subnetwork_id,
-                    flow_value,
-                    hit_lower_bound,
-                    hit_upper_bound,
+                    external_flow_value,
+                    external_hit_lower_bound,
+                    external_hit_upper_bound,
                 )
             end
         end
@@ -1455,6 +1460,10 @@ function connector_flow_capacity_bounds(
         return (0.0, Inf)
     elseif node_id.type == NodeType.UserDemand
         # The actual upper bound follows from the demands, see update_user_demand_flow_bounds!
+        return (0.0, Inf)
+    elseif node_id.is_routed
+        # The flows into and out of a Junction that divides the flow are never negative,
+        # so a UserDemand abstracting from it cannot get more than its inflow
         return (0.0, Inf)
     end
 

@@ -7,13 +7,7 @@ function limit_flow!(
     )
     (; uprev) = integrator
     (; p_independent) = p
-    (; pass_down) = p_independent
     set_current_storage!(p, u.flow, t)
-
-    # The states of the PassDown subgraphs follow from the states of the nodes that flow
-    # into them, so they are recomputed if any of those is clamped
-    has_pass_down = !isempty(pass_down.node_id)
-    flow_horizontal_before = has_pass_down ? copy(u.flow.horizontal) : nothing
 
     common_args = (integrator, u.flow, uprev.flow, t)
     limit_flow!(common_args..., p_independent.pump)
@@ -23,38 +17,6 @@ function limit_flow!(
     limit_flow!(common_args..., p_independent.manning_resistance)
     limit_flow!(common_args..., p_independent.user_demand)
     limit_flow!(integrator, u.flow, uprev.flow, t, p_independent.basin)
-
-    if has_pass_down && u.flow.horizontal != flow_horizontal_before
-        limit_flow!(common_args..., pass_down)
-    end
-    return nothing
-end
-
-"""
-Recompute the states of the PassDown subgraphs from the clamped states of the nodes that
-flow into them, so that a subgraph passes on what its sources gave over the step. The mean
-flow rates over the step are propagated through the subgraphs like in the right hand side,
-with the demands and return factors at the end of the step.
-"""
-function limit_flow!(integrator, flow, flow_prev, t, pass_down::PassDown)
-    (; p, dt) = integrator
-    (; user_demand) = p.p_independent
-
-    rate = similar(flow)
-    @. rate = (flow - flow_prev) / dt
-    formulate_pass_down_flow!(rate, p, t)
-
-    @. flow.pass_down = flow_prev.pass_down + dt * rate.pass_down
-    for (node_idx, in_subgraph) in enumerate(user_demand.in_pass_down_subgraph)
-        in_subgraph || continue
-        inflow_idx = user_demand.inflow_link_offsets[node_idx] + 1
-        flow.horizontal.user_demand_inflow[inflow_idx] =
-            flow_prev.horizontal.user_demand_inflow[inflow_idx] +
-            dt * rate.horizontal.user_demand_inflow[inflow_idx]
-        flow.horizontal.user_demand_outflow[node_idx] =
-            flow_prev.horizontal.user_demand_outflow[node_idx] +
-            dt * rate.horizontal.user_demand_outflow[node_idx]
-    end
     return nothing
 end
 
@@ -141,8 +103,8 @@ function limit_flow!(integrator, flow, flow_prev, t, user_demand::UserDemand)
             src_id = link_meta.link[1]
             min_flow_rate, max_flow_rate = if demand_from_timeseries
                 0.0, Inf
-            elseif src_id.is_pass_down
-                # A PassDown source has no storage or level that guarantees a minimum abstraction
+            elseif src_id.is_routed
+                # A Junction source has no storage or level that guarantees a minimum abstraction
                 0.0, q_k_max
             else
                 factor_basin_min = min_low_storage_factor(

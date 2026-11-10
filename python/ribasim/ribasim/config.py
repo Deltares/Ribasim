@@ -34,6 +34,7 @@ from ribasim.schemas import (
     FlowBoundaryTimeSchema,
     FlowDemandStaticSchema,
     FlowDemandTimeSchema,
+    JunctionStaticSchema,
     LevelBoundaryConcentrationSchema,
     LevelBoundaryStaticSchema,
     LevelBoundaryTimeSchema,
@@ -44,7 +45,6 @@ from ribasim.schemas import (
     ObservationTimeSchema,
     OutletStaticSchema,
     OutletTimeSchema,
-    PassDownStaticSchema,
     PidControlStaticSchema,
     PidControlTimeSchema,
     PumpStaticSchema,
@@ -248,14 +248,16 @@ class Experimental(ChildModel):
 class Terminal(NodeModel): ...
 
 
-class Junction(NodeModel): ...
-
-
-class PassDown(NodeModel):
-    static: TableModel[PassDownStaticSchema] = Field(
-        default_factory=TableModel[PassDownStaticSchema],
+class Junction(NodeModel):
+    static: TableModel[JunctionStaticSchema] = Field(
+        default_factory=TableModel[JunctionStaticSchema],
         json_schema_extra={"sort_keys": ["node_id", "to_node_id"]},
     )
+
+    def _routed_node_ids(self) -> set[int]:
+        """Return the Junction nodes that divide the flow or supply a UserDemand: those with rows in the static table."""
+        df = self.static.df
+        return set() if df is None else set(df["node_id"].unique().tolist())
 
 
 class Observation(NodeModel):

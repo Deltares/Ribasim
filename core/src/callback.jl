@@ -216,8 +216,8 @@ function update_concentrations!(u, t, integrator)::Nothing
     # Exact boundary flow over time step
     for (id, outflow_link) in zip(flow_boundary.node_id, flow_boundary.outflow_link)
         to_node = outflow_link.link[2]
-        # The mass into a PassDown node is handled in `mass_through_pass_down!`
-        to_node.is_pass_down && continue
+        # The mass into a Junction node is handled in `mass_through_junctions!`
+        to_node.is_routed && continue
         add_substance_mass!(
             view(mass, :, to_node.idx),
             flow_boundary.concentration_itp[id.idx],
@@ -227,7 +227,7 @@ function update_concentrations!(u, t, integrator)::Nothing
     end
 
     mass_inflows_from_user_demand!(integrator)
-    mass_through_pass_down!(integrator)
+    mass_through_junctions!(integrator)
 
     transport_tracers!(p_independent, current_storage, tprev, dt)
 
@@ -390,7 +390,7 @@ function save_mean_flows!(saved::SavedResults, u, t::Float64, integrator)::Bool
 
     save_mean_convergence!(mean_flows, p_independent)
     errors = check_basin_water_balance_error!(mean_flows, integrator, Δt)
-    errors |= check_pass_down_water_balance_error!(p_independent, t, flow, boundary_flow)
+    errors |= check_junction_water_balance_error!(p_independent, t, flow, boundary_flow)
 
     # Basin results
     (; variables) = saved.basin
@@ -456,20 +456,20 @@ function save_mean_convergence!(mean_flows::MeanFlows, p_independent::Parameters
 end
 
 """
-Check the water balance per PassDown node, and return whether there are too large errors.
+Check the water balance per routed Junction node, and return whether there are too large errors.
 """
-function check_pass_down_water_balance_error!(
+function check_junction_water_balance_error!(
         p_independent::ParametersIndependent,
         t::Float64,
         flow_mean::FlowCVector{Float64},
         boundary_flow_mean::Vector{Float64},
     )::Bool
-    (; pass_down, water_balance_abstol, water_balance_reltol) = p_independent
-    (; node_id, inflow_links, outflow_links) = pass_down
+    (; junction, water_balance_abstol, water_balance_reltol) = p_independent
+    (; routed_ids, inflow_links, outflow_links) = junction
 
     errors = false
 
-    for id in node_id
+    for id in routed_ids
         inflow_rate = sum(
             get_flow(flow_mean, link.link, p_independent; boundary_flow = boundary_flow_mean, t)
                 for link in inflow_links[id.idx]
@@ -486,7 +486,7 @@ function check_pass_down_water_balance_error!(
         if abs(balance_error) > water_balance_abstol &&
                 abs(relative_error) > water_balance_reltol
             errors = true
-            @error "Too large PassDown water balance error" id balance_error relative_error inflow_rate outflow_rate
+            @error "Too large Junction water balance error" id balance_error relative_error inflow_rate outflow_rate
         end
     end
     return errors
@@ -565,6 +565,10 @@ function save_external_flows!(file::SavedFile, mean_flows::MeanFlows, p::Paramet
     for (fi, link) in enumerate(internal_flow_links)
         if link.link[1].type == NodeType.FlowBoundary
             internal_flow_rate[fi] = boundary_flow[link.link[1].idx]
+            internal_convergence[fi] = missing
+        elseif link.link[1].is_routed && link.link[2].type != NodeType.UserDemand
+            # A weighted sum of other flows, so it has no convergence of its own
+            internal_flow_rate[fi] = get_flow(flow, link.link, p.p_independent; boundary_flow)
             internal_convergence[fi] = missing
         else
             internal_flow_rate[fi] = get_flow(flow, link.link, p.p_independent)
@@ -916,6 +920,8 @@ function compound_variable_value(
                 flow.horizontal.manning_resistance[listen_node_id.idx]
             elseif listen_node_id.type == NodeType.UserDemand
                 sum(get_inflows(flow, user_demand, listen_node_id.idx))
+            elseif listen_node_id.type == NodeType.Junction
+                get_junction_flow(flow, listen_node_id, p, t)
             else
                 error("Cannot obtain variable `$variable` from $listen_node_id.")
             end

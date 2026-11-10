@@ -7,10 +7,10 @@ from ribasim.model import Model
 from ribasim.nodes import (
     basin,
     flow_boundary,
+    junction,
     level_boundary,
     linear_resistance,
     manning_resistance,
-    pass_down,
     pid_control,
     pump,
     tabulated_rating_curve,
@@ -335,13 +335,13 @@ def pid_control_equation_model() -> Model:
     return model
 
 
-def pass_down_equation_model() -> Model:
-    """Set up a minimal model including PassDown for an equation test.
+def junction_equation_model() -> Model:
+    """Set up a minimal model with a Junction that divides the flow for an equation test.
 
-    The inflow of PassDown #4 comes from a TabulatedRatingCurve, a FlowBoundary and a
-    PID controlled Pump, so the PassDown flows depend on the Basin storages and on the PID
-    integral. UserDemand #5 takes precedence over the PassDown nodes #7 and #8, of which #7
-    flows into Basin #9, so that the PassDown flows change the storage of a Basin.
+    The inflow of Junction #4 comes from a TabulatedRatingCurve, a FlowBoundary and a
+    PID controlled Pump, so the Junction flows depend on the Basin storages and on the PID
+    integral. UserDemand #5 takes precedence over the division of the remainder over
+    Basin #9 and Terminal #6, so that the Junction flows change the storage of a Basin.
     """
     model = Model(
         starttime=datetime(2020, 1, 1),
@@ -366,9 +366,9 @@ def pass_down_equation_model() -> Model:
         Node(3, Point(1, 2)), [flow_boundary.Static(flow_rate=[5e-2])]
     )
 
-    pd1 = model.pass_down.add(
+    jct = model.junction.add(
         Node(4, Point(2, 1)),
-        [pass_down.Static(to_node_id=[7, 8], fraction=[1 / 3, np.nan])],
+        [junction.Static(to_node_id=[9, 6], fraction=[1 / 3, np.nan])],
     )
 
     ud = model.user_demand.add(
@@ -378,10 +378,6 @@ def pass_down_equation_model() -> Model:
 
     t = model.terminal.add(Node(6, Point(4, 1)))
 
-    pd2 = model.pass_down.add(Node(7, Point(3, 1)))
-
-    pd3 = model.pass_down.add(Node(8, Point(3, 2)))
-
     b2 = model.basin.add(
         Node(9, Point(4, 2)),
         [
@@ -390,7 +386,7 @@ def pass_down_equation_model() -> Model:
         ],
     )
 
-    # PID controlled Pump from a Basin which is not fed by PassDown nodes, into PassDown #4
+    # PID controlled Pump from a Basin which is not fed by the Junction, into Junction #4
     b3 = model.basin.add(
         Node(10, Point(0, 3)),
         [
@@ -420,17 +416,15 @@ def pass_down_equation_model() -> Model:
     )
 
     model.link.add(b1, trc)
-    model.link.add(trc, pd1)
-    model.link.add(fb, pd1)
-    model.link.add(pd1, ud)
+    model.link.add(trc, jct)
+    model.link.add(fb, jct)
+    model.link.add(jct, ud)
     model.link.add(ud, t)
-    model.link.add(pd1, pd2)
-    model.link.add(pd2, b2)
-    model.link.add(pd1, pd3)
-    model.link.add(pd3, t)
+    model.link.add(jct, b2)
+    model.link.add(jct, t)
     model.link.add(fb2, b3)
     model.link.add(b3, pmp)
-    model.link.add(pmp, pd1)
+    model.link.add(pmp, jct)
     model.link.add(pid, pmp)
 
     return model

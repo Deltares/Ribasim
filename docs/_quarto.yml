@@ -81,7 +81,6 @@ website:
             - section: "Waterbody"
               contents:
                 - reference/node/basin.qmd
-                - reference/node/pass-down.qmd
             - section: "Connector"
               contents:
                 - reference/node/tabulated-rating-curve.qmd

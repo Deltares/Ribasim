@@ -9,7 +9,7 @@ from ribasim.nodes import (
     basin,
     discrete_control,
     flow_boundary,
-    pass_down,
+    junction,
     pump,
     tabulated_rating_curve,
     user_demand,
@@ -237,8 +237,8 @@ def invalid_no_basin_model() -> Model:
     return model
 
 
-def _invalid_pass_down_base() -> tuple[Model, NodeData]:
-    """Create a model with a Basin and a Pump, to which PassDown nodes can be connected."""
+def _invalid_junction_base() -> tuple[Model, NodeData]:
+    """Create a model with a Basin and a Pump, to which Junction nodes can be connected."""
     model = Model(
         starttime=datetime(2020, 1, 1),
         endtime=datetime(2021, 1, 1),
@@ -256,7 +256,7 @@ def _invalid_pass_down_base() -> tuple[Model, NodeData]:
     return model, pmp
 
 
-def _pass_down_user_demand_static() -> list:
+def _junction_user_demand_static() -> list:
     return [
         user_demand.Static(
             demand_priority=[1], demand=[1e-4], return_factor=0.5, min_level=[0.0]
@@ -264,84 +264,102 @@ def _pass_down_user_demand_static() -> list:
     ]
 
 
-def invalid_pass_down_missing_fractions_model() -> Model:
-    """Multiple PassDown nodes downstream of the same PassDown node with a missing fraction."""
-    model, pmp = _invalid_pass_down_base()
-    trm = model.terminal.add(Node(6, Point(3, 0)))
-    pd_split = model.pass_down.add(
+def invalid_junction_missing_fractions_model() -> Model:
+    """Divide the flow of a Junction over three Terminals with two missing fractions."""
+    model, pmp = _invalid_junction_base()
+    jct = model.junction.add(
         Node(7, Point(1.5, 0)),
-        [pass_down.Static(to_node_id=[3, 4, 5], fraction=[np.nan, np.nan, 0.5])],
+        [junction.Static(to_node_id=[3, 4, 5], fraction=[np.nan, np.nan, 0.5])],
     )
-    model.link.add(pmp, pd_split)
+    model.link.add(pmp, jct)
     for node_id, y in [(3, 1), (4, 0), (5, -1)]:
-        pd = model.pass_down.add(Node(node_id, Point(2, y)))
-        model.link.add(pd_split, pd)
-        model.link.add(pd, trm)
+        trm = model.terminal.add(Node(node_id, Point(2, y)))
+        model.link.add(jct, trm)
     return model
 
 
-def invalid_pass_down_fraction_sum_model() -> Model:
-    """PassDown fractions summing to more than 1, while one fraction is missing."""
-    model, pmp = _invalid_pass_down_base()
-    trm = model.terminal.add(Node(6, Point(3, 0)))
-    pd_split = model.pass_down.add(
+def invalid_junction_fraction_sum_model() -> Model:
+    """Junction fractions summing to more than 1, while one fraction is missing."""
+    model, pmp = _invalid_junction_base()
+    jct = model.junction.add(
         Node(7, Point(1.5, 0)),
-        [pass_down.Static(to_node_id=[3, 4, 5], fraction=[0.75, 0.5, np.nan])],
+        [junction.Static(to_node_id=[3, 4, 5], fraction=[0.75, 0.5, np.nan])],
     )
-    model.link.add(pmp, pd_split)
+    model.link.add(pmp, jct)
     for node_id, y in [(3, 1), (4, 0), (5, -1)]:
-        pd = model.pass_down.add(Node(node_id, Point(2, y)))
-        model.link.add(pd_split, pd)
-        model.link.add(pd, trm)
+        trm = model.terminal.add(Node(node_id, Point(2, y)))
+        model.link.add(jct, trm)
     return model
 
 
-def invalid_pass_down_connector_split_model() -> Model:
-    """Create a Pump that flows directly into multiple PassDown nodes, instead of via a PassDown node."""
-    model, pmp = _invalid_pass_down_base()
+def invalid_junction_divides_without_rows_model() -> Model:
+    """Flow a Junction with a row into a Junction without rows that divides the flow over two Terminals."""
+    model, pmp = _invalid_junction_base()
+    jct = model.junction.add(
+        Node(3, Point(2, 0)), [junction.Static(to_node_id=[4], fraction=[1.0])]
+    )
+    jct_plain = model.junction.add(Node(4, Point(3, 0)))
+    trm1 = model.terminal.add(Node(5, Point(4, 1)))
+    trm2 = model.terminal.add(Node(6, Point(4, -1)))
+    model.link.add(pmp, jct)
+    model.link.add(jct, jct_plain)
+    model.link.add(jct_plain, trm1)
+    model.link.add(jct_plain, trm2)
+    return model
+
+
+def invalid_junction_connector_split_model() -> Model:
+    """Create a Pump that flows directly into two Junctions, instead of via a Junction that divides the flow."""
+    model, pmp = _invalid_junction_base()
     trm = model.terminal.add(Node(6, Point(3, 0)))
-    # Temporary PassDown node, since the link validation does not allow this connectivity
-    pd_tmp = model.pass_down.add(Node(7, Point(1.5, 0)))
-    pd1 = model.pass_down.add(Node(3, Point(2, 1)))
-    pd2 = model.pass_down.add(Node(4, Point(2, -1)))
-    model.link.add(pmp, pd1)
-    model.link.add(pd_tmp, pd2)
-    model.link.add(pd1, trm)
-    model.link.add(pd2, trm)
+    # Temporary Junction, since the link validation does not allow this connectivity
+    jct_tmp = model.junction.add(Node(7, Point(1.5, 0)))
+    jct1 = model.junction.add(
+        Node(3, Point(2, 1)), [junction.Static(to_node_id=[6], fraction=[1.0])]
+    )
+    jct2 = model.junction.add(
+        Node(4, Point(2, -1)), [junction.Static(to_node_id=[6], fraction=[1.0])]
+    )
+    model.link.add(pmp, jct1)
+    model.link.add(jct_tmp, jct2)
+    model.link.add(jct1, trm)
+    model.link.add(jct2, trm)
     assert model.link.df is not None
     model.link.df.loc[
-        model.link.df["from_node_id"] == pd_tmp.node_id, "from_node_id"
+        model.link.df["from_node_id"] == jct_tmp.node_id, "from_node_id"
     ] = pmp.node_id
-    model.remove_node(pd_tmp.node_id)
+    model.remove_node(jct_tmp.node_id)
     return model
 
 
-def invalid_pass_down_multiple_user_demands_model() -> Model:
-    """PassDown node with multiple UserDemand nodes downstream."""
-    model, pmp = _invalid_pass_down_base()
-    pd = model.pass_down.add(Node(3, Point(2, 0)))
-    ud1 = model.user_demand.add(Node(4, Point(3, 1)), _pass_down_user_demand_static())
-    ud2 = model.user_demand.add(Node(5, Point(3, -1)), _pass_down_user_demand_static())
-    pd_trm = model.pass_down.add(Node(7, Point(3, 0)))
+def invalid_junction_multiple_user_demands_model() -> Model:
+    """Junction with multiple UserDemand nodes downstream."""
+    model, pmp = _invalid_junction_base()
+    jct = model.junction.add(
+        Node(3, Point(2, 0)), [junction.Static(to_node_id=[6], fraction=[1.0])]
+    )
+    ud1 = model.user_demand.add(Node(4, Point(3, 1)), _junction_user_demand_static())
+    ud2 = model.user_demand.add(Node(5, Point(3, -1)), _junction_user_demand_static())
     trm = model.terminal.add(Node(6, Point(4, 0)))
-    model.link.add(pmp, pd)
-    model.link.add(pd, ud1)
-    model.link.add(pd, ud2)
-    model.link.add(pd, pd_trm)
-    model.link.add(pd_trm, trm)
+    model.link.add(pmp, jct)
+    model.link.add(jct, ud1)
+    model.link.add(jct, ud2)
+    model.link.add(jct, trm)
     model.link.add(ud1, trm)
     model.link.add(ud2, trm)
     return model
 
 
-def invalid_pass_down_only_user_demand_model() -> Model:
-    """PassDown node with only a UserDemand node downstream, so the remaining flow has nowhere to go."""
-    model, pmp = _invalid_pass_down_base()
-    pd = model.pass_down.add(Node(3, Point(2, 0)))
-    ud = model.user_demand.add(Node(4, Point(3, 0)), _pass_down_user_demand_static())
+def invalid_junction_only_user_demand_model() -> Model:
+    """Junction with only a UserDemand node downstream, so the remaining flow has nowhere to go."""
+    model, pmp = _invalid_junction_base()
+    jct = model.junction.add(
+        Node(3, Point(2, 0)), [junction.Static(to_node_id=[4], fraction=[1.0])]
+    )
+    ud = model.user_demand.add(Node(4, Point(3, 0)), _junction_user_demand_static())
     trm = model.terminal.add(Node(5, Point(4, 0)))
-    model.link.add(pmp, pd)
-    model.link.add(pd, ud)
+    model.link.add(pmp, jct)
+    model.link.add(jct, ud)
     model.link.add(ud, trm)
     return model
 
@@ -388,30 +406,33 @@ def _invalid_subnetwork_basin_tables() -> list:
     ]
 
 
-def invalid_pass_down_subnetwork_boundary_model() -> Model:
-    """PassDown node at the boundary between the primary network and a subnetwork."""
+def invalid_junction_subnetwork_boundary_model() -> Model:
+    """Put a Junction that stays in the simulation at the boundary between the primary network and a subnetwork."""
     model = _invalid_subnetwork_model()
     bsn1 = model.basin.add(Node(1, Point(0, 0)), _invalid_subnetwork_basin_tables())
     pmp = model.pump.add(
         Node(2, Point(1, 0)),
         [pump.Static(flow_rate=[1e-3], allocation_controlled=[True])],
     )
-    pd = model.pass_down.add(Node(3, Point(2, 0), subnetwork_id=2))
+    jct = model.junction.add(
+        Node(3, Point(2, 0), subnetwork_id=2),
+        [junction.Static(to_node_id=[4], fraction=[1.0])],
+    )
     bsn2 = model.basin.add(
         Node(4, Point(3, 0), subnetwork_id=2), _invalid_subnetwork_basin_tables()
     )
     model.link.add(bsn1, pmp)
-    model.link.add(pmp, pd)
-    model.link.add(pd, bsn2)
+    model.link.add(pmp, jct)
+    model.link.add(jct, bsn2)
     return model
 
 
-def invalid_pass_down_no_basin_allocation_model() -> Model:
+def invalid_junction_no_basin_allocation_model() -> Model:
     """Allocation subnetwork without a Basin, which allocation does not support."""
-    from ribasim_testmodels.pass_down import _pass_down_chain
+    from ribasim_testmodels.junction import _junction_chain
 
     model = _invalid_subnetwork_model()
-    _pass_down_chain(model, 2)
+    _junction_chain(model, 2)
     return model
 
 

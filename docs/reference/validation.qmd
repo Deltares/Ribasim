@@ -48,7 +48,7 @@ for link_type in ("flow", "control", "listen"):
 ```
 
 ::: {.callout-note}
-PassDown nodes have additional connectivity rules, which are given on the [PassDown page](/reference/node/pass-down.qmd#connectivity-rules).
+Junction nodes in `Junction / static`, which divide the flow or supply a UserDemand, have additional connectivity rules, which are given on the [Junction page](/reference/node/junction.qmd#connectivity-rules).
 :::
 
 ::: {.callout-note}
