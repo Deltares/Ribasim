@@ -216,7 +216,7 @@ which can be for instance an average or a difference of variables. If a variable
 table_from_schema(
     Ribasim.Schema.DiscreteControl.Variable;
     restrictions = Dict(
-        :listen_node_id => "cannot be a Junction",
+        :listen_node_id => "a Junction only with variable `flow_rate`",
         :variable => "must be `level`, `storage`, `flow_rate`, `concentration.<substance>` or `concentration_external.<substance>`",
         :look_ahead => "only on transient boundary conditions, non-negative",
     ),
@@ -231,6 +231,7 @@ These variables can be listened to:
 - The flow rate through one of these node types: Pump, Outlet, TabulatedRatingCurve, LinearResistance, ManningResistance
 - The inflow rate of a UserDemand
 - The flow rate of a FlowBoundary (supports look ahead)
+- The flow rate of a [Junction](/reference/node/junction.qmd#equations)
 - The concentration of a substance in a Basin, with variable `concentration.<substance>`, e.g. `concentration.Cl`
 - The external concentration of a substance in a Basin, with variable `concentration_external.<substance>`, as given in the [`Basin / concentration_external`](/reference/node/basin.qmd#concentration-external) table
 

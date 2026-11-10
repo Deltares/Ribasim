@@ -21,6 +21,8 @@ from qgis.PyQt.QtWidgets import (
     QWidgetAction,
 )
 
+from ribasim_qgis.core.junctions import junction_neighbours, junction_side
+
 # Keep optional imports always bound for static typing.
 go: Any = None
 po: Any = None
@@ -39,6 +41,7 @@ else:
 try:
     import plotly.graph_objs as go
     import plotly.offline as po
+    from plotly.colors import qualitative
     from plotly.subplots import make_subplots
 
     HAS_PLOTLY = True
@@ -1264,29 +1267,12 @@ class PlotWidget(QWidget):
         visited: set[int],
     ) -> list[tuple[int, int, int]]:
         """Recursive helper for :meth:`_resolve_junction_sources`."""
-        from qgis.core import QgsFeatureRequest
-
         visited = visited | {junction_id}
-        expr = (
-            f'"from_node_id" = {int(junction_id)} OR "to_node_id" = {int(junction_id)}'
-        )
-        request = QgsFeatureRequest().setFilterExpression(expr)
-        # Materialise the iterator so nested getFeatures calls on the same
-        # layer don't interfere with the outer iteration.
-        neighbours: list[tuple[int, int, int]] = []
-        for feat in link_layer.getFeatures(request):
-            lid = int(feat["link_id"])
-            if lid == arrival_link_id:
-                continue
-            from_id = int(feat["from_node_id"])
-            to_id = int(feat["to_node_id"])
-            if from_id == junction_id:
-                neighbours.append((to_id, lid, -1))
-            else:
-                neighbours.append((from_id, lid, 1))
 
         sources: list[tuple[int, int, int]] = []
-        for far_node, lid, inflow_sign in neighbours:
+        for far_node, lid, inflow_sign in junction_neighbours(link_layer, junction_id):
+            if lid == arrival_link_id:
+                continue
             # Traverse through connectors to reach the actual source node.
             resolved_node, resolved_lid = far_node, lid
             resolved_type = self._get_node_type(far_node)
@@ -1300,15 +1286,58 @@ class PlotWidget(QWidget):
             if resolved_type == "Basin":
                 sources.append((resolved_node, lid, inflow_sign))
             elif resolved_type == "Junction" and resolved_node not in visited:
-                sources.extend(
-                    self._collect_junction_sources(
-                        resolved_node,
-                        resolved_lid,
-                        link_layer,
-                        visited,
-                    )
+                # A connector on another Junction group can take its water from
+                # the one Basin of that group.
+                outflow_basin = (
+                    self._junction_outflow_basin(resolved_node, resolved_lid)
+                    if resolved_node != far_node
+                    else None
                 )
+                if outflow_basin is not None:
+                    sources.append((outflow_basin, lid, inflow_sign))
+                else:
+                    sources.extend(
+                        self._collect_junction_sources(
+                            resolved_node,
+                            resolved_lid,
+                            link_layer,
+                            visited,
+                        )
+                    )
         return sources
+
+    def _junction_outflow_basin(self, junction_id: int, link_id: int) -> int | None:
+        """Find the Basin that supplies the water leaving a Junction over *link_id*.
+
+        A connected group of Junctions with exactly one Basin as a neighbor connects
+        each other neighbor directly to that Basin. Water from the group to such a
+        neighbor, or along a link of the group away from the Basin, is therefore
+        water from that Basin, and doesn't mix with inflows to the group.
+
+        Returns ``None`` for other groups, and when the Basin is on the other side
+        of *link_id*, so that the water comes from the inflows behind the Junction.
+        """
+        if self._link_layer_getter is None:
+            return None
+        layer = self._link_layer_getter()
+        if layer is None:
+            return None
+
+        basins, _ = junction_side(layer, self._get_node_type, junction_id, link_id)
+        if len(basins) != 1:
+            return None
+
+        # The group continues on the other side of the link.
+        endpoints = self._get_link_endpoints(link_id)
+        if endpoints is None:
+            return None
+        far_node = endpoints[1] if endpoints[0] == junction_id else endpoints[0]
+        far_type = self._get_node_type(far_node)
+        if far_type == "Basin":
+            basins.add(far_node)
+        elif far_type == "Junction":
+            basins |= junction_side(layer, self._get_node_type, far_node, link_id)[0]
+        return next(iter(basins)) if len(basins) == 1 else None
 
     def _build_junction_concentration(
         self,
@@ -1379,7 +1408,8 @@ class PlotWidget(QWidget):
         """Resolve a link endpoint to concentration data.
 
         Handles Basin (direct lookup), traversable connectors, and Junction
-        nodes (flow-weighted average of source Basin concentrations).
+        nodes (the one Basin that supplies the link, or else the flow-weighted
+        average of source Basin concentrations).
         Connectors are traversed iteratively so that chains like
         ``Basin → Junction → ManningResistance → ...`` are supported.
         """
@@ -1391,6 +1421,10 @@ class PlotWidget(QWidget):
                     return None
                 return self._concentration_for_node_getter(cur_node)
             if node_type == "Junction":
+                outflow_basin = self._junction_outflow_basin(cur_node, cur_link)
+                if outflow_basin is not None:
+                    cur_node = outflow_basin
+                    continue
                 sources = self._resolve_junction_sources(cur_node, cur_link)
                 return self._build_junction_concentration(
                     sources, n_timesteps, flow_time
@@ -1402,6 +1436,165 @@ class PlotWidget(QWidget):
                 cur_node, cur_link = far
                 continue
             return None
+
+    @staticmethod
+    def _concentration_values(
+        concentration: dict[str, Trace], substance: str, n_timesteps: int
+    ) -> np.ndarray:
+        """Return the concentration of *substance*, or zeros if it is not available."""
+        trace = concentration.get(substance)
+        if trace is None or len(trace[1]) != n_timesteps:
+            return np.zeros(n_timesteps)
+        return trace[1]
+
+    def _junction_tree_fractional_flows(
+        self, link_id: int, flow_time: np.ndarray, n_timesteps: int
+    ) -> dict[str, np.ndarray] | None:
+        """Return the tracer flows over a link of a Junction group with one Basin.
+
+        This applies to links between the Junctions, and between a Junction and the
+        Basin. Such a link reports the net flow of the neighbors behind it, on the
+        side away from the Basin, which each exchange water directly with the Basin.
+        An inflow brings the tracers of its source and an outflow takes those of the
+        Basin, so the tracer flows over the link can have opposite signs.
+
+        Returns ``None`` for all other links.
+        """
+        if (
+            self._link_layer_getter is None
+            or self._concentration_for_node_getter is None
+            or self._flow_for_link_getter is None
+        ):
+            return None
+        layer = self._link_layer_getter()
+        endpoints = self._get_link_endpoints(link_id)
+        if layer is None or endpoints is None:
+            return None
+
+        sides: list[tuple[set[int], list[tuple[int, int, int]]]] = []
+        for node_id in endpoints:
+            node_type = self._get_node_type(node_id)
+            if node_type == "Basin":
+                sides.append(({node_id}, []))
+            elif node_type == "Junction":
+                sides.append(
+                    junction_side(layer, self._get_node_type, node_id, link_id)
+                )
+            else:
+                return None
+        (from_basins, from_others), (to_basins, to_others) = sides
+        basins = from_basins | to_basins
+        if len(basins) != 1 or (from_basins and to_basins):
+            return None
+
+        basin_conc = self._concentration_for_node_getter(next(iter(basins)))
+        if not basin_conc:
+            return None
+
+        # A link that starts behind it points towards the Basin.
+        behind, towards_basin_sign = (
+            (from_others, 1.0) if to_basins else (to_others, -1.0)
+        )
+        result: dict[str, np.ndarray] = {}
+        for node_id, lid, inflow_sign in behind:
+            flow_trace = self._flow_for_link_getter(lid)
+            if flow_trace is None or len(flow_trace[1]) != n_timesteps:
+                continue
+            inflow = flow_trace[1] * inflow_sign
+            source_conc = (
+                self._endpoint_concentration(node_id, lid, n_timesteps, flow_time) or {}
+            )
+            for substance in basin_conc.keys() | source_conc.keys():
+                tracer_inflow = np.maximum(inflow, 0.0) * self._concentration_values(
+                    source_conc, substance, n_timesteps
+                ) + np.minimum(inflow, 0.0) * self._concentration_values(
+                    basin_conc, substance, n_timesteps
+                )
+                result[substance] = (
+                    result.get(substance, np.zeros(n_timesteps))
+                    + towards_basin_sign * tracer_inflow
+                )
+        return result or None
+
+    def _link_fractional_flows(
+        self,
+        endpoints: tuple[int, int],
+        link_id: int,
+        flow_time: np.ndarray,
+        flow_values: np.ndarray,
+    ) -> dict[str, np.ndarray]:
+        """Return the tracer flows over a link from the concentration at its source.
+
+        The source is the from node where the flow is positive, otherwise the to node.
+        """
+        from_node_id, to_node_id = endpoints
+        n_timesteps = len(flow_values)
+        from_conc = (
+            self._endpoint_concentration(from_node_id, link_id, n_timesteps, flow_time)
+            or {}
+        )
+        to_conc = (
+            self._endpoint_concentration(to_node_id, link_id, n_timesteps, flow_time)
+            or {}
+        )
+        return {
+            substance: flow_values
+            * np.where(
+                flow_values >= 0,
+                self._concentration_values(from_conc, substance, n_timesteps),
+                self._concentration_values(to_conc, substance, n_timesteps),
+            )
+            for substance in from_conc.keys() | to_conc.keys()
+        }
+
+    def _add_fractional_flow_traces(
+        self,
+        fig,
+        flow_time: np.ndarray,
+        values: np.ndarray,
+        substance: str,
+        color: str,
+    ) -> None:
+        """Stack the positive part of a tracer flow above zero and the negative below.
+
+        The negative part only has a trace if it occurs. The first trace has the
+        legend entry and the hover label with the signed value for both.
+        """
+        x_data, positive = self._to_plotly_xy(flow_time, np.maximum(values, 0.0))
+        _, signed = self._to_plotly_xy(flow_time, values)
+        fig.add_trace(
+            go.Scatter(
+                x=x_data,
+                y=positive,
+                customdata=signed,
+                mode="lines",
+                stackgroup="positive",
+                hoveron="points+fills",
+                line={"width": 0, "color": color},
+                name=substance,
+                legendgroup=substance,
+                hovertemplate=f"{substance}: %{{customdata:.3e}}<extra></extra>",
+            ),
+            row=1,
+            col=1,
+        )
+        if np.any(values < 0.0):
+            _, negative = self._to_plotly_xy(flow_time, np.minimum(values, 0.0))
+            fig.add_trace(
+                go.Scatter(
+                    x=x_data,
+                    y=negative,
+                    mode="lines",
+                    stackgroup="negative",
+                    hoverinfo="skip",
+                    line={"width": 0, "color": color},
+                    name=substance,
+                    legendgroup=substance,
+                    showlegend=False,
+                ),
+                row=1,
+                col=1,
+            )
 
     def _redraw_fractional_flow(
         self, selected_keys: list[tuple[str, str]], config: dict[str, bool | list[str]]
@@ -1433,32 +1626,21 @@ class PlotWidget(QWidget):
             self._show_placeholder(_PLACEHOLDER_FRACTIONAL_FLOW)
             return
 
-        from_node_id, to_node_id = endpoints
-        n_timesteps = len(flow_values)
-
-        from_conc = self._endpoint_concentration(
-            from_node_id, link_id, n_timesteps, flow_time
+        fractional_flows = self._junction_tree_fractional_flows(
+            link_id, flow_time, len(flow_values)
         )
-        to_conc = self._endpoint_concentration(
-            to_node_id, link_id, n_timesteps, flow_time
-        )
+        if fractional_flows is None:
+            fractional_flows = self._link_fractional_flows(
+                endpoints, link_id, flow_time, flow_values
+            )
 
-        if not from_conc and not to_conc:
+        if not fractional_flows:
             self._show_placeholder(_PLACEHOLDER_FRACTIONAL_FLOW_NO_BASIN)
             return
 
-        available_substances: set[str] = set()
-        if from_conc:
-            available_substances.update(from_conc)
-        if to_conc:
-            available_substances.update(to_conc)
-
         selected_substances = self._selected_tracers(
-            selected_keys, available_substances
+            selected_keys, set(fractional_flows)
         )
-
-        # Build a boolean mask: True where flow is positive (from→to).
-        positive_mask = flow_values >= 0
 
         # Extra traces — exclude concentration and flow files.
         traces_by_unit = self._collect_standard_traces(
@@ -1475,38 +1657,13 @@ class PlotWidget(QWidget):
         )
         used = 0
 
+        colors = qualitative.Plotly
         for substance in reversed(selected_substances):
-            # Build per-timestep concentration from the appropriate basin.
-            from_vals = from_conc.get(substance) if from_conc else None
-            to_vals = to_conc.get(substance) if to_conc else None
-            if from_vals is None and to_vals is None:
+            values = fractional_flows.get(substance)
+            if values is None:
                 continue
-
-            conc = np.zeros_like(flow_values)
-            if from_vals is not None:
-                _ft, fv = from_vals
-                if len(fv) == len(flow_values):
-                    conc = np.where(positive_mask, fv, conc)
-            if to_vals is not None:
-                _tt, tv = to_vals
-                if len(tv) == len(flow_values):
-                    conc = np.where(~positive_mask, tv, conc)
-
-            fractional_values = conc * flow_values
-            x_data, y_data = self._to_plotly_xy(flow_time, fractional_values)
-            fig.add_trace(
-                go.Scatter(
-                    x=x_data,
-                    y=y_data,
-                    mode="lines",
-                    stackgroup="fractions",
-                    hoveron="points+fills",
-                    line={"width": 0},
-                    name=substance,
-                    hovertemplate=self._hover_template(substance),
-                ),
-                row=1,
-                col=1,
+            self._add_fractional_flow_traces(
+                fig, flow_time, values, substance, colors[used % len(colors)]
             )
             used += 1
 

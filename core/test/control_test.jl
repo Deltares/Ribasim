@@ -479,3 +479,34 @@ end
     Ribasim.water_balance!(du, u, p, t)
     @test du.flow.horizontal.pump[pump_id.idx] == 0
 end
+
+@testitem "Listen to Junction flow rate" begin
+    using DataFrames: DataFrame
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/junction_control/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    flow = DataFrame(Ribasim.flow_data(model))
+    function q(from_node_id, to_node_id)
+        return flow.flow_rate[(flow.from_node_id .== from_node_id) .& (flow.to_node_id .== to_node_id)]
+    end
+
+    # The flow rates that the control nodes listen to
+    @test q(3, 2) ≈ q(4, 3) .- q(3, 5)
+    @test q(2, 1) ≈ q(3, 2) .+ q(7, 2)
+
+    # ContinuousControl sets the Outlet to half of the flow rate of Junction 2
+    @test q(1, 10) ≈ 0.5 .* q(2, 1) rtol = 1.0e-3
+
+    # DiscreteControl switches on the Pump when the flow rate of Junction 3 exceeds
+    # 5e-4, so when the increasing FlowBoundary reaches 1e-3, halfway the simulation
+    control = DataFrame(Ribasim.discrete_control_data(model))
+    @test control.control_state == ["off", "on"]
+    t_switch = Ribasim.seconds_since(control.time[2], model.config.starttime)
+    @test t_switch ≈ 15.5 * 86400 atol = 86400
+    @test q(8, 6)[1] == 0
+    @test q(8, 6)[end] ≈ 1.0e-4
+end

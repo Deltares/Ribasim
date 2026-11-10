@@ -63,6 +63,7 @@ node_names_snake_case = [
     "discrete_control",
     "flow_boundary",
     "flow_demand",
+    "junction",
     "level_boundary",
     "level_demand",
     "linear_resistance",

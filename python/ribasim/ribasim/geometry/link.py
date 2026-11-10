@@ -293,14 +293,36 @@ class LinkTable(SpatialTableModel[LinkSchema]):
             & (self.df["link_type"] == link_type)
         ].shape[0]
 
-        out_neighbor: int = self.df.loc[
+        out_to_node_ids = self.df.loc[
             (self.df["from_node_id"] == from_node.node_id)
-            & (self.df["link_type"] == link_type)
-        ].shape[0]
+            & (self.df["link_type"] == link_type),
+            "to_node_id",
+        ]
+        out_neighbor: int = out_to_node_ids.shape[0]
         neighbor_bounds = link_neighbor_amount[link_type]
 
         max_in: int = neighbor_bounds[to_node.node_type][1]
         max_out: int = neighbor_bounds[from_node.node_type][3]
+
+        # The Junction nodes with rows in `Junction / static` divide the flow or supply a UserDemand
+        model = cast("Model | None", self._parent)
+        if link_type == "flow" and model is not None and model.node.df is not None:
+            routed_ids = model.junction._routed_node_ids()
+            if to_node.node_type == "UserDemand":
+                # A UserDemand abstracts from Basins, or from exactly one such Junction
+                in_from_node_ids = self.df.loc[
+                    (self.df["to_node_id"] == to_node.node_id)
+                    & (self.df["link_type"] == link_type),
+                    "from_node_id",
+                ].tolist()
+                in_from_node_ids.append(from_node.node_id)
+                if len(in_from_node_ids) > 1 and any(
+                    node_id in routed_ids for node_id in in_from_node_ids
+                ):
+                    raise ValueError(
+                        f"Node {to_node.node_id} must have either one or more Basin inflow links, or exactly one inflow link from a Junction in Junction / static"
+                    )
+
         if in_neighbor >= max_in:
             raise ValueError(
                 f"Node {to_node.node_id} can have at most {max_in} {link_type} link inneighbor(s)"

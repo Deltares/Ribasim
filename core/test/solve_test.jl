@@ -11,7 +11,7 @@
     (; incidence_matrix) = integrator.p.p_independent
     (; W, linsolve) = integrator.cache.nlsolver.cache
     (; J) = W
-    (; ∂flow_∂flow_input) = J.cache
+    ∂flow_∂flow_input = J.cache.jac_flow.jac
     (; cache_inner) = linsolve
     W_inner = cache_inner.A
     J_inner = W_inner.J
@@ -59,12 +59,15 @@ end
     using Ribasim.SciMLOperators: update_coefficients!
     using Ribasim.OrdinaryDiffEqDifferentiation: dolinsolve
 
-    # PID control with derivative term, continuous control and a model without control
+    # PID control with derivative term, continuous control, Junction and a model without control
     for model_name in [
             "basic",
             "pid_control",
             "discrete_control_of_pid_control",
             "outlet_continuous_control",
+            "junction_fraction",
+            "junction_equation",
+            "junction_pid",
         ]
         toml_path = normpath(@__DIR__, "../../generated_testmodels/$model_name/ribasim.toml")
 
@@ -89,6 +92,64 @@ end
 
             x_expected = (Matrix(J_full) - I / gamma) \ collect(b)
             @test norm(collect(x) - x_expected) <= 1.0e-8 * norm(x_expected)
+        end
+    end
+end
+
+@testitem "Reduced Jacobian with Junction matches full Jacobian" begin
+    using LinearAlgebra: norm, I
+    using Ribasim.SciMLOperators: update_coefficients!
+
+    # PID control via a Junction node (junction_equation), on a Basin fed by a Junction node
+    # (junction_pid), and a UserDemand that is limited by its Junction inflow (junction_fraction)
+    for model_name in ["junction_equation", "junction_pid", "junction_fraction"]
+        toml_path = normpath(@__DIR__, "../../generated_testmodels/$model_name/ribasim.toml")
+
+        model = Ribasim.Model(toml_path)
+        (; integrator) = model
+        (; u, p, t) = integrator
+        (; J) = integrator.cache.nlsolver.cache.W
+        p.p_mutable.refresh_jac = true
+        update_coefficients!(J, u, p, t)
+
+        n_flow = length(u.flow)
+        n_pid = length(u.pid_integral)
+        @test Ribasim.has_routed_junctions(J)
+        has_pid = model_name != "junction_fraction"
+        @test (n_pid > 0) == has_pid
+
+        # Q_S = ∂q_∂storage and G = ∂q_∂pid_integral of the flows before the Junction subgraphs
+        Q_S = zeros(n_flow, J.n_basin)
+        Ribasim.foreach_∂flow_∂storage(J) do flow_idx, basin_idx, val
+            Q_S[flow_idx, basin_idx] += val
+        end
+        G = zeros(n_flow, n_pid)
+        Ribasim.foreach_∂flow_∂pid_integral(J) do flow_idx, pid_idx, val
+            G[flow_idx, pid_idx] += val
+        end
+        K = Matrix(J.cache.jac_junction.jac)
+        M = Matrix(p.p_independent.incidence_matrix)
+
+        config_full = Ribasim.Config(toml_path; solver_reduced_implicit_solve = false)
+        integrator_full = Ribasim.Model(config_full).integrator
+        J_full = Matrix(copy(integrator_full.f.jac_prototype))
+        integrator_full.f.jac(J_full, integrator_full.u, integrator_full.p, integrator_full.t)
+
+        # The flow and PID integral columns of the flow rows
+        J_flow_flow = J_full[1:n_flow, 1:n_flow]
+        J_flow_pid = J_full[1:n_flow, (n_flow + 1):end]
+        @test norm(K * Q_S * M - J_flow_flow) <= 1.0e-8 * norm(J_flow_flow)
+        if has_pid
+            @test norm(J_flow_flow) > 0
+            @test norm(J_flow_pid) > 0
+            @test norm(K * G - J_flow_pid) <= 1.0e-8 * norm(J_flow_pid)
+        end
+
+        # K is only not the identity where a UserDemand is limited by its Junction inflow,
+        # as UserDemand #12 in junction_fraction is. There the flows do not depend on the storages
+        # at the start, so this is checked on K itself.
+        if model_name == "junction_fraction"
+            @test norm(K - I) > 0.5
         end
     end
 end
