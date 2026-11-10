@@ -85,7 +85,7 @@ n_neighbor_bounds_flow(::Val{:Pump}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:Outlet}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:Terminal}) = n_neighbor_bounds(1, M, 0, 0)
 # The required links of a Junction depend on its group, see `valid_junction_group`
-n_neighbor_bounds_flow(::Val{:Junction}) = n_neighbor_bounds(0, M, 0, M)
+n_neighbor_bounds_flow(::Val{:Junction}) = n_neighbor_bounds(1, M, 1, M)
 n_neighbor_bounds_flow(::Val{:PidControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:ContinuousControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:DiscreteControl}) = n_neighbor_bounds(0, 0, 0, 0)
