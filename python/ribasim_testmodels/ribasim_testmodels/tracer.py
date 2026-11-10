@@ -53,9 +53,8 @@ def tracer_chain_model() -> Model:
 def tracer_user_demand_model() -> Model:
     """Set up UserDemands that return half of their abstraction.
 
-    One returns to the Basin it abstracts from and adds Cl, the other returns to a
-    downstream Basin. The return flows should carry the concentrations of the
-    abstracted water.
+    One returns to the Basin it abstracts from, the other to a downstream Basin.
+    The return flows should carry the concentrations of the abstracted water.
     """
     model = Model(
         starttime=datetime(2020, 1, 1),
@@ -79,10 +78,7 @@ def tracer_user_demand_model() -> Model:
         [
             user_demand.Static(
                 demand=[0.5], return_factor=0.5, min_level=0.0, demand_priority=1
-            ),
-            user_demand.Concentration(
-                time=[datetime(2020, 1, 1)], substance=["Cl"], concentration=[10.0]
-            ),
+            )
         ],
     )
     # Drain the inflow minus the abstraction of both UserDemands

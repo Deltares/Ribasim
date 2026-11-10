@@ -65,18 +65,6 @@ table_from_schema(Ribasim.Schema.UserDemand.Time; restrictions = USER_DEMAND_RES
 Although it may seem that way, this table does *not* describe demands that change `demand_priority` over time. Rather, this table defines a `demand(time)` relationship for every occurring `demand_priority` in the table for a certain `node_id`.
 :::
 
-## Concentration
-This table defines the concentration of substances that the UserDemand adds to its return flow.
-The return flow also carries the concentrations of the abstracted water.
-
-```{julia}
-# | code-fold: true
-table_from_schema(
-    Ribasim.Schema.UserDemand.Concentration;
-    restrictions = Dict(:substance => "can correspond to known Delwaq substances"),
-)
-```
-
 # Equations
 
 UserDemand receive an allocated flow rate $F^p$ per demand priority $p=1,2,\ldots, p_{\max}$, which is either determined by [allocation optimization](/concept/allocation.qmd) or simply equal to the demand at time $t$; $F^p = d^p(t)$.

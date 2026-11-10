@@ -243,7 +243,6 @@ sort_key(::Type{Schema.Pump.Time}) = (:node_id, :time)
 sort_key(::Type{Schema.TabulatedRatingCurve.Static}) = (:node_id, :control_state, :level)
 sort_key(::Type{Schema.TabulatedRatingCurve.Time}) = (:node_id, :time, :level)
 
-sort_key(::Type{Schema.UserDemand.Concentration}) = (:node_id, :substance, :time)
 sort_key(::Type{Schema.UserDemand.Static}) = (:node_id, :demand_priority)
 sort_key(::Type{Schema.UserDemand.Time}) = (:node_id, :demand_priority, :time)
 
