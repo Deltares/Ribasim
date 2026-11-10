@@ -21,7 +21,7 @@ end
         "Errors encountered when parsing PassDown data."
     )
     @test messages == [
-        "PassDown #7 can have at most one outflow link to a PassDown node with an unspecified fraction.",
+        "PassDown #7 can have at most one outflow link with an unspecified fraction.",
     ]
 end
 
@@ -31,7 +31,7 @@ end
         "Errors encountered when parsing PassDown data."
     )
     @test messages == [
-        "The fractions of the outflow links of PassDown #7 to PassDown nodes must sum to at most 1 when one fraction is unspecified (got 1.25).",
+        "The fractions of the outflow links of PassDown #7 must sum to at most 1 when one fraction is unspecified (got 1.25).",
     ]
 end
 
@@ -57,17 +57,7 @@ end
         "Invalid number of connections for certain node types."
     )
     @test messages == [
-        "PassDown #3 cannot just flow out into a PassDown node, the remainder flow needs somewhere to go.",
-    ]
-end
-
-@testitem "PassDown UserDemand and other outflow" setup = [PassDownValidation] begin
-    messages = PassDownValidation.error_messages(
-        "invalid_pass_down_user_demand_and_other",
-        "Invalid number of connections for certain node types."
-    )
-    @test messages == [
-        "PassDown #3 cannot have both a UserDemand outflow and an outflow into a node that is not a PassDown node, the remainder flow must be passed down to PassDown nodes.",
+        "PassDown #3 cannot only flow out into a UserDemand node, the remainder flow needs somewhere to go.",
     ]
 end
 
@@ -93,7 +83,7 @@ end
 
     # FlowBoundary #1 (0.04 m³/s, Foo = 2) and #2 (0.02 m³/s, no Foo) are mixed in PassDown #3
     # UserDemand #4 abstracts 0.01 m³/s and returns half of it to Basin #6, the remaining
-    # 0.05 m³/s flows via PassDown #5 into Basin #7
+    # 0.05 m³/s flows into Basin #7
     c_foo = 2.0 * 0.04 / 0.06
     @test mass_per_inflow_volume(7, 2, "Foo") ≈ fill(c_foo, 59) rtol = 1.0e-8
     @test mass_per_inflow_volume(7, 2, "FlowBoundary") ≈ fill(1.0, 59) rtol = 1.0e-8
@@ -143,6 +133,91 @@ end
     @test flow_rates(22, 3) ≈ 0.75 .* flow_rates(1, 22)
 end
 
+@testitem "FlowBoundary time series through PassDown" begin
+    import BasicModelInterface as BMI
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/pass_down_flow_boundary/ribasim.toml")
+    model = Ribasim.run(toml_path)
+    @test success(model)
+    # The flow over the link from the FlowBoundary into the PassDown node is a state, so
+    # the block interpolated flow rate must be evaluated like the other time series in the
+    # right hand side: left-continuously within a timestep via the time dependent cache.
+    # Evaluating it directly gives thousands of rejected steps.
+    @test model.integrator.stats.naccept < 300
+    @test model.integrator.stats.nreject < 200
+
+    # A flow rate set via BMI takes precedence over the time series
+    model = BMI.initialize(Ribasim.Model, toml_path)
+    storage = BMI.get_value_ptr(model, "basin.storage")
+    storage_start = only(storage)
+    BMI.get_value_ptr(model, "flow_boundary.flow_rate") .= 5.0e-3
+    BMI.update_until(model, 86400.0)
+    @test only(storage) - storage_start ≈ 5.0e-3 * 86400.0
+end
+
+@testitem "PassDown chain without Basin" begin
+    using DataFrames: DataFrame
+    using Statistics: mean
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/pass_down_no_basin/ribasim.toml")
+    model = Ribasim.run(toml_path)
+    @test success(model)
+    @test isempty(model.integrator.p.p_independent.basin.node_id)
+
+    flow_data = Ribasim.flow_data(model) |> DataFrame
+    mean_flow_rate(from_node_id, to_node_id) = mean(
+        filter(row -> row.from_node_id == from_node_id && row.to_node_id == to_node_id, flow_data).flow_rate,
+    )
+    # Without allocation the upstream UserDemand #3 takes its full demand first, although
+    # UserDemand #6 downstream has the higher demand priority
+    @test mean_flow_rate(1, 2) ≈ 1.0e-3
+    @test mean_flow_rate(2, 3) ≈ 1.0e-3
+    @test mean_flow_rate(5, 6) ≈ 0.0 atol = 1.0e-12
+    @test mean_flow_rate(8, 9) ≈ 0.0 atol = 1.0e-12
+
+    # Allocation needs a Basin in the subnetwork
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/invalid_pass_down_no_basin_allocation/ribasim.toml",
+    )
+    @test_throws "Allocation subnetwork 2 has no Basin, which is not supported." Ribasim.Model(toml_path)
+end
+
+@testitem "Limiter keeps PassDown subgraphs consistent" begin
+    using SciMLBase: step!
+    using Ribasim: NodeID
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/pass_down/ribasim.toml")
+    model = Ribasim.Model(toml_path)
+    (; integrator) = model
+    (; p) = integrator
+    (; p_independent) = p
+    (; pass_down, flow_ranges) = p_independent
+    for _ in 1:5
+        step!(integrator)
+    end
+    (; u, uprev, t) = integrator
+
+    # Pump #5 flows into PassDown #23, which divides its flow over PassDown #6 and #7
+    pump_id = NodeID(:Pump, 5, p_independent)
+    pass_down_id = NodeID(:PassDown, 23, p_independent)
+    pump_state = flow_ranges.horizontal.pump[pump_id.idx]
+    state_idxs = pass_down.outflow_state_idx[pass_down_id.idx]
+    @test all(>(0), u.flow.pass_down[state_idxs] .- uprev.flow.pass_down[state_idxs])
+
+    # A negative Pump flow over the step is clamped to zero by the limiter, and the
+    # PassDown states downstream must follow
+    u.flow[pump_state] = uprev.flow[pump_state] - 1.0
+    Ribasim.limit_flow!(u, integrator, p, t)
+    @test u.flow[pump_state] == uprev.flow[pump_state]
+    @test all(isapprox.(u.flow.pass_down[state_idxs], uprev.flow.pass_down[state_idxs]; atol = 1.0e-12))
+
+    # Without a clamped source the limiter leaves the PassDown states alone
+    pass_down_states = copy(u.flow.pass_down)
+    Ribasim.limit_flow!(u, integrator, p, t)
+    @test u.flow.pass_down == pass_down_states
+end
+
 @testitem "PassDown at subnetwork boundary" setup = [PassDownValidation] begin
     messages = PassDownValidation.error_messages(
         "invalid_pass_down_subnetwork_boundary",
@@ -176,15 +251,13 @@ end
 
     # FlowBoundary #3 (3e-3 m³/s) and Pump #2 (2e-3 m³/s) flow into PassDown #4. UserDemand #5
     # abstracts its full demand of 4e-3 m³/s, and the remaining 1e-3 m³/s is divided 70% / 30%
-    # over PassDown #6 and #7. Half of the abstraction returns via PassDown #10
+    # over Basin #8 and #9. Half of the abstraction returns via PassDown #10
     expected = Dict(
         (2, 4) => 2.0e-3,
         (3, 4) => 3.0e-3,
         (4, 5) => 4.0e-3,
-        (4, 6) => 0.7e-3,
-        (4, 7) => 0.3e-3,
-        (6, 8) => 0.7e-3,
-        (7, 9) => 0.3e-3,
+        (4, 8) => 0.7e-3,
+        (4, 9) => 0.3e-3,
         (5, 10) => 2.0e-3,
         (10, 11) => 2.0e-3,
     )

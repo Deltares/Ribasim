@@ -32,7 +32,7 @@ function create_callbacks(
     tstops = Vector{Float64}[]
     t_end = seconds_since(config.endtime, config.starttime)
     get_timeseries_tstops!(tstops, t_end, basin.forcing.precipitation)
-    tstops = sort(unique(reduce(vcat, tstops)))
+    tstops = sort(unique(reduce(vcat, tstops; init = Float64[])))
     basin_cb = PresetTimeCallback(tstops, update_basin!; save_positions = (false, false))
     push!(callbacks, basin_cb)
 
@@ -214,16 +214,16 @@ function update_concentrations!(u, t, integrator)::Nothing
     add_forcing_mass!(mass, loads, dt, tprev)
 
     # Exact boundary flow over time step
-    for (id, data_out) in zip(flow_boundary.node_id, flow_boundary.outflow_data)
-        if !data_out.to_pass_down
-            to_node = outflow_id(data_out)
-            add_substance_mass!(
-                view(mass, :, to_node.idx),
-                flow_boundary.concentration_itp[id.idx],
-                flow_boundary.cumulative_flow_dt[id.idx],
-                tprev,
-            )
-        end
+    for (id, outflow_link) in zip(flow_boundary.node_id, flow_boundary.outflow_link)
+        to_node = outflow_link.link[2]
+        # The mass into a PassDown node is handled in `mass_through_pass_down!`
+        to_node.is_pass_down && continue
+        add_substance_mass!(
+            view(mass, :, to_node.idx),
+            flow_boundary.concentration_itp[id.idx],
+            flow_boundary.cumulative_flow_dt[id.idx],
+            tprev,
+        )
     end
 
     mass_inflows_from_user_demand!(integrator)
@@ -563,7 +563,7 @@ function save_external_flows!(file::SavedFile, mean_flows::MeanFlows, p::Paramet
     n_new = n + only(file.size)
 
     for (fi, link) in enumerate(internal_flow_links)
-        if link.link[1].type == NodeType.FlowBoundary && !link.link[2].is_pass_down
+        if link.link[1].type == NodeType.FlowBoundary
             internal_flow_rate[fi] = boundary_flow[link.link[1].idx]
             internal_convergence[fi] = missing
         else

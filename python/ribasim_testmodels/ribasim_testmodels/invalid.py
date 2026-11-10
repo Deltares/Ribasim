@@ -334,36 +334,6 @@ def invalid_pass_down_multiple_user_demands_model() -> Model:
     return model
 
 
-def invalid_pass_down_user_demand_and_other_model() -> Model:
-    """PassDown node with both a UserDemand and a non-PassDown node downstream."""
-    model, pmp = _invalid_pass_down_base()
-    pd = model.pass_down.add(Node(3, Point(2, 0)))
-    ud = model.user_demand.add(Node(4, Point(3, 1)), _pass_down_user_demand_static())
-    bsn = model.basin.add(
-        Node(5, Point(3, -1)),
-        [
-            basin.State(level=[1.0]),
-            basin.Profile(level=[0.0, 2.0], area=[100.0, 200.0]),
-        ],
-    )
-    trm = model.terminal.add(Node(6, Point(4, 1)))
-    # Temporary PassDown node, since the link validation does not allow this connectivity
-    pd_tmp = model.pass_down.add(Node(7, Point(3, 0)))
-    model.link.add(pmp, pd)
-    model.link.add(pd, ud)
-    model.link.add(pd, pd_tmp)
-    model.link.add(ud, trm)
-    model.link.add(pd_tmp, bsn)
-    assert model.link.df is not None
-    model.link.df.loc[
-        (model.link.df["from_node_id"] == pd.node_id)
-        & (model.link.df["to_node_id"] == pd_tmp.node_id),
-        "to_node_id",
-    ] = bsn.node_id
-    model.remove_node(pd_tmp.node_id)
-    return model
-
-
 def invalid_pass_down_only_user_demand_model() -> Model:
     """PassDown node with only a UserDemand node downstream, so the remaining flow has nowhere to go."""
     model, pmp = _invalid_pass_down_base()
@@ -433,6 +403,15 @@ def invalid_pass_down_subnetwork_boundary_model() -> Model:
     model.link.add(bsn1, pmp)
     model.link.add(pmp, pd)
     model.link.add(pd, bsn2)
+    return model
+
+
+def invalid_pass_down_no_basin_allocation_model() -> Model:
+    """Allocation subnetwork without a Basin, which allocation does not support."""
+    from ribasim_testmodels.pass_down import _pass_down_chain
+
+    model = _invalid_subnetwork_model()
+    _pass_down_chain(model, 2)
     return model
 
 

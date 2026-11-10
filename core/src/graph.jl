@@ -338,12 +338,6 @@ function outflow_id(graph::MetaGraph, id::NodeID)::NodeID
 end
 
 """
-Get the downstream node ID of the single outflow link.
-TODO: Support `to_pass_down = true`, where there are multiple outflow links.
-"""
-outflow_id(outflow_data::OutflowData)::NodeID = outflow_data.outflow_link.link[2]
-
-"""
 Get the unique inneighbor over a flow link.
 """
 function inflow_id(graph::MetaGraph, id::NodeID)::NodeID
@@ -398,16 +392,14 @@ function get_flow(
 
     from_id, to_id = link
 
-    # Links in a PassDown subgraph have their own flow state, the link towards a UserDemand
-    # node has the UserDemand inflow state
+    # Links out of a PassDown node have their own flow state, the link towards a UserDemand
+    # node has the UserDemand inflow state. The flow over a link into a PassDown node is the
+    # state of the node it comes from, found below.
     if from_id.is_pass_down && (to_id.type == NodeType.UserDemand)
         offset = user_demand.inflow_link_offsets[to_id.idx]
         return flow.horizontal.user_demand_inflow[offset + 1]
     elseif from_id.is_pass_down
         links, state_idxs = pass_down.outflow_links[from_id.idx], pass_down.outflow_state_idx[from_id.idx]
-        return flow.pass_down[state_idxs[findfirst(l -> l.link == link, links)]]
-    elseif to_id.is_pass_down
-        links, state_idxs = pass_down.inflow_links[to_id.idx], pass_down.inflow_state_idx[to_id.idx]
         return flow.pass_down[state_idxs[findfirst(l -> l.link == link, links)]]
     end
 

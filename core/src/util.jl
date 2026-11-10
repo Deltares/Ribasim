@@ -193,19 +193,11 @@ function get_level(
         # A level at -Inf ensures we don't hit `max_downstream_level` reduction factors.
         -Inf
     elseif node_id.is_pass_down
-        # This is an upstream PassDown, as downstream PassDowns are caught in the top get_level method
-        Inf
-    else
-        error("Node ID $node_id is not a Basin, PassDown, LevelBoundary or Terminal.")
-        Inf
-    end
-end
-
-function get_level(storage::Number, p::Parameters, outflow_data::OutflowData, t::Number; kwargs...)
-    return if outflow_data.to_pass_down
+        # A PassDown node is only downstream of connector nodes. Like Terminal it does not
+        # limit the flow, and its inflow is passed on regardless of the level downstream.
         -Inf
     else
-        get_level(storage, p, outflow_id(outflow_data), t; kwargs...)
+        error("Node ID $node_id is not a Basin, PassDown, LevelBoundary or Terminal.")
     end
 end
 
@@ -621,15 +613,15 @@ function count_state_ranges(nodes::Union{NamedTuple, ParametersIndependent})::Ri
     )
 end
 
-function set_flow_ids!(inflow_id, outflow_data, node::AbstractParameterNode)
+function set_flow_ids!(inflow_id, outflow_id, node::AbstractParameterNode)
     inflow_id .= [link.link[1] for link in node.inflow_link]
-    outflow_data .= node.outflow_data
+    outflow_id .= [link.link[2] for link in node.outflow_link]
     return nothing
 end
 
-function set_flow_ids!(inflow_id, outflow_data, user_demand::UserDemand)
+function set_flow_ids!(inflow_id, outflow_id, user_demand::UserDemand)
     inflow_id .= [link.link[1] for link in vcat(user_demand.inflow_links...)]
-    outflow_data .= user_demand.outflow_data
+    outflow_id .= [link.link[2] for link in user_demand.outflow_link]
     return nothing
 end
 
@@ -637,17 +629,17 @@ function set_flow_ids!(inflow_id, outflow_id, basin::Basin)
     (; node_id) = basin
     inflow_id.evaporation .= node_id
     inflow_id.infiltration .= node_id
-    fill!(outflow_id, OutflowData())
+    outflow_id .= NodeID(NodeType.Terminal, 0, 0)
     return nothing
 end
 
 """
-Every PassDown flow state is the flow over a link with a PassDown node at either end,
+Every PassDown flow state is the flow over a link out of a PassDown node,
 see `PassDown.state_links`.
 """
-function set_flow_ids!(inflow_id, outflow_data, pass_down::PassDown)
+function set_flow_ids!(inflow_id, outflow_id, pass_down::PassDown)
     inflow_id .= [link.link[1] for link in pass_down.state_links]
-    outflow_data .= [OutflowData(; outflow_link = link) for link in pass_down.state_links]
+    outflow_id .= [link.link[2] for link in pass_down.state_links]
     return nothing
 end
 
@@ -666,21 +658,21 @@ function get_flow_ids(nodes::NamedTuple, flow_ranges::FlowTuple)
     dummy_node = NodeID(:Terminal, 0, 0)
 
     inflow_id = CVector(fill(dummy_node, n_flows), flow_ranges)
-    outflow_data = CVector(fill(OutflowData(), n_flows), flow_ranges)
+    outflow_id = CVector(fill(dummy_node, n_flows), flow_ranges)
     state_id = CVector(fill(dummy_node, n_flows), flow_ranges)
 
-    set_flow_ids!(inflow_id.horizontal.pump, outflow_data.horizontal.pump, pump)
-    set_flow_ids!(inflow_id.horizontal.outlet, outflow_data.horizontal.outlet, outlet)
-    set_flow_ids!(inflow_id.horizontal.tabulated_rating_curve, outflow_data.horizontal.tabulated_rating_curve, tabulated_rating_curve)
-    set_flow_ids!(inflow_id.horizontal.linear_resistance, outflow_data.horizontal.linear_resistance, linear_resistance)
-    set_flow_ids!(inflow_id.horizontal.manning_resistance, outflow_data.horizontal.manning_resistance, manning_resistance)
-    set_flow_ids!(inflow_id.horizontal.user_demand_inflow, outflow_data.horizontal.user_demand_outflow, user_demand)
-    set_flow_ids!(inflow_id.vertical, outflow_data.vertical, basin)
-    set_flow_ids!(inflow_id.pass_down, outflow_data.pass_down, pass_down)
+    set_flow_ids!(inflow_id.horizontal.pump, outflow_id.horizontal.pump, pump)
+    set_flow_ids!(inflow_id.horizontal.outlet, outflow_id.horizontal.outlet, outlet)
+    set_flow_ids!(inflow_id.horizontal.tabulated_rating_curve, outflow_id.horizontal.tabulated_rating_curve, tabulated_rating_curve)
+    set_flow_ids!(inflow_id.horizontal.linear_resistance, outflow_id.horizontal.linear_resistance, linear_resistance)
+    set_flow_ids!(inflow_id.horizontal.manning_resistance, outflow_id.horizontal.manning_resistance, manning_resistance)
+    set_flow_ids!(inflow_id.horizontal.user_demand_inflow, outflow_id.horizontal.user_demand_outflow, user_demand)
+    set_flow_ids!(inflow_id.vertical, outflow_id.vertical, basin)
+    set_flow_ids!(inflow_id.pass_down, outflow_id.pass_down, pass_down)
 
     # The UserDemand node itself is the outflow of its inflow state and the inflow of its outflow state
-    outflow_data.horizontal.user_demand_inflow .=
-        [OutflowData(; outflow_link = link) for links in user_demand.inflow_links for link in links]
+    outflow_id.horizontal.user_demand_inflow .=
+        [node_id for (node_id, links) in zip(user_demand.node_id, user_demand.inflow_links) for _ in links]
     inflow_id.horizontal.user_demand_outflow .= user_demand.node_id
 
     state_id.horizontal.pump .= pump.node_id
@@ -693,10 +685,9 @@ function get_flow_ids(nodes::NamedTuple, flow_ranges::FlowTuple)
     state_id.horizontal.user_demand_outflow .= user_demand.node_id
     state_id.vertical.evaporation .= basin.node_id
     state_id.vertical.infiltration .= basin.node_id
-    state_id.pass_down .=
-        [link.link[2].is_pass_down ? link.link[2] : link.link[1] for link in pass_down.state_links]
+    state_id.pass_down .= [link.link[1] for link in pass_down.state_links]
 
-    return inflow_id, outflow_data, state_id
+    return inflow_id, outflow_id, state_id
 end
 
 """
@@ -712,20 +703,19 @@ function get_state_node_id(p_independent::ParametersIndependent, state_idx::Int)
     end
 end
 
-function get_incidence_matrix(inflow_id::FlowCVector{NodeID}, outflow_data::FlowCVector{OutflowData})::SparseMatrixCSC
+function get_incidence_matrix(inflow_id::FlowCVector{NodeID}, outflow_id::FlowCVector{NodeID})::SparseMatrixCSC
     n_flow = length(inflow_id)
     n_basin = length(inflow_id.vertical.evaporation)
     incidence_matrix = spzeros(Int, n_basin, n_flow)
 
+    # A flow into a PassDown node has no Basin downstream, the links out of the
+    # PassDown subgraph credit the Basins
     for flow_idx in 1:n_flow
         in_id = inflow_id[flow_idx]
-        out_data = outflow_data[flow_idx]
-        in_id.is_basin && (incidence_matrix[in_id.idx, flow_idx] = -1)
+        out_id = outflow_id[flow_idx]
 
-        if !out_data.to_pass_down
-            out_id = outflow_id(out_data)
-            out_id.is_basin && (incidence_matrix[out_id.idx, flow_idx] = 1)
-        end
+        in_id.is_basin && (incidence_matrix[in_id.idx, flow_idx] = -1)
+        out_id.is_basin && (incidence_matrix[out_id.idx, flow_idx] = 1)
     end
     return incidence_matrix
 end
@@ -792,23 +782,20 @@ function aggregate_link_flows!(
         aggregate::AbstractVector,
         flows,
         inflow_ids,
-        outflow_data,
+        outflow_ids,
         do_inflows::Bool,
         do_outflows::Bool,
         weight::Number,
     )
-    for (flow_, id_in, data_out) in zip(flows, inflow_ids, outflow_data)
+    for (flow_, id_in, id_out) in zip(flows, inflow_ids, outflow_ids)
         positive_flow = (flow_ > 0)
 
         if id_in.is_basin && ((!positive_flow && do_inflows) || (positive_flow && do_outflows))
             aggregate[id_in.idx] -= weight * flow_
         end
 
-        if !data_out.to_pass_down
-            id_out = outflow_id(data_out)
-            if id_out.is_basin && ((positive_flow && do_inflows) || (!positive_flow && do_outflows))
-                aggregate[id_out.idx] += weight * flow_
-            end
+        if id_out.is_basin && ((positive_flow && do_inflows) || (!positive_flow && do_outflows))
+            aggregate[id_out.idx] += weight * flow_
         end
     end
     return nothing
@@ -827,28 +814,28 @@ function aggregate_flows!(
         positive_vertical_forcing::Union{ExactVerticalFlowCVector, Nothing} = nothing,
         boundary_flow::Union{Vector{Float64}, Nothing} = nothing
     )
-    (; flow_boundary, inflow_id, outflow_data) = p_independent
+    (; flow_boundary, inflow_id, outflow_id) = p_independent
 
     from_zero && (aggregate .= 0)
 
     if do_horizontal_flows
         aggregate_link_flows!(
-            aggregate, flow.horizontal, inflow_id.horizontal, outflow_data.horizontal,
+            aggregate, flow.horizontal, inflow_id.horizontal, outflow_id.horizontal,
             do_inflows, do_outflows, weight,
         )
         # The flows through the PassDown nodes that end up in a Basin
         aggregate_link_flows!(
-            aggregate, flow.pass_down, inflow_id.pass_down, outflow_data.pass_down,
+            aggregate, flow.pass_down, inflow_id.pass_down, outflow_id.pass_down,
             do_inflows, do_outflows, weight,
         )
     end
 
     if do_horizontal_flows && do_inflows && !isnothing(boundary_flow)
         for idx in eachindex(flow_boundary.node_id)
-            outflow_data = flow_boundary.outflow_data[idx]
-            if !outflow_data.to_pass_down
-                aggregate[outflow_id(outflow_data).idx] += boundary_flow[idx]
-            end
+            downstream_id = flow_boundary.outflow_link[idx].link[2]
+            # The flow into a PassDown node is a state
+            downstream_id.is_pass_down && continue
+            aggregate[downstream_id.idx] += boundary_flow[idx]
         end
     end
 
@@ -1207,19 +1194,13 @@ function set_uplink_downlink_storage!(
         storage::AbstractVector,
         p_independent::ParametersIndependent,
     )
-    (; inflow_id, outflow_data) = p_independent
+    (; inflow_id, outflow_id) = p_independent
 
     @threaded CHEAP_LOOP_MIN_CHUNK_SIZE for idx in eachindex(storage_uplink)
         in_id = inflow_id[idx]
-        out_data = outflow_data[idx]
+        out_id = outflow_id[idx]
         storage_uplink[idx] = in_id.is_basin ? storage[in_id.idx] : zero(eltype(storage_uplink))
-
-        storage_downlink[idx] = if out_data.to_pass_down
-            zero(eltype(storage_downlink))
-        else
-            out_id = outflow_id(out_data)
-            out_id.is_basin ? storage[out_id.idx] : zero(eltype(storage_downlink))
-        end
+        storage_downlink[idx] = out_id.is_basin ? storage[out_id.idx] : zero(eltype(storage_downlink))
     end
 
     return nothing
@@ -1239,7 +1220,7 @@ function get_link_index(
 end
 
 function set_controlled_node_ids!(p_independent, node::Union{PidControl, ContinuousControl})
-    (; graph, inflow_id, outflow_data, flow_ranges) = p_independent
+    (; graph, inflow_id, outflow_id, flow_ranges) = p_independent
 
     for id in node.node_id
         controlled_node_id = only(outneighbor_labels_type(graph, id, LinkType.control))
@@ -1248,30 +1229,16 @@ function set_controlled_node_ids!(p_independent, node::Union{PidControl, Continu
         flow_idx = flow_ranges.horizontal[component][controlled_node_id.idx]
 
         node.inflow_id[id.idx] = inflow_id[flow_idx]
-        node.outflow_data[id.idx] = outflow_data[flow_idx]
+        node.outflow_id[id.idx] = outflow_id[flow_idx]
     end
     return nothing
 end
 
-"""
-Whether the node is part of a PassDown subgraph: a PassDown node, or a UserDemand node that abstracts from one.
-"""
-function in_pass_down_subgraph(id::NodeID, user_demand::UserDemand)::Bool
-    return id.is_pass_down ||
-        (id.type == NodeType.UserDemand && user_demand.in_pass_down_subgraph[id.idx])
-end
-
-"""
-Mark the UserDemand nodes that are part of a PassDown subgraph, and store for those
-the indices in the `pass_down` flow component of their outflow links.
-"""
+"Mark the UserDemand nodes that are part of a PassDown subgraph."
 function set_in_pass_down_subgraph!(user_demand::UserDemand, pass_down::PassDown)::Nothing
     for subgraph in pass_down.pass_down_subgraphs, id in subgraph
         id.type == NodeType.UserDemand || continue
         user_demand.in_pass_down_subgraph[id.idx] = true
-        outflow_links = user_demand.outflow_data[id.idx].outflow_links
-        user_demand.pass_down_outflow_state_idx[id.idx] =
-            [state_link_index(pass_down.state_links, link) for link in outflow_links]
     end
     return nothing
 end

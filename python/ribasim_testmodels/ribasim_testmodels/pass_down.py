@@ -1,13 +1,16 @@
 from datetime import datetime
 
 import numpy as np
+import pandas as pd
 from ribasim import Model
 from ribasim.config import Allocation, Experimental
 from ribasim.geometry.node import Node
 from ribasim.nodes import (
     basin,
     flow_boundary,
+    outlet,
     pass_down,
+    pid_control,
     pump,
     user_demand,
 )
@@ -146,12 +149,144 @@ def pass_down_model() -> Model:
     return model
 
 
+def pass_down_flow_boundary_model() -> Model:
+    """Create a model with a FlowBoundary time series flowing through a PassDown node into a Basin.
+
+    The flow rate alternates daily between 0 and 1e-2 m³/s with block interpolation, so the
+    flow over the link into the PassDown node, which is a state, jumps at every day.
+    """
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 2, 1),
+        crs="EPSG:28992",
+    )
+    times = pd.date_range("2020-01-01", "2020-02-01", freq="D")
+    fb = model.flow_boundary.add(
+        Node(1, Point(0, 0)),
+        [
+            flow_boundary.Time(
+                time=times,
+                flow_rate=[0.0 if i % 2 else 1e-2 for i in range(len(times))],
+            )
+        ],
+    )
+    pd_a = model.pass_down.add(Node(2, Point(1, 0)))
+    b1 = model.basin.add(
+        Node(3, Point(2, 0)),
+        [
+            basin.Profile(area=[1e4, 1e4], level=[0.0, 100.0]),
+            basin.State(level=[1.0]),
+        ],
+    )
+    model.link.add(fb, pd_a)
+    model.link.add(pd_a, b1)
+    return model
+
+
+def pass_down_pid_model() -> Model:
+    """Create a model with a PID controlled Basin that is fed via a PassDown node.
+
+    The derivative term of the PID control depends on the inflow of the Basin, which comes
+    from the FlowBoundary via the PassDown node.
+    """
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 2, 1),
+        crs="EPSG:28992",
+    )
+    fb = model.flow_boundary.add(
+        Node(1, Point(0, 0)), [flow_boundary.Static(flow_rate=[1e-2])]
+    )
+    pd_a = model.pass_down.add(Node(2, Point(1, 0)))
+    b1 = model.basin.add(
+        Node(3, Point(2, 0)),
+        [basin.Profile(area=1000.0, level=[0.0, 10.0]), basin.State(level=[6.0])],
+    )
+    out = model.outlet.add(Node(4, Point(3, 0)), [outlet.Static(flow_rate=[0.0])])
+    trm = model.terminal.add(Node(5, Point(4, 0)))
+    pid = model.pid_control.add(
+        Node(6, Point(3, 1)),
+        [
+            pid_control.Static(
+                listen_node_id=[3],
+                target=[5.5],
+                proportional=[-1e-2],
+                integral=[-1e-7],
+                derivative=[-1e2],
+            )
+        ],
+    )
+    model.link.add(fb, pd_a)
+    model.link.add(pd_a, b1)
+    model.link.add(b1, out)
+    model.link.add(out, trm)
+    model.link.add(pid, out)
+    return model
+
+
+def _pass_down_chain(model: Model, subnetwork_id: int | None) -> None:
+    """Add a chain of PassDown nodes with two UserDemand nodes, without a Basin.
+
+    FlowBoundary #1 (1e-3 m³/s) flows into PassDown #2, from which UserDemand #3 (priority 2)
+    abstracts. The remainder goes via PassDown #5, from which UserDemand #6 (priority 1)
+    abstracts, and PassDown #8 to Terminal #9.
+    """
+
+    def node(node_id: int, x: float, y: float) -> Node:
+        return Node(node_id, Point(x, y), subnetwork_id=subnetwork_id)
+
+    def demand(priority: int) -> list:
+        return [
+            user_demand.Static(
+                demand=[1e-3], return_factor=0.0, demand_priority=priority
+            )
+        ]
+
+    fb = model.flow_boundary.add(
+        node(1, 0, 0), [flow_boundary.Static(flow_rate=[1e-3])]
+    )
+    pd_a = model.pass_down.add(node(2, 1, 0))
+    ud_a = model.user_demand.add(node(3, 2, 1), demand(2))
+    trm_a = model.terminal.add(node(4, 3, 1))
+    pd_b = model.pass_down.add(node(5, 2, 0))
+    ud_b = model.user_demand.add(node(6, 3, -1), demand(1))
+    trm_b = model.terminal.add(node(7, 4, -1))
+    pd_c = model.pass_down.add(node(8, 3, 0))
+    trm_c = model.terminal.add(node(9, 4, 0))
+    for a, b in [
+        (fb, pd_a),
+        (pd_a, ud_a),
+        (ud_a, trm_a),
+        (pd_a, pd_b),
+        (pd_b, ud_b),
+        (ud_b, trm_b),
+        (pd_b, pd_c),
+        (pd_c, trm_c),
+    ]:
+        model.link.add(a, b)
+
+
+def pass_down_no_basin_model() -> Model:
+    """Create a model without Basins: a chain of PassDown and UserDemand nodes.
+
+    Without allocation the upstream UserDemand #3 is served first, regardless of its
+    lower demand priority.
+    """
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 1, 10),
+        crs="EPSG:28992",
+    )
+    _pass_down_chain(model, None)
+    return model
+
+
 def pass_down_tracer_model() -> Model:
     """Create a model for testing the tracers through PassDown nodes.
 
     Two FlowBoundaries flow into PassDown #3, of which only #1 has a concentration for the
     substance Foo. UserDemand #4 abstracts from PassDown #3 and returns to Basin #6, while the
-    remaining flow goes via PassDown #5 to Basin #7.
+    remaining flow goes to Basin #7.
     """
     model = Model(
         starttime=datetime(2020, 1, 1),
@@ -183,16 +318,14 @@ def pass_down_tracer_model() -> Model:
         Node(4, Point(2, 1)),
         [user_demand.Static(demand=[0.01], return_factor=0.5)],
     )
-    pd_b = model.pass_down.add(Node(5, Point(2, -1)))
     b1 = model.basin.add(Node(6, Point(3, 1)), basin_tables())
     b2 = model.basin.add(Node(7, Point(3, -1)), basin_tables())
 
     model.link.add(fb1, pd_a)
     model.link.add(fb2, pd_a)
     model.link.add(pd_a, ud)
-    model.link.add(pd_a, pd_b)
     model.link.add(ud, b1)
-    model.link.add(pd_b, b2)
+    model.link.add(pd_a, b2)
 
     return model
 
@@ -202,8 +335,8 @@ def pass_down_allocation_model() -> Model:
 
     A FlowBoundary (3e-3 m³/s) and a Pump (2e-3 m³/s) flow into PassDown #4. UserDemand #5
     abstracts its demand of 4e-3 m³/s first, and the remaining 1e-3 m³/s is divided over
-    PassDown #6 (70%, flows into Basin #8) and #7 (30%, flows into Basin #9). The return flow
-    of the UserDemand (50%) flows via PassDown #10 into Basin #11.
+    Basin #8 (70%) and Basin #9 (30%). The return flow of the UserDemand (50%) flows via
+    PassDown #10 into Basin #11.
     """
     model = Model(
         starttime=datetime(2020, 1, 1),
@@ -229,14 +362,12 @@ def pass_down_allocation_model() -> Model:
     )
     pd_a = model.pass_down.add(
         node(4, 2, 0),
-        [pass_down.Static(to_node_id=[6, 7], fraction=[0.7, np.nan])],
+        [pass_down.Static(to_node_id=[8, 9], fraction=[0.7, np.nan])],
     )
     ud = model.user_demand.add(
         node(5, 3, 1),
         [user_demand.Static(demand=[4e-3], return_factor=0.5)],
     )
-    pd_b = model.pass_down.add(node(6, 3, 0))
-    pd_c = model.pass_down.add(node(7, 3, -1))
     b1 = model.basin.add(node(8, 4, 0), basin_tables(1.0))
     b2 = model.basin.add(node(9, 4, -1), basin_tables(1.0))
     pd_d = model.pass_down.add(node(10, 4, 1))
@@ -246,10 +377,8 @@ def pass_down_allocation_model() -> Model:
     model.link.add(pmp, pd_a)
     model.link.add(fb, pd_a)
     model.link.add(pd_a, ud)
-    model.link.add(pd_a, pd_b)
-    model.link.add(pd_a, pd_c)
-    model.link.add(pd_b, b1)
-    model.link.add(pd_c, b2)
+    model.link.add(pd_a, b1)
+    model.link.add(pd_a, b2)
     model.link.add(ud, pd_d)
     model.link.add(pd_d, b3)
 

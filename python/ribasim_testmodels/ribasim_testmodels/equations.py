@@ -336,7 +336,7 @@ def pid_control_equation_model() -> Model:
 
 
 def pass_down_equation_model() -> Model:
-    """Set up a minimal including PassDown for an equation test.
+    """Set up a minimal model including PassDown for an equation test.
 
     The inflow of PassDown #4 comes from a TabulatedRatingCurve, a FlowBoundary and a
     PID controlled Pump, so the PassDown flows depend on the Basin storages and on the PID

@@ -12,11 +12,11 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
     (; concentration_state, mass) = basin.concentration_data
     (; return_mass) = user_demand
 
-    for (node_idx, outflow_data) in enumerate(user_demand.outflow_data)
+    for (node_idx, outflow_link) in enumerate(user_demand.outflow_link)
         user_demand.in_pass_down_subgraph[node_idx] && continue
 
-        to_basin = !outflow_data.to_pass_down && outflow_id(outflow_data).is_basin
-        (to_basin || outflow_data.to_pass_down) || continue
+        to_node = outflow_link.link[2]
+        (to_node.is_basin || to_node.is_pass_down) || continue
 
         inflow_links = user_demand.inflow_links[node_idx]
         return_mass_node = view(return_mass, :, node_idx)
@@ -46,8 +46,8 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
             tprev,
         )
 
-        if to_basin
-            view(mass, :, outflow_id(outflow_data).idx) .+= return_mass_node
+        if to_node.is_basin
+            view(mass, :, to_node.idx) .+= return_mass_node
         end
     end
     return nothing
@@ -158,6 +158,7 @@ function mass_through_pass_down!(integrator::DEIntegrator)::Nothing
         inflow_state_idx,
         outflow_state_idx,
         link_mass,
+        source_mass,
         concentration,
         pass_down_subgraphs,
     ) = pass_down
@@ -169,18 +170,20 @@ function mass_through_pass_down!(integrator::DEIntegrator)::Nothing
             concentration_node = view(concentration, :, id.idx)
             concentration_node .= 0.0
             for (inflow_link, state_idx) in zip(inflow_links[id.idx], inflow_state_idx[id.idx])
-                source_id = inflow_link.link[1]
-                link_mass_in = view(link_mass, :, state_idx)
-                if !in_pass_down_subgraph(source_id, user_demand)
-                    set_pass_down_source_mass!(
-                        link_mass_in,
-                        p_independent,
-                        source_id,
-                        cumulative_flow_dt.pass_down[state_idx],
-                        tprev,
+                if iszero(state_idx)
+                    # From a node outside the subgraph, whose flow is its own state
+                    source_id = inflow_link.link[1]
+                    cumulative_flow = get_flow(
+                        cumulative_flow_dt,
+                        inflow_link.link,
+                        p_independent;
+                        boundary_flow = p_independent.flow_boundary.cumulative_flow_dt,
                     )
+                    set_pass_down_source_mass!(source_mass, p_independent, source_id, cumulative_flow, tprev)
+                    concentration_node .+= source_mass
+                else
+                    concentration_node .+= view(link_mass, :, state_idx)
                 end
-                concentration_node .+= link_mass_in
             end
 
             outflow_volume = 0.0
@@ -220,16 +223,9 @@ function mass_through_pass_down!(integrator::DEIntegrator)::Nothing
                 tprev,
             )
 
-            outflow_data = user_demand.outflow_data[id.idx]
-            if outflow_data.to_pass_down
-                for state_idx in user_demand.pass_down_outflow_state_idx[id.idx]
-                    iszero(state_idx) && continue
-                    view(link_mass, :, state_idx) .= return_mass_node
-                end
-            else
-                target_id = outflow_id(outflow_data)
-                target_id.is_basin && (view(mass, :, target_id.idx) .+= return_mass_node)
-            end
+            # The return mass into a PassDown node is picked up there via `set_pass_down_source_mass!`
+            target_id = user_demand.outflow_link[id.idx].link[2]
+            target_id.is_basin && (view(mass, :, target_id.idx) .+= return_mass_node)
         end
     end
     return nothing
@@ -332,7 +328,7 @@ end
 
 function TracerTransport(
         inflow_id::FlowCVector{NodeID},
-        outflow_data::FlowCVector{OutflowData},
+        outflow_id::FlowCVector{NodeID},
         basin::Basin,
         do_concentration::Bool,
     )::TracerTransport
@@ -344,8 +340,7 @@ function TracerTransport(
     rows = collect(1:n_basin)
     cols = collect(1:n_basin)
     if do_concentration
-        for (from_node, to_data) in zip(inflow_id, outflow_data)
-            to_node = outflow_id(to_data)
+        for (from_node, to_node) in zip(inflow_id, outflow_id)
             if from_node.is_basin && to_node.is_basin
                 push!(rows, to_node.idx, from_node.idx)
                 push!(cols, from_node.idx, to_node.idx)
@@ -362,8 +357,7 @@ function TracerTransport(
     forward_nz = zeros(Int, n_flow)
     backward_nz = zeros(Int, n_flow)
     if do_concentration
-        for (flow_idx, (from_node, to_data)) in enumerate(zip(inflow_id, outflow_data))
-            to_node = outflow_id(to_data)
+        for (flow_idx, (from_node, to_node)) in enumerate(zip(inflow_id, outflow_id))
             if from_node.is_basin && to_node.is_basin
                 forward_nz[flow_idx] = nz_index(to_node.idx, from_node.idx)
                 backward_nz[flow_idx] = nz_index(from_node.idx, to_node.idx)
@@ -396,7 +390,7 @@ function transport_tracers!(
         tprev::Float64,
         dt::Float64,
     )::Nothing
-    (; tracer_transport, basin, level_boundary, cumulative_flow_dt, inflow_id, outflow_data, flow_ranges) =
+    (; tracer_transport, basin, level_boundary, cumulative_flow_dt, inflow_id, outflow_id, flow_ranges) =
         p_independent
     (; A, diagonal_nz, forward_nz, backward_nz, outflow, rhs, theta, linear_solve) = tracer_transport
     (; mass, evaporate_mass, concentration_state) = basin.concentration_data
@@ -413,12 +407,10 @@ function transport_tracers!(
         flow_idx in flow_ranges.horizontal.user_demand_outflow && continue
 
         volume = cumulative_flow_dt[flow_idx]
-        # For flows into PassDown nodes this is the unset flow link
-        to_node = outflow_id(outflow_data[flow_idx])
         upstream, downstream, nz = if volume > 0
-            inflow_id[flow_idx], to_node, forward_nz[flow_idx]
+            inflow_id[flow_idx], outflow_id[flow_idx], forward_nz[flow_idx]
         elseif volume < 0
-            to_node, inflow_id[flow_idx], backward_nz[flow_idx]
+            outflow_id[flow_idx], inflow_id[flow_idx], backward_nz[flow_idx]
         else
             continue
         end

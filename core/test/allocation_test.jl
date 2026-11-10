@@ -374,7 +374,7 @@ end
         @test JuMP.lower_bound(flow[link_metadata.link]) == 0
         @test JuMP.upper_bound(flow[link_metadata.link]) ≈ total_demand
     end
-    return_link = user_demand.outflow_data[user_demand_id.idx].outflow_link.link
+    return_link = user_demand.outflow_link[user_demand_id.idx].link
     @test JuMP.lower_bound(flow[return_link]) == 0
     @test JuMP.upper_bound(flow[return_link]) ≈ total_demand
 
@@ -502,6 +502,19 @@ end
     end
 
     @test isempty(failure_reasons)
+end
+
+@testitem "Missing demand priority defaults to 1" begin
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/demand_priority_default/ribasim.toml")
+    model = Ribasim.run(toml_path)
+    @test success(model)
+    (; user_demand, level_demand, flow_demand) = model.integrator.p.p_independent
+    # UserDemand (time table) and FlowDemand omit the demand priority, LevelDemand has 2
+    @test user_demand.demand_priorities == [1, 2]
+    @test user_demand.has_demand_priority == [true false]
+    @test flow_demand.has_demand_priority == [true false]
+    @test level_demand.has_demand_priority == [false true]
 end
 
 @testitem "Route priorities" begin

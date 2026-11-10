@@ -540,16 +540,7 @@ is_discrete_controlled(graph::MetaGraph, node_id::NodeID)::Bool =
 
 function set_inoutflow_links!(node::AbstractParameterNode, graph::MetaGraph; inflow = true)
     inflow && map!(node_id -> inflow_link(graph, node_id), node.inflow_link, node.node_id)
-
-    for id in node.node_id
-        outflow_links = get_outflow_links(graph, id)
-        to_pass_down = any(link.link[2].is_pass_down for link in outflow_links)
-        node.outflow_data[id.idx] = if to_pass_down
-            OutflowData(; outflow_links, to_pass_down = true)
-        else
-            OutflowData(; outflow_link = only(outflow_links))
-        end
-    end
+    map!(node_id -> outflow_link(graph, node_id), node.outflow_link, node.node_id)
     return nothing
 end
 
@@ -1431,6 +1422,16 @@ function parse_demand!(
     return errors
 end
 
+"""
+Replace missing demand priorities by the default, since `demand_priority` is optional in all
+demand node tables. This happens right after loading, so that the parsing can rely on it.
+"""
+function fill_demand_priority!(table::StructVector)::StructVector
+    default = schema_default(Schema.UserDemand.Static, Val(:demand_priority))
+    table.demand_priority .= coalesce.(table.demand_priority, default)
+    return table
+end
+
 function parse_static_demand_data!(
         node::Union{UserDemand, FlowDemand},
         id::NodeID,
@@ -1441,9 +1442,8 @@ function parse_static_demand_data!(
     if node isa UserDemand
         node.demand_from_timeseries[id.idx] = false
     end
-    demand_priority_default = schema_default(Schema.UserDemand.Static, Val(:demand_priority))
     for row in static_group
-        demand_priority_idx = findsorted(demand_priorities, coalesce(row.demand_priority, demand_priority_default))
+        demand_priority_idx = findsorted(demand_priorities, row.demand_priority)
         node.has_demand_priority[id.idx, demand_priority_idx] = true
         demand_row = coalesce(row.demand, schema_default(typeof(row), Val(:demand)))
         demand_interpolation = trivial_constant_itp(; val = demand_row)
@@ -1483,8 +1483,8 @@ function parse_time_demand_data!(
 end
 
 function UserDemand(db::DB, config::Config, graph::MetaGraph)
-    static = load_structvector(db, config, Schema.UserDemand.Static)
-    time = load_structvector(db, config, Schema.UserDemand.Time)
+    static = fill_demand_priority!(load_structvector(db, config, Schema.UserDemand.Static))
+    time = fill_demand_priority!(load_structvector(db, config, Schema.UserDemand.Time))
     concentration_time = load_structvector(db, config, Schema.UserDemand.Concentration)
     node_id = get_node_ids(db, NodeType.UserDemand)
     cyclic_times = get_cyclic_time(db, "UserDemand")
@@ -1601,8 +1601,8 @@ function parse_time_demand_data!(
 end
 
 function LevelDemand(db::DB, config::Config, graph::MetaGraph)
-    static = load_structvector(db, config, Schema.LevelDemand.Static)
-    time = load_structvector(db, config, Schema.LevelDemand.Time)
+    static = fill_demand_priority!(load_structvector(db, config, Schema.LevelDemand.Static))
+    time = fill_demand_priority!(load_structvector(db, config, Schema.LevelDemand.Time))
     node_id = get_node_ids(db, NodeType.LevelDemand)
     cyclic_times = get_cyclic_time(db, "LevelDemand")
     demand_priorities = get_all_demand_priorities(db, config)
@@ -1640,8 +1640,8 @@ function LevelDemand(db::DB, config::Config, graph::MetaGraph)
 end
 
 function FlowDemand(db::DB, config::Config, graph::MetaGraph)
-    static = load_structvector(db, config, Schema.FlowDemand.Static)
-    time = load_structvector(db, config, Schema.FlowDemand.Time)
+    static = fill_demand_priority!(load_structvector(db, config, Schema.FlowDemand.Static))
+    time = fill_demand_priority!(load_structvector(db, config, Schema.FlowDemand.Time))
     node_id = get_node_ids(db, NodeType.FlowDemand)
     cyclic_times = get_cyclic_time(db, "FlowDemand")
     demand_priorities = get_all_demand_priorities(db, config)
@@ -1755,13 +1755,12 @@ function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
     inflow_links = [get_inflow_links(graph, id) for id in node_id]
     outflow_links = [get_outflow_links(graph, id) for id in node_id]
 
-    # The links towards a UserDemand node are not included, the UserDemand inflow state is their flow state
-    state_links_dict = Dict{Int32, LinkMetadata}()
-    for link in Iterators.flatten((Iterators.flatten(inflow_links), Iterators.flatten(outflow_links)))
-        link.link[2].type == NodeType.UserDemand && continue
-        state_links_dict[link.id] = link
-    end
-    state_links = [state_links_dict[link_id] for link_id in sort!(collect(keys(state_links_dict)))]
+    # The links out of PassDown nodes have a state, except the links towards a UserDemand node,
+    # whose flow is the UserDemand inflow state. The flow over a link into a PassDown node from
+    # a node outside the subgraph is the state of that node.
+    state_links = sort!(
+        [link for link in Iterators.flatten(outflow_links) if link.link[2].type != NodeType.UserDemand]
+    )
 
     n_substance = length(get_substances(db, config))
     pass_down = PassDown(;
@@ -1773,6 +1772,7 @@ function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
         inflow_state_idx = [[state_link_index(state_links, link) for link in links] for links in inflow_links],
         outflow_state_idx = [[state_link_index(state_links, link) for link in links] for links in outflow_links],
         link_mass = zeros(n_substance, length(state_links)),
+        source_mass = zeros(n_substance),
         concentration = zeros(n_substance, length(node_id)),
     )
     (; fraction) = pass_down
@@ -1785,9 +1785,9 @@ function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
     for row in static
         row_ids = (; node_id = row.node_id, to_node_id = row.to_node_id)
         id = NodeID(NodeType.PassDown, row.node_id, node_id)
-        # The fractions are only used to divide the flow over multiple PassDown nodes
+        # The fractions divide the flow over the outflow links, except the link to a UserDemand node
         link_idx = findfirst(
-            link -> link.link[2].value == row.to_node_id && link.link[2].is_pass_down,
+            link -> link.link[2].value == row.to_node_id && link.link[2].type != NodeType.UserDemand,
             outflow_links[id.idx],
         )
         if isnothing(link_idx)
@@ -1804,7 +1804,7 @@ function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
         end
     end
     if !isempty(unknown_link_rows)
-        @error "PassDown fractions can only be given for flow links from the PassDown node to another PassDown node." unknown_link_rows
+        @error "PassDown fractions can only be given for flow links out of the PassDown node, except the link to a UserDemand node." unknown_link_rows
         errors = true
     end
     if !isempty(duplicate_rows)
@@ -1817,24 +1817,24 @@ function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
     end
 
     for id in node_id
-        pass_down_idxs =
-            findall(link -> link.link[2].is_pass_down, outflow_links[id.idx])
-        isempty(pass_down_idxs) && continue
+        divided_idxs =
+            findall(link -> link.link[2].type != NodeType.UserDemand, outflow_links[id.idx])
+        isempty(divided_idxs) && continue
 
-        specified = has_fraction[id.idx][pass_down_idxs]
-        fraction_sum = sum(fraction[id.idx][pass_down_idxs][specified]; init = 0.0)
-        missing_idxs = pass_down_idxs[.!specified]
+        specified = has_fraction[id.idx][divided_idxs]
+        fraction_sum = sum(fraction[id.idx][divided_idxs][specified]; init = 0.0)
+        missing_idxs = divided_idxs[.!specified]
 
         if isempty(missing_idxs)
             if !isapprox(fraction_sum, 1.0)
-                @error "The fractions of the outflow links of $id to PassDown nodes must sum to 1 (got $fraction_sum)."
+                @error "The fractions of the outflow links of $id must sum to 1 (got $fraction_sum)."
                 errors = true
             end
         elseif length(missing_idxs) > 1
-            @error "$id can have at most one outflow link to a PassDown node with an unspecified fraction."
+            @error "$id can have at most one outflow link with an unspecified fraction."
             errors = true
         elseif fraction_sum > 1
-            @error "The fractions of the outflow links of $id to PassDown nodes must sum to at most 1 when one fraction is unspecified (got $fraction_sum)."
+            @error "The fractions of the outflow links of $id must sum to at most 1 when one fraction is unspecified (got $fraction_sum)."
             errors = true
         else
             fraction[id.idx][only(missing_idxs)] = 1.0 - fraction_sum
@@ -2072,8 +2072,8 @@ function Parameters(db::DB, config::Config)::Parameters
     flow_ranges = count_flow_ranges(nodes)
     state_ranges = count_state_ranges(nodes)
 
-    inflow_id, outflow_data, state_id = get_flow_ids(nodes, flow_ranges)
-    incidence_matrix = get_incidence_matrix(inflow_id, outflow_data)
+    inflow_id, outflow_id, state_id = get_flow_ids(nodes, flow_ranges)
+    incidence_matrix = get_incidence_matrix(inflow_id, outflow_id)
 
     p_independent = ParametersIndependent(;
         config.starttime,
@@ -2083,7 +2083,7 @@ function Parameters(db::DB, config::Config)::Parameters
         nodes...,
         subgrid,
         inflow_id,
-        outflow_data,
+        outflow_id,
         state_id,
         config.solver.water_balance_abstol,
         config.solver.water_balance_reltol,

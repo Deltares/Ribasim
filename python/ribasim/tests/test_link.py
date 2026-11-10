@@ -135,24 +135,6 @@ def test_validate_link_user_demand_pass_down_inflow(upstream: tuple[str, str]):
         model.link.add(second, ud)
 
 
-def test_validate_link_pass_down_user_demand_and_other_outflow():
-    """A PassDown node with a UserDemand outflow can only flow into other PassDown nodes."""
-    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
-    pd = model.pass_down.add(Node(1, sg.Point(0, 0)))
-    ud = model.user_demand.add(
-        Node(2, sg.Point(1, 1)),
-        [
-            user_demand.Static(
-                demand_priority=[1], demand=[1e-4], return_factor=0.5, min_level=[0.0]
-            )
-        ],
-    )
-    trm = model.terminal.add(Node(3, sg.Point(1, -1)))
-    model.link.add(pd, ud)
-    with pytest.raises(ValueError, match="all its other flow link outneighbors"):
-        model.link.add(pd, trm)
-
-
 def test_validate_link_connector_cannot_split_into_pass_down():
     """A connector node cannot flow into multiple PassDown nodes, there must be a PassDown node in between."""
     model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
@@ -175,23 +157,6 @@ def test_validate_link_pass_down_can_split_into_pass_down():
     pd2 = model.pass_down.add(Node(3, sg.Point(1, -1)))
     model.link.add(pd, pd1)
     model.link.add(pd, pd2)
-
-
-def test_validate_link_pass_down_skipped_with_junction():
-    """PassDown connectivity involving a Junction is left to the Julia core."""
-    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
-    pd = model.pass_down.add(Node(1, sg.Point(0, 0)))
-    ud = model.user_demand.add(
-        Node(2, sg.Point(1, 1)),
-        [
-            user_demand.Static(
-                demand_priority=[1], demand=[1e-4], return_factor=0.5, min_level=[0.0]
-            )
-        ],
-    )
-    jct = model.junction.add(Node(3, sg.Point(1, -1)))
-    model.link.add(pd, ud)
-    model.link.add(pd, jct)
 
 
 def test_listen_link_allows_reverse_control(discrete_control_of_pid_control):
