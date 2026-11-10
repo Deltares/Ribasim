@@ -183,11 +183,9 @@ function update_concentrations!(u, t, integrator)::Nothing
     (; p, tprev) = integrator
     (; p_independent, current_basin_properties) = p
     (; current_storage) = current_basin_properties
-    (; basin, flow_boundary, do_concentration, cumulative_flow_dt) = p_independent
+    (; basin, flow_boundary, do_concentration) = p_independent
     (; storage_prev_dt, concentration_data, forcing) = basin
     (;
-        evaporate_mass,
-        cumulative_in,
         concentration_state,
         concentration_drainage,
         concentration_precipitation,
@@ -204,13 +202,16 @@ function update_concentrations!(u, t, integrator)::Nothing
 
     dt = t - tprev
 
+    # The concentrations in the input are constant over the timestep, since these are tstops.
+    # At t they may already have the next value, so they are evaluated at tprev.
+
     # Basin forcings
     (; drainage, precipitation, surface_runoff) = forcing.exact_cumulative_forcing_dt
-    add_forcing_mass!(mass, concentration_drainage, drainage, t)
-    add_forcing_mass!(mass, concentration_precipitation, precipitation, t)
-    add_forcing_mass!(mass, concentration_surface_runoff, surface_runoff, t)
+    add_forcing_mass!(mass, concentration_drainage, drainage, tprev)
+    add_forcing_mass!(mass, concentration_precipitation, precipitation, tprev)
+    add_forcing_mass!(mass, concentration_surface_runoff, surface_runoff, tprev)
     # Loads are per second, not volume, so the flow is just the time step
-    add_forcing_mass!(mass, loads, dt, t)
+    add_forcing_mass!(mass, loads, dt, tprev)
 
     # Exact boundary flow over time step
     for (id, data_out) in zip(flow_boundary.node_id, flow_boundary.outflow_data)
@@ -220,48 +221,20 @@ function update_concentrations!(u, t, integrator)::Nothing
                 view(mass, :, to_node.idx),
                 flow_boundary.concentration_itp[id.idx],
                 flow_boundary.cumulative_flow_dt[id.idx],
-                t,
+                tprev,
             )
         end
     end
 
     mass_inflows_from_user_demand!(integrator)
     mass_through_pass_down!(integrator)
-    mass_inflows_basin!(integrator)
-    aggregate_flows!(
-        cumulative_in,
-        cumulative_flow_dt,
-        p_independent;
-        do_outflows = false,
-        positive_vertical_forcing = forcing.exact_cumulative_forcing_dt,
-        boundary_flow = flow_boundary.cumulative_flow_dt,
-    )
 
-    # Update the Basin concentrations based on the added mass and flows
-    for node_id in basin.node_id
-        storage_only_in = storage_prev_dt[node_id.idx] + cumulative_in[node_id.idx]
-
-        # The residence time tracer gets older
-        mass[Substance.ResidenceTime, node_id.idx] += dt * storage_prev_dt[node_id.idx]
-        if iszero(storage_only_in)
-            concentration_state[:, node_id.idx] .= 0
-        else
-            concentration_state[:, node_id.idx] .= view(mass, :, node_id.idx) ./ storage_only_in
-        end
-    end
-
-    mass_outflows_basin!(integrator)
+    transport_tracers!(p_independent, current_storage, tprev, dt)
 
     errors = false
 
     for node_id in basin.node_id
         mass_node = view(mass, :, node_id.idx)
-
-        # Evaporate mass to keep the mass balance, if enabled in model config
-        if evaporate_mass
-            evaporated_volume = cumulative_flow_dt.vertical.evaporation[node_id.idx]
-            mass_node .-= @view(concentration_state[:, node_id.idx]) .* evaporated_volume
-        end
 
         # Take care of too small masses, possibly becoming negative due to truncation.
         for I in eachindex(mass_node)
@@ -276,7 +249,6 @@ function update_concentrations!(u, t, integrator)::Nothing
             log_negative_mass(node_id, mass_node, concentration_data.substances)
         end
 
-        # Update the Basin concentrations again based on the removed mass
         s = current_storage[node_id.idx]
         if iszero(s)
             concentration_state[:, node_id.idx] .= 0
