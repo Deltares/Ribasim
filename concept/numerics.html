@@ -266,14 +266,15 @@ window.Quarto = {
   <li><a href="#exactness" id="toc-exactness" class="nav-link" data-scroll-target="#exactness"><span class="header-section-number">3.3.4</span> Exactness</a></li>
   </ul></li>
   </ul></li>
-  <li><a href="#continuity-considerations" id="toc-continuity-considerations" class="nav-link" data-scroll-target="#continuity-considerations"><span class="header-section-number">4</span> Continuity considerations</a>
+  <li><a href="#sec-newton-convergence" id="toc-sec-newton-convergence" class="nav-link" data-scroll-target="#sec-newton-convergence"><span class="header-section-number">4</span> Convergence of the Newton iterations</a></li>
+  <li><a href="#continuity-considerations" id="toc-continuity-considerations" class="nav-link" data-scroll-target="#continuity-considerations"><span class="header-section-number">5</span> Continuity considerations</a>
   <ul class="collapse">
-  <li><a href="#basin-profiles" id="toc-basin-profiles" class="nav-link" data-scroll-target="#basin-profiles"><span class="header-section-number">4.1</span> Basin profiles</a></li>
-  <li><a href="#qh-relations" id="toc-qh-relations" class="nav-link" data-scroll-target="#qh-relations"><span class="header-section-number">4.2</span> Q(h) relations</a></li>
-  <li><a href="#empty-basins" id="toc-empty-basins" class="nav-link" data-scroll-target="#empty-basins"><span class="header-section-number">4.3</span> Empty basins</a></li>
+  <li><a href="#basin-profiles" id="toc-basin-profiles" class="nav-link" data-scroll-target="#basin-profiles"><span class="header-section-number">5.1</span> Basin profiles</a></li>
+  <li><a href="#qh-relations" id="toc-qh-relations" class="nav-link" data-scroll-target="#qh-relations"><span class="header-section-number">5.2</span> Q(h) relations</a></li>
+  <li><a href="#empty-basins" id="toc-empty-basins" class="nav-link" data-scroll-target="#empty-basins"><span class="header-section-number">5.3</span> Empty basins</a></li>
   </ul></li>
-  <li><a href="#error-control-for-cumulative-flows" id="toc-error-control-for-cumulative-flows" class="nav-link" data-scroll-target="#error-control-for-cumulative-flows"><span class="header-section-number">5</span> Error control for cumulative flows</a></li>
-  <li><a href="#sec-tracer-numerics" id="toc-sec-tracer-numerics" class="nav-link" data-scroll-target="#sec-tracer-numerics"><span class="header-section-number">6</span> Substance transport</a></li>
+  <li><a href="#error-control-for-cumulative-flows" id="toc-error-control-for-cumulative-flows" class="nav-link" data-scroll-target="#error-control-for-cumulative-flows"><span class="header-section-number">6</span> Error control for cumulative flows</a></li>
+  <li><a href="#sec-tracer-numerics" id="toc-sec-tracer-numerics" class="nav-link" data-scroll-target="#sec-tracer-numerics"><span class="header-section-number">7</span> Substance transport</a></li>
   </ul>
 </nav>
     </div>
@@ -434,12 +435,16 @@ window.Quarto = {
 </section>
 </section>
 </section>
-<section id="continuity-considerations" class="level1" data-number="4">
-<h1 data-number="4"><span class="header-section-number">4</span> Continuity considerations</h1>
+<section id="sec-newton-convergence" class="level1" data-number="4">
+<h1 data-number="4"><span class="header-section-number">4</span> Convergence of the Newton iterations</h1>
+<p>The solver reuses the Jacobian and the factorization of <span class="math inline">\(W = J - \gamma^{-1}I\)</span> over many timesteps, so the Newton iterations converge linearly, at a rate <span class="math inline">\(\theta\)</span> that is estimated from successive increments. A solve is accepted when the error estimated from <span class="math inline">\(\theta\)</span> and the last increment is small compared to the tolerance. OrdinaryDiffEq uses the criterion from Section IV.8 of <a href="https://doi.org/10.1007/978-3-642-05221-7_8">Hairer and Wanner</a>; the <a href="https://sundials.readthedocs.io/en/latest/cvode/Mathematics_link.html#nonlinear-solve">CVODE documentation</a> describes the same idea. The first iteration of a solve uses the <span class="math inline">\(\theta\)</span> of an earlier solve, and a solve that stops after one iteration does not measure it again, so a small <span class="math inline">\(\theta\)</span> could otherwise be used for many timesteps after <span class="math inline">\(W\)</span> has changed. Ribasim therefore resets <span class="math inline">\(\theta\)</span> to 1 whenever <span class="math inline">\(W\)</span> is rebuilt, like CVODE does. Without this reset, a stiff Basin can oscillate slightly every timestep, which keeps the timestep small for hours, as in the <code>pump_pit</code> test model.</p>
+</section>
+<section id="continuity-considerations" class="level1" data-number="5">
+<h1 data-number="5"><span class="header-section-number">5</span> Continuity considerations</h1>
 <p>The convergence of the Newton method can be <a href="https://en.wikipedia.org/wiki/Newton%27s_method#Proof_of_quadratic_convergence_for_Newton's_iterative_method">proven</a> given certain properties of <span class="math inline">\(\mathbf{f}\)</span> around the initial guess and root to find. An important aspect is the smoothness of <span class="math inline">\(\mathbf{f}\)</span>. The basin profiles and <span class="math inline">\(Q(h)\)</span> relations are given by interpolated data, and thus we have some control over the smoothness of these functions by the choice of interpolation method. This is discussed further below. the Manning resistance is not mentioned here since it is given by an analytical expression.</p>
 <p>Control mechanisms can change parameters of <span class="math inline">\(\mathbf{f}\)</span> discontinuously, leading to discontinuities of <span class="math inline">\(\mathbf{f}\)</span>. This however does not yield problems for the time integration methods in <code>DifferentialEquations.jl</code>, since the <a href="https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/">callback mechanisms</a> used to change these parameters make the solver take these discontinuities into account.</p>
-<section id="basin-profiles" class="level2" data-number="4.1">
-<h2 data-number="4.1" class="anchored" data-anchor-id="basin-profiles"><span class="header-section-number">4.1</span> Basin profiles</h2>
+<section id="basin-profiles" class="level2" data-number="5.1">
+<h2 data-number="5.1" class="anchored" data-anchor-id="basin-profiles"><span class="header-section-number">5.1</span> Basin profiles</h2>
 <p>The basin profiles affect <span class="math inline">\(\mathbf{f}\)</span> in many ways, anywhere where a basin level or area is required.</p>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
@@ -455,21 +460,21 @@ Note
 </div>
 </div>
 </section>
-<section id="qh-relations" class="level2" data-number="4.2">
-<h2 data-number="4.2" class="anchored" data-anchor-id="qh-relations"><span class="header-section-number">4.2</span> Q(h) relations</h2>
+<section id="qh-relations" class="level2" data-number="5.2">
+<h2 data-number="5.2" class="anchored" data-anchor-id="qh-relations"><span class="header-section-number">5.2</span> Q(h) relations</h2>
 <p><code>TabulatedRatingCurve</code> nodes contribute to <span class="math inline">\(\mathbf{f}\)</span> with terms of the following form:</p>
 <p><span class="math display">\[
     Q(h(u))
 \]</span></p>
 <p>where the continuity of this term is given by the least continuous of <span class="math inline">\(Q\)</span> and <span class="math inline">\(h\)</span>.</p>
 </section>
-<section id="empty-basins" class="level2" data-number="4.3">
-<h2 data-number="4.3" class="anchored" data-anchor-id="empty-basins"><span class="header-section-number">4.3</span> Empty basins</h2>
+<section id="empty-basins" class="level2" data-number="5.3">
+<h2 data-number="5.3" class="anchored" data-anchor-id="empty-basins"><span class="header-section-number">5.3</span> Empty basins</h2>
 <p><a href="../reference/node/basin.html#sec-reduction-factor">Reduction factors</a> are introduced at several points in the definition of <span class="math inline">\(\mathbf{f}\)</span> to smooth out otherwise discontinuous transitions (e.g.&nbsp;the flow rate of a pump going to zero when the source basin dries out). If flows are not too large with respect to basin storage, this will prevent basins from reaching 0. Rather, the basin gets a very small storage. The reduction factors help with performance, but are also an important tool to avoid getting negative storage in basins. Negative storage needs to be avoided since it is not a real solution, and would introduce water into the model that doesn’t exist. Another tool used to avoid negative storage is the <a href="https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/"><code>isoutoutofdomain</code></a> option, which Ribasim makes use of. This rejects timesteps that lead to negative storage, instead retrying with a smaller timestep.</p>
 </section>
 </section>
-<section id="error-control-for-cumulative-flows" class="level1" data-number="5">
-<h1 data-number="5"><span class="header-section-number">5</span> Error control for cumulative flows</h1>
+<section id="error-control-for-cumulative-flows" class="level1" data-number="6">
+<h1 data-number="6"><span class="header-section-number">6</span> Error control for cumulative flows</h1>
 <p>The states in <span class="math inline">\(\mathbf{u}\)</span> are cumulative quantities that grow monotonically over time. With the default SciML error control the tolerance per state would be roughly <span class="math inline">\(\text{abstol} + |\mathbf{u}| * \text{reltol}\)</span>, see <a href="https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/">Basic Stepsize Control</a>. That means the tolerance is based on the cumulative flow so far rather than on the flow over the current timestep, so it keeps loosening as the simulation progresses: after a thousand seconds at <span class="math inline">\(1\text{ m}^3/\text{s}\)</span> an effective <code>reltol</code> of <span class="math inline">\(10^{-5}\)</span> has degraded to <span class="math inline">\(10^{-2}\)</span>. It also makes the tolerance depend on arbitrary offsets: a large Basin with little throughflow would get a very loose tolerance purely because of its storage.</p>
 <p>Ribasim therefore overrides <code>calculate_residuals</code> so that each state is scaled by the magnitude of its <em>change</em> over the timestep instead of its absolute magnitude:</p>
 <p><span class="math display">\[
@@ -479,8 +484,8 @@ Note
 <p>Note that this changes the units in which the tolerances should be interpreted. <code>abstol</code> is an absolute tolerance on the volume passed by a state during a single timestep (in <span class="math inline">\(\text{m}^3\)</span>), and <code>reltol</code> is relative to that same per-step volume. It acts as a floor for states that carry almost no flow during a timestep, where the <code>reltol</code> term vanishes; setting it too low makes such states dictate the timestep for the whole model. Since it is a volume per timestep and not a rate, <code>abstol</code> should not be scaled with <code>dt</code>.</p>
 <p>The default of <span class="math inline">\(10^{-4}\ \text{m}^3\)</span> is the largest value that is accurate across model scales, from a handful of Basins up to a national model. Because it is an absolute volume it does not scale with the model, so a large model can often raise it to <span class="math inline">\(10^{-2}\ \text{m}^3\)</span> for a substantial speedup at no measurable loss of accuracy, while the same setting on a small model is roughly two orders of magnitude less accurate. If you raise it, verify against a run with a tighter tolerance.</p>
 </section>
-<section id="sec-tracer-numerics" class="level1" data-number="6">
-<h1 data-number="6"><span class="header-section-number">6</span> Substance transport</h1>
+<section id="sec-tracer-numerics" class="level1" data-number="7">
+<h1 data-number="7"><span class="header-section-number">7</span> Substance transport</h1>
 <p>The <a href="../concept/equations.html#sec-tracer-equations">mass balance of a substance</a> in Basin <span class="math inline">\(i\)</span> is <span class="math display">\[
 \frac{\text{d}}{\text{d}t} \left( S_i C_i \right) = \sum_j q_{ji} C_j - q_{\text{out},i} C_i + f_i.
 \]</span> It is solved after each timestep of the water balance, using the flows of that timestep. Integrating it over a timestep from <span class="math inline">\(t_n\)</span> to <span class="math inline">\(t_{n+1}\)</span> gives</p>
