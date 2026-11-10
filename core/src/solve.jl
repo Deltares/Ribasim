@@ -861,6 +861,8 @@ const MAX_JACOBIAN_AGE = 50
 # update_coefficients!. Also refresh it when it is too old, or when the previous attempt at
 # this step failed to converge: OrdinaryDiffEq considers a Jacobian requested at the same time
 # current and only shrinks the step, so the retries would keep failing on the same Jacobian.
+# When W changes, forget the convergence rate of the Newton iteration, see
+# `reset_convergence_rate!`.
 function OrdinaryDiffEqDifferentiation.do_newJW(
         integrator::OrdinaryDiffEqCore.ODEIntegrator{A, B, C, D, E, <:Parameters},
         alg,
@@ -882,8 +884,23 @@ function OrdinaryDiffEqDifferentiation.do_newJW(
     if new_jac
         p_mutable.jac_naccept = naccept
     end
+    new_W && reset_convergence_rate!(nlsolver)
     p_mutable.refresh_jac = new_jac
     return new_jac, new_W
+end
+
+"""
+Forget the convergence rate θ of the Newton iteration, so that the next nonlinear solve
+measures it again for the new iteration matrix W, like CVODE does (`crate = 1` in
+`cvNlsLSetup`). See https://ribasim.org/concept/numerics.html#sec-newton-convergence
+
+This can be removed once https://github.com/SciML/OrdinaryDiffEq.jl/issues/4983 is fixed.
+"""
+function reset_convergence_rate!(nlsolver::T)::Nothing where {T}
+    if hasfield(T, :prev_θ)
+        nlsolver.prev_θ = one(nlsolver.prev_θ)
+    end
+    return nothing
 end
 
 # The norm applied to the residuals to obtain the final scalar solver error

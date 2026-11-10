@@ -220,6 +220,15 @@ The reduced linear solve can be disabled with the solver setting `reduced_implic
 In that case the (sparse) Jacobian of $\mathbf{f}$ is computed directly with automatic differentiation and sparse matrix coloring, and the full linear system is solved.
 This is mainly useful for verification, as it is considerably slower for larger models.
 
+# Convergence of the Newton iterations {#sec-newton-convergence}
+
+The solver reuses the Jacobian and the factorization of $W = J - \gamma^{-1}I$ over many timesteps, so the Newton iterations converge linearly, at a rate $\theta$ that is estimated from successive increments.
+A solve is accepted when the error estimated from $\theta$ and the last increment is small compared to the tolerance.
+OrdinaryDiffEq uses the criterion from Section IV.8 of [Hairer and Wanner](https://doi.org/10.1007/978-3-642-05221-7_8); the [CVODE documentation](https://sundials.readthedocs.io/en/latest/cvode/Mathematics_link.html#nonlinear-solve) describes the same idea.
+The first iteration of a solve uses the $\theta$ of an earlier solve, and a solve that stops after one iteration does not measure it again, so a small $\theta$ could otherwise be used for many timesteps after $W$ has changed.
+Ribasim therefore resets $\theta$ to 1 whenever $W$ is rebuilt, like CVODE does.
+Without this reset, a stiff Basin can oscillate slightly every timestep, which keeps the timestep small for hours, as in the `pump_pit` test model.
+
 # Continuity considerations
 
 The convergence of the Newton method can be [proven](https://en.wikipedia.org/wiki/Newton%27s_method#Proof_of_quadratic_convergence_for_Newton's_iterative_method) given certain properties of $\mathbf{f}$ around the initial guess and root to find. An important aspect is the smoothness of $\mathbf{f}$. The basin profiles and $Q(h)$ relations are given by interpolated data, and thus we have some control over the smoothness of these functions by the choice of interpolation method. This is discussed further below. the Manning resistance is not mentioned here since it is given by an analytical expression.
