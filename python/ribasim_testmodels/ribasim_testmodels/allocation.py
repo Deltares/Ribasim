@@ -1965,3 +1965,58 @@ def outlet_allocation_discrete_control_model() -> Model:
     model.link.add(ld5, basin4)
 
     return model
+
+
+def user_demand_min_level_model() -> Model:
+    """Two Basins that start at the min_level of their UserDemand, supplied from a much larger Basin.
+
+    Basin #3 is supplied by an allocation controlled Outlet, Basin #7 by an allocation controlled Pump.
+    """
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2020-01-11",
+        crs="EPSG:28992",
+        allocation=Allocation(),
+        experimental=Experimental(allocation=True),
+    )
+
+    basin1 = model.basin.add(
+        Node(1, Point(0, 0), subnetwork_id=2),
+        [basin.Profile(area=1e6, level=[0.0, 3.0]), basin.State(level=[2.0])],
+    )
+    outlet2 = model.outlet.add(
+        Node(2, Point(1, 1), subnetwork_id=2),
+        [
+            outlet.Static(
+                flow_rate=[0.0], max_flow_rate=[1.0], allocation_controlled=True
+            )
+        ],
+    )
+    pump6 = model.pump.add(
+        Node(6, Point(1, -1), subnetwork_id=2),
+        [pump.Static(flow_rate=[0.0], max_flow_rate=[1.0], allocation_controlled=True)],
+    )
+    terminal5 = model.terminal.add(Node(5, Point(3, 0), subnetwork_id=2))
+
+    for basin_id, user_demand_id, y, connector in [
+        (3, 4, 1, outlet2),
+        (7, 8, -1, pump6),
+    ]:
+        downstream_basin = model.basin.add(
+            Node(basin_id, Point(2, y), subnetwork_id=2),
+            [basin.Profile(area=1e4, level=[0.0, 3.0]), basin.State(level=[0.5])],
+        )
+        user = model.user_demand.add(
+            Node(user_demand_id, Point(3, y), subnetwork_id=2),
+            [
+                user_demand.Static(
+                    demand=[0.1], return_factor=0.0, min_level=0.5, demand_priority=1
+                )
+            ],
+        )
+        model.link.add(basin1, connector)
+        model.link.add(connector, downstream_basin)
+        model.link.add(downstream_basin, user)
+        model.link.add(user, terminal5)
+
+    return model
