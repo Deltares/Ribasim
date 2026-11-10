@@ -624,3 +624,17 @@ $$
 $$ {#eq-drn}
 
 The interaction with MODFLOW 6 boundary conditions is explained in greater detail in the [the iMOD Coupler docs](https://deltares.github.io/iMOD-Documentation/coupler.html).
+
+# Behavior in allocation
+
+[Allocation](/concept/allocation.qmd) decides how the water in the network is best distributed over the demands, starting from the current Basin storages.
+The water stored in a Basin can be used to supply demands: those of UserDemand nodes abstracting from the Basin, and those further downstream.
+Allocation does not plan to take more water out of a Basin than it contains: when a Basin would run dry, its outflows are reduced.
+
+Without a [LevelDemand](/reference/node/level-demand.qmd), allocation has no preference for the level of a Basin, so it can draw down a Basin to meet demands.
+With a LevelDemand, allocation tries to keep the level between a minimum and maximum level, and water above the maximum level is available for other demands.
+
+The flows that allocation planned are in [`allocation_flow.nc`](/reference/usage.qmd#sec-results), where the precipitation, evaporation and other vertical fluxes of a Basin are combined in one flow with `link_id` 0.
+These planned flows can differ from the simulated flows in `flow.nc`, since allocation uses a simplified version of the equations and assumes the forcing stays constant until the next intervention time, set by `intervention_interval` in the [allocation settings](/reference/usage.qmd#sec-allocation-settings).
+
+With a route priority for Basins, see [allocation settings](/reference/usage.qmd#sec-allocation-settings), allocation can be made to prefer or avoid using water stored in Basins.

@@ -53,3 +53,8 @@ table_from_schema(
     restrictions = Dict(:controlled_variable => "must be \"level\", \"storage\" or \"flow_rate\""),
 )
 ```
+
+# Behavior in allocation
+
+[Allocation](/concept/allocation.qmd) assumes that the flow rate that this node sets on a Pump or Outlet stays the same until the next intervention time, set by `intervention_interval` in the [allocation settings](/reference/usage.qmd#sec-allocation-settings).
+Since a ContinuousControl node changes the flow rate continuously, the simulated flows can differ from what allocation planned.

@@ -100,3 +100,17 @@ Q_\text{out} = r \cdot Q_\text{in}.
 $$
 
 Note that this means that the UserDemand has a consumption rate of $(1-r)Q_\text{in}$.
+
+# Behavior in allocation
+
+Without allocation, a UserDemand tries to abstract its full demand, summed over all demand priorities.
+
+With [allocation](/concept/allocation.qmd), a UserDemand gets an allocated flow rate for each demand priority, and abstracts at most this allocated flow rate until the next intervention time, set by `intervention_interval` in the [allocation settings](/reference/usage.qmd#sec-allocation-settings).
+Demands with an earlier `demand_priority` are met first.
+When there is not enough water for all demands with the same priority, each demand gets the same share of what it asked for.
+The water can come from the Basins or Junction the UserDemand abstracts from, and from further upstream.
+When a UserDemand abstracts from several Basins, allocation decides how much is taken from each.
+The return flow can be used again by demands downstream.
+
+The demand, allocated and realized flow rates of each UserDemand are in [`allocation.nc`](/reference/usage.qmd#sec-results).
+The realized flow rate can be lower than the allocated flow rate, for instance when the Basin it abstracts from is almost empty or reaches `min_level`, or because less water arrives than allocation predicted.

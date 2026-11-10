@@ -71,3 +71,21 @@ $$
 For `depth_threshold`, `level_difference_threshold` see [Solver settings](/reference/usage.qmd#sec-solver-settings).
 
 Since $\phi_\text{level}$ is applied after the clamp, `min_flow_rate` is not a strict minimum: the level criteria can still reduce the flow to zero.
+
+# Behavior in allocation
+
+How an Outlet behaves in [allocation](/concept/allocation.qmd) depends on `allocation_controlled` in the [Static](#static) table.
+
+An Outlet that is not allocation-controlled (the default) keeps the flow rate given in its tables or by its control node.
+Allocation takes this flow into account, but does not change it.
+
+For an allocation-controlled Outlet, allocation sets the flow rate between `min_flow_rate` and `max_flow_rate`, to bring water to where it is needed.
+This flow rate is used until the next intervention time, set by `intervention_interval` in the [allocation settings](/reference/usage.qmd#sec-allocation-settings), and is in [`allocation_control.nc`](/reference/usage.qmd#sec-results).
+The simulated flow in `flow.nc` can be lower than this flow rate, for instance when the upstream Basin is almost empty, when the upstream level is not higher than the downstream level, or when `min_upstream_level` or `max_downstream_level` is reached.
+An allocation-controlled Outlet needs a finite `max_flow_rate`.
+An Outlet that connects the primary network to a secondary network must be allocation-controlled, and a [DiscreteControl](/reference/node/discrete-control.qmd) node can switch allocation control on and off.
+
+A [FlowDemand](/reference/node/flow-demand.qmd) on an Outlet is a minimum flow rate when allocation is not used.
+With allocation it is a demand like the others: it is met in the order of its demand priority, so it can get less water than demanded when water is scarce.
+
+With a route priority for Outlet nodes, see [allocation settings](/reference/usage.qmd#sec-allocation-settings), allocation can be made to prefer or avoid routing water through them.

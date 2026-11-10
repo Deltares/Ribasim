@@ -104,3 +104,8 @@ Note by @eq-error that the error is positive if the setpoint is larger than the 
 
 We enforce the convention that when a Pump is controlled, its link points away from the Basin, and when an Outlet is controlled, its link points towards the Basin, so that the main flow direction along these links is positive.
 Therefore, positive flows of the Pump and Outlet have opposite effects on the Basin, and thus the parameters $K_p,K_i,K_d$ of the Pump and Outlet must have opposite signs to achieve the same goal.
+
+# Behavior in allocation
+
+[Allocation](/concept/allocation.qmd) assumes that the flow rate that this node sets on a Pump or Outlet stays the same until the next intervention time, set by `intervention_interval` in the [allocation settings](/reference/usage.qmd#sec-allocation-settings).
+Since a PidControl node changes the flow rate continuously, the simulated flows can differ from what allocation planned.
