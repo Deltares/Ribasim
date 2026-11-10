@@ -585,8 +585,7 @@ FlowBoundary in `set_simulation_data!`.
 
 The flow in a Junction node is passed on, except for the flow that is abstracted by the UserDemand node
 that abstracts from it, if present. That is a decision variable, bounded by the allocated demand, so the
-remaining flow is divided over the downstream Junction nodes by their fractions, or flows into the one
-downstream node that is not a Junction node.
+remaining flow is divided over the outflow links by their fractions from `Junction / static`.
 """
 function add_junction!(
         allocation_model::AllocationModel,

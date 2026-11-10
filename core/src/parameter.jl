@@ -976,9 +976,6 @@ node_id: node ID of the Terminal node
     node_id::Vector{NodeID}
 end
 
-"""
-node_id: node ID of the Junction node
-"""
 @enumx CacheType flow_rate_pump flow_rate_outlet basin_level basin_storage
 
 """

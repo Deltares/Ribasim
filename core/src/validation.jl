@@ -84,8 +84,10 @@ n_neighbor_bounds_flow(::Val{:FlowBoundary}) = n_neighbor_bounds(0, 0, 1, 1)
 n_neighbor_bounds_flow(::Val{:Pump}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:Outlet}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:Terminal}) = n_neighbor_bounds(1, M, 0, 0)
-# The required links of a Junction depend on its group, see `valid_junction_group`
-n_neighbor_bounds_flow(::Val{:Junction}) = n_neighbor_bounds(1, M, 1, M)
+# The required links of a Junction depend on its group, see `valid_junction_group`: in a group
+# with exactly one Basin a Junction may have only inflows or only outflows. These bounds also
+# generate the Python validation, which runs before the Junction groups are simplified.
+n_neighbor_bounds_flow(::Val{:Junction}) = n_neighbor_bounds(0, M, 0, M)
 n_neighbor_bounds_flow(::Val{:PidControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:ContinuousControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:DiscreteControl}) = n_neighbor_bounds(0, 0, 0, 0)
