@@ -106,7 +106,7 @@ $$
 $$
 where $M$ is the $n_\text{basin} \times n_\text{flow}$ signed incidence matrix: $M_{b,k} = -1$ if Basin $b$ is upstream of flow $k$, $M_{b,k} = 1$ if Basin $b$ is downstream of flow $k$ and $M_{b,k} = 0$ otherwise.
 Evaporation and infiltration are flows with their Basin upstream and nothing downstream.
-The flows over the links out of the [Junction](/reference/node/junction.qmd) nodes that stay in the simulation (those with rows in `Junction / static`) are not states: they are weighted sums of the flows that enter the subgraph of Junction nodes, with the products of the fractions along the way as weights, minus the abstractions of the UserDemand nodes in the subgraph. The column of $M$ of a flow into such a Junction therefore holds these weights for the Basins behind the subgraph instead of a $1$ for a Basin directly downstream, and the same holds for the UserDemand abstractions with negative weights. See [Junction](#sec-numerics-junction) below.
+The flows over the links out of the [Junction](/reference/node/junction.qmd) nodes in `Junction / static` are not states: they are weighted sums of the flows that enter the subgraph of Junction nodes, with the products of the fractions along the way as weights, minus the abstractions of the UserDemand nodes in the subgraph. The column of $M$ of a flow into such a Junction therefore holds these weights for the Basins downstream of the subgraph instead of a $1$ for a Basin directly downstream, and the same holds for the UserDemand abstractions with negative weights. See [Junction](#sec-numerics-junction) below.
 
 For every flow $k$ we then take a copy of the storage of its upstream Basin $S^\text{up}_k$ and its downstream Basin $S^\text{down}_k$:
 $$
@@ -189,14 +189,14 @@ Here only the direct dependence of listened flows on their own Basin storages is
 
 ### Junction {#sec-numerics-junction}
 
-Since the fractions of the Junction links are constant, the flow over every link out of a Junction that stays in the simulation is a constant weighted sum of the flows that enter the subgraph and of the inflows of the UserDemand nodes in it, and so is the contribution of these flows to the Basins behind the subgraph. These weights are in $M$, so the links in the subgraphs need no states of their own, and a FlowBoundary that flows into such a Junction is integrated exactly like any other FlowBoundary.
+Since the fractions of the Junction links are constant, the flow over every link out of a Junction in `Junction / static` is a constant weighted sum of the flows that enter the subgraph and of the inflows of the UserDemand nodes in it, and so is the contribution of these flows to the Basins downstream of the subgraph. These weights are in $M$, so the links in the subgraphs need no states of their own, and a FlowBoundary that flows into such a Junction is integrated exactly like any other FlowBoundary.
 The only flows that need a computation are the inflows of the UserDemand nodes that abstract from a Junction, the minimum of the total inflow of that node and the demand, and their return flows.
 They are computed in the last step of the right-hand side as a function of the other flows $\mathbf{q}^\text{np}$ (np: not computed in a Junction subgraph), which are computed as described above:
 $$
 	\mathbf{q} = K\mathbf{q}^\text{np}, \quad K = \frac{\partial\mathbf{q}}{\partial\mathbf{q}^\text{np}}.
 $$
 $K$ is the identity except for the rows of these UserDemand flows, which hold the dependence on the flows entering the subgraph.
-It is computed with automatic differentiation like the other Jacobians, and only if the model has Junction nodes that stay in the simulation.
+It is computed with automatic differentiation like the other Jacobians, and only if the model has Junction nodes in `Junction / static`.
 For the derivative term of PID control, which uses the storage rate of the listened Basin, these UserDemand flows are computed once more before the PID controlled flows, from the flows known at that point.
 
 Since $K$ is applied after $\mathbf{q}^\text{np}$, the flow rows of the linear system have $Q_S$ and $G$ replaced by $KQ_S$ and $KG$, and the solution of the flow states becomes

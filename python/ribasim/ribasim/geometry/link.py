@@ -320,7 +320,7 @@ class LinkTable(SpatialTableModel[LinkSchema]):
                     node_id in routed_ids for node_id in in_from_node_ids
                 ):
                     raise ValueError(
-                        f"Node {to_node.node_id} must have either one or more Basin inflow links, or exactly one inflow link from a Junction with rows in Junction / static"
+                        f"Node {to_node.node_id} must have either one or more Basin inflow links, or exactly one inflow link from a Junction in Junction / static"
                     )
 
         if in_neighbor >= max_in:
