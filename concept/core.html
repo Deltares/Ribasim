@@ -81,35 +81,6 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/quarto-diagram/mermaid-init.js"></script>
 <link href="../site_libs/quarto-diagram/mermaid.css" rel="stylesheet">
 
-  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
-  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
-
-<script type="text/javascript">
-const typesetMath = (el) => {
-  if (window.MathJax) {
-    // MathJax Typeset
-    window.MathJax.typeset([el]);
-  } else if (window.katex) {
-    // KaTeX Render
-    var mathElements = el.getElementsByClassName("math");
-    var macros = [];
-    for (var i = 0; i < mathElements.length; i++) {
-      var texText = mathElements[i].firstChild;
-      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
-        window.katex.render(texText.data, mathElements[i], {
-          displayMode: mathElements[i].classList.contains('display'),
-          throwOnError: false,
-          macros: macros,
-          fleqn: false
-        });
-      }
-    }
-  }
-}
-window.Quarto = {
-  typesetMath
-};
-</script>
 
 <link rel="stylesheet" href="../assets/styles.css">
 </head>
@@ -253,7 +224,7 @@ window.Quarto = {
   <ul>
   <li><a href="#sec-simulationloop" id="toc-sec-simulationloop" class="nav-link active" data-scroll-target="#sec-simulationloop"><span class="header-section-number">1</span> The simulation loop</a></li>
   <li><a href="#sec-nested-allocation" id="toc-sec-nested-allocation" class="nav-link" data-scroll-target="#sec-nested-allocation"><span class="header-section-number">2</span> Nested allocation</a></li>
-  <li><a href="#substance-tracer-concentrations" id="toc-substance-tracer-concentrations" class="nav-link" data-scroll-target="#substance-tracer-concentrations"><span class="header-section-number">3</span> Substance (tracer) concentrations</a></li>
+  <li><a href="#sec-tracer" id="toc-sec-tracer" class="nav-link" data-scroll-target="#sec-tracer"><span class="header-section-number">3</span> Substance (tracer) concentrations</a></li>
   </ul>
 </nav>
     </div>
@@ -403,7 +374,7 @@ user_demand-&gt;&gt;basin: abstracted
 </div>
 </div>
 </section>
-<section id="substance-tracer-concentrations" class="level1" data-number="3">
+<section id="sec-tracer" class="level1" data-number="3">
 <h1 data-number="3"><span class="header-section-number">3</span> Substance (tracer) concentrations</h1>
 <div class="callout callout-style-default callout-caution callout-titled">
 <div class="callout-header d-flex align-content-center">
@@ -418,14 +389,8 @@ Caution
 <p>This is an unsupported experimental feature and is disabled by default. We advise to use the <a href="../guide/coupling.html#sec-waterquality">Delwaq coupling</a> for tracer calculations. If you’re interested in using this experimental feature, please <a href="../contact.html">contact us</a>.</p>
 </div>
 </div>
-<p>Ribasim can calculate concentrations of conservative tracers (i.e.&nbsp;substances that are non-reactive). It does so by calculating the mass transports by flows for each timestep, in the <code>update_cumulative_flows!</code> callback. Specifically, for each Basin at each timestep it calculates:</p>
-<ul>
-<li>all mass inflows (<span class="math inline">\(flow * source\_concentration\)</span>) given the link inflows</li>
-<li>update the concentrations in the Basin based on the added storage (<span class="math inline">\(previous storage + inflows\)</span>)</li>
-<li>all mass outflows (<span class="math inline">\(flow * basin\_concentration\_state\)</span>) given the link outflows</li>
-<li>update the concentrations in the Basin based on the current storage</li>
-</ul>
-<p>We thus keep track of both mass and concentration of substances for each Basin. Note that we have not added the substance mass to the states, and we assume that concentrations of flows are piecewise constant over a timestep. This excludes the use of tracer injections.</p>
+<p>Ribasim can calculate concentrations of conservative tracers (i.e.&nbsp;substances that are non-reactive). It does so after each timestep, using the flows of that timestep.</p>
+<p>Each Basin is instantaneously mixed, so water leaves a Basin with the concentration of that Basin. The resulting mass balance of a substance is given in <a href="../concept/equations.html#sec-tracer-equations">Equations</a>, and the implicit scheme that solves it in <a href="../concept/numerics.html#sec-tracer-numerics">Numerical considerations</a>. We keep track of both mass and concentration of substances for each Basin, but have not added the substance mass to the states.</p>
 <p>By default the following source tracers are enabled.</p>
 <ul>
 <li>Continuity (mass balance, fraction of all water sources, sum of all other source tracers)</li>

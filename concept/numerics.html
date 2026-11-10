@@ -272,6 +272,7 @@ window.Quarto = {
   <li><a href="#empty-basins" id="toc-empty-basins" class="nav-link" data-scroll-target="#empty-basins"><span class="header-section-number">4.3</span> Empty basins</a></li>
   </ul></li>
   <li><a href="#error-control-for-cumulative-flows" id="toc-error-control-for-cumulative-flows" class="nav-link" data-scroll-target="#error-control-for-cumulative-flows"><span class="header-section-number">5</span> Error control for cumulative flows</a></li>
+  <li><a href="#sec-tracer-numerics" id="toc-sec-tracer-numerics" class="nav-link" data-scroll-target="#sec-tracer-numerics"><span class="header-section-number">6</span> Substance transport</a></li>
   </ul>
 </nav>
     </div>
@@ -465,6 +466,71 @@ Note
 <p>This keeps the meaning of <code>abstol</code> and <code>reltol</code> constant over the whole simulation, and makes them independent of the size of the Basin storages. The same scaling is applied to the increment of the nonlinear solver, so that the nonlinear solve and the error estimate weigh the states in the same way.</p>
 <p>Note that this changes the units in which the tolerances should be interpreted. <code>abstol</code> is an absolute tolerance on the volume passed by a state during a single timestep (in <span class="math inline">\(\text{m}^3\)</span>), and <code>reltol</code> is relative to that same per-step volume. It acts as a floor for states that carry almost no flow during a timestep, where the <code>reltol</code> term vanishes; setting it too low makes such states dictate the timestep for the whole model. Since it is a volume per timestep and not a rate, <code>abstol</code> should not be scaled with <code>dt</code>.</p>
 <p>The default of <span class="math inline">\(10^{-4}\ \text{m}^3\)</span> is the largest value that is accurate across model scales, from a handful of Basins up to a national model. Because it is an absolute volume it does not scale with the model, so a large model can often raise it to <span class="math inline">\(10^{-2}\ \text{m}^3\)</span> for a substantial speedup at no measurable loss of accuracy, while the same setting on a small model is roughly two orders of magnitude less accurate. If you raise it, verify against a run with a tighter tolerance.</p>
+</section>
+<section id="sec-tracer-numerics" class="level1" data-number="6">
+<h1 data-number="6"><span class="header-section-number">6</span> Substance transport</h1>
+<p>The <a href="../concept/equations.html#sec-tracer-equations">mass balance of a substance</a> in Basin <span class="math inline">\(i\)</span> is <span class="math display">\[
+\frac{\text{d}}{\text{d}t} \left( S_i C_i \right) = \sum_j q_{ji} C_j - q_{\text{out},i} C_i + f_i.
+\]</span> It is solved after each timestep of the water balance, using the flows of that timestep. Integrating it over a timestep from <span class="math inline">\(t_n\)</span> to <span class="math inline">\(t_{n+1}\)</span> gives</p>
+<p><span class="math display">\[
+S_i^{n+1} C_i^{n+1} - S_i^n C_i^n = \sum_j \int_{t_n}^{t_{n+1}} q_{ji} C_j \,\text{d}t - \int_{t_n}^{t_{n+1}} q_{\text{out},i} C_i \,\text{d}t + F_i,
+\]</span></p>
+<p>where the superscripts denote the time and <span class="math inline">\(F_i\)</span> is the mass from the other sources over the timestep.</p>
+<p>How the integrals over the flows are approximated determines the numerical scheme. The water balance gives the volumes <span class="math inline">\(V_{ji}\)</span> and <span class="math inline">\(V_{\text{out},i}\)</span> that flowed over the timestep. Ribasim combines these with one concentration per Basin for the entire timestep, a weighted average of its concentrations at the start and the end of the timestep:</p>
+<p><span class="math display">\[
+\int_{t_n}^{t_{n+1}} q_{ji} C_j \,\text{d}t \approx V_{ji} \left( \theta_j C_j^{n+1} + (1 - \theta_j) C_j^n \right).
+\]</span></p>
+<p>Using this for all flows and moving the unknown concentrations to the left hand side gives a linear system for the concentrations of all Basins at the end of the timestep:</p>
+<p><span id="eq-tracer-scheme"><span class="math display">\[
+\left( S_i^{n+1} + \theta_i V_{\text{out},i} \right) C_i^{n+1} - \sum_j \theta_j V_{ji} C_j^{n+1} =
+\left( S_i^n - (1 - \theta_i) V_{\text{out},i} \right) C_i^n + \sum_j (1 - \theta_j) V_{ji} C_j^n + F_i.
+\tag{6}\]</span></span></p>
+<p>The weights that Ribasim uses are determined per Basin and per timestep:</p>
+<p><span class="math display">\[
+\theta_i = \max\left( \frac{1}{2}, 1 - \frac{S_i^n}{V_{\text{out},i}} \right).
+\]</span></p>
+<p>The weight is <span class="math inline">\(\theta_i = 1/2\)</span> wherever possible, as this is the trapezoidal rule, which is second order accurate. The concentrations can however only be guaranteed to stay non-negative if the coefficient of <span class="math inline">\(C_i^n\)</span> in <a href="#eq-tracer-scheme" class="quarto-xref">Equation&nbsp;6</a> is non-negative, which requires <span class="math inline">\(\theta_i \geq 1 - S_i^n / V_{\text{out},i}\)</span>. So where more water flows out of a Basin within one timestep than twice its storage, the weight increases towards 1, using the smallest value that keeps the concentrations non-negative.</p>
+<p>With these weights the matrix of <a href="#eq-tracer-scheme" class="quarto-xref">Equation&nbsp;6</a> has non-positive off-diagonal entries and is strictly diagonally dominant by column, since a Basin keeps a small positive storage. The system therefore always has a unique and non-negative solution, regardless of the size of the timestep. The mass that leaves one Basin over a flow is the mass that enters the other, so the scheme conserves mass, and a substance can travel through any number of Basins within one timestep. All substances share the same sparse matrix, which is factorized once per timestep.</p>
+<p>If all Basins would use the same weight, the scheme reduces to these well known methods:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 22%">
+<col style="width: 17%">
+<col style="width: 33%">
+<col style="width: 26%">
+</colgroup>
+<thead>
+<tr class="header">
+<th><span class="math inline">\(\theta\)</span></th>
+<th>Method</th>
+<th>Delwaq scheme</th>
+<th>Properties</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><span class="math inline">\(0\)</span></td>
+<td>Forward Euler (explicit upwind)</td>
+<td>1</td>
+<td>First order. Needs no linear system. Non-negative if <span class="math inline">\(V_{\text{out},i} \leq S_i^n\)</span>. A substance travels at most one Basin per timestep.</td>
+</tr>
+<tr class="even">
+<td><span class="math inline">\(1/2\)</span></td>
+<td>Trapezoidal rule (Crank-Nicolson)</td>
+<td></td>
+<td>Second order. Non-negative if <span class="math inline">\(V_{\text{out},i} \leq 2 S_i^n\)</span>.</td>
+</tr>
+<tr class="odd">
+<td><span class="math inline">\(1\)</span></td>
+<td>Backward Euler (implicit upwind)</td>
+<td>15</td>
+<td>First order, with more numerical dispersion. Non-negative for any timestep.</td>
+</tr>
+</tbody>
+</table>
+<p>The <a href="../guide/coupling.html#sec-waterquality">Delwaq coupling</a> uses scheme 15. Adjusting the weight per Basin is also the idea of the local-theta schemes 21 and 22 of Delwaq, which however use <span class="math inline">\(\theta_i = 0\)</span> wherever that is stable, and limit the fluxes to avoid new extremes. With instantaneously mixed Basins <span class="math inline">\(\theta_i = 1/2\)</span> is more accurate, since an explicit step in which the full storage of a Basin flows out moves all of its water to the next Basin without mixing.</p>
+<p>The ResidenceTime tracer has the integral of the storage over the timestep as a source in <span class="math inline">\(F_i\)</span>, which also uses the trapezoidal rule. The UserDemand return flows are part of <span class="math inline">\(F_i\)</span> as well, with the concentrations of the Basins they came from at the start of the timestep.</p>
+<p>Only the volume of a flow over a timestep is used, in its net direction, so effectively flows are constant over a timestep. The concentrations and loads from the input are constant over a timestep as well, since the solver stops at each time they change, so a pulse in one of these is followed exactly.</p>
 
 
 </section>
