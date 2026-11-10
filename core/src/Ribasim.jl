@@ -89,7 +89,8 @@ using SparseArrays: SparseMatrixCSC, sparse, spzeros, nonzeros, nzrange, rowvals
 
 # Linear algebra
 using LinearAlgebra: LinearAlgebra, I, mul!, UniformScaling, dot
-using LinearSolve: OperatorAssumptions, NonstructuralZeros
+using LinearSolve:
+    OperatorAssumptions, NonstructuralZeros, KLUFactorization, LinearAliasSpecifier
 
 # Interpolation functionality, used for e.g.
 # basin profiles and TabulatedRatingCurve. See also the node
