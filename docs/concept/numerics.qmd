@@ -198,10 +198,10 @@ This is mainly useful for verification, as it is considerably slower for larger 
 
 # Convergence of the Newton iterations {#sec-newton-convergence}
 
-The solver reuses the Jacobian and the factorization of $W = J - \gamma^{-1}I$ over many timesteps, so the Newton iterations converge linearly: each increment $\Delta^k$ is about $\theta$ times the previous one.
-The error that remains after iteration $k$ is then about $\frac{\theta}{1-\theta}\|\Delta^k\|$, and the solve is accepted when that is below 1% of the tolerance.
-The convergence rate $\theta$ is measured from successive increments, so the first iteration uses the $\theta$ of an earlier solve, which lets easy solves stop after one iteration.
-Such a solve does not measure $\theta$ again, so a small $\theta$ could otherwise be used for many timesteps after $W$ has changed.
+The solver reuses the Jacobian and the factorization of $W = J - \gamma^{-1}I$ over many timesteps, so the Newton iterations converge linearly, at a rate $\theta$ that is estimated from successive increments.
+A solve is accepted when the error estimated from $\theta$ and the last increment is small compared to the tolerance.
+OrdinaryDiffEq uses the criterion from Section IV.8 of [Hairer and Wanner](https://doi.org/10.1007/978-3-642-05221-7_8); the [CVODE documentation](https://sundials.readthedocs.io/en/latest/cvode/Mathematics_link.html#nonlinear-solve) describes the same idea.
+The first iteration of a solve uses the $\theta$ of an earlier solve, and a solve that stops after one iteration does not measure it again, so a small $\theta$ could otherwise be used for many timesteps after $W$ has changed.
 Ribasim therefore resets $\theta$ to 1 whenever $W$ is rebuilt, like CVODE does.
 Without this reset, a stiff Basin can oscillate slightly every timestep, which keeps the timestep small for hours, as in the `pump_pit` test model.
 
