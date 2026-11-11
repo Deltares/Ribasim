@@ -109,6 +109,7 @@ from ribasim_testmodels.junction import (
     junction_no_basin_allocation_model,
     junction_no_basin_model,
     junction_pid_model,
+    junction_shortage_tracer_model,
     junction_tracer_model,
 )
 from ribasim_testmodels.observation import observation_model
@@ -195,6 +196,7 @@ __all__ = [
     "junction_no_basin_allocation_model",
     "junction_no_basin_model",
     "junction_pid_model",
+    "junction_shortage_tracer_model",
     "junction_tracer_model",
     "leaky_bucket_model",
     "level_boundary_condition_model",
