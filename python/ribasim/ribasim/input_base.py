@@ -1,5 +1,6 @@
 import operator
 import re
+import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator
 from contextlib import closing, contextmanager
@@ -7,6 +8,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 from pathlib import Path
 from sqlite3 import connect
+from types import MappingProxyType
 from typing import Any, Self, TypeVar, cast, get_args
 
 import geopandas as gpd
@@ -76,13 +78,15 @@ node_names_snake_case = [
     "user_demand",
 ]
 
+_EMPTY_CONTEXT = cast(dict[str, Path], MappingProxyType({}))
+
 context_file_loading: ContextVar[dict[str, Path]] = ContextVar(
     "file_loading",
-    default={},  # noqa: B039
+    default=_EMPTY_CONTEXT,
 )
 context_file_writing: ContextVar[dict[str, Path]] = ContextVar(
     "file_writing",
-    default={},  # noqa: B039
+    default=_EMPTY_CONTEXT,
 )
 
 
@@ -554,9 +558,9 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
         overwrite (reset) the existing data in the underlying DataFrame.
         """
         if not self.lazy:
-            Warning(f"Resetting {self.tablename()}.")
+            warnings.warn(f"Resetting {self.tablename()}.", stacklevel=2)
         if self.df is not None:
-            Warning(f"Overwriting {self.tablename()}.")
+            warnings.warn(f"Overwriting {self.tablename()}.", stacklevel=2)
 
         context_file_loading.set({})
 

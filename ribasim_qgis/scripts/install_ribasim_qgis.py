@@ -1,11 +1,11 @@
 import sys
 from pathlib import Path
 
-from enable_plugin import enable_plugin
+from enable_plugin import enable_plugin, resolve_profile_path
 
 if __name__ == "__main__":
     target_path = Path("ribasim_qgis").absolute()
-    plugins_path = Path(sys.argv[1]) / "python/plugins"
+    plugins_path = resolve_profile_path(sys.argv[1]) / "python/plugins"
     source_path = plugins_path / "ribasim_qgis"
 
     styles_source_path = target_path / "core" / "styles"

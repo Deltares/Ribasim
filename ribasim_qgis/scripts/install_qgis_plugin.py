@@ -2,11 +2,13 @@ import os
 import shutil
 import subprocess
 import sys
-from pathlib import Path
+
+from enable_plugin import resolve_profile_path, validate_plugin_name
 
 
 def install_qgis_plugin(plugin_name: str, profile_path: str) -> None:
-    plugin_path = Path(profile_path) / "python/plugins"
+    validate_plugin_name(plugin_name)
+    plugin_path = resolve_profile_path(profile_path) / "python/plugins"
     plugin_path.mkdir(parents=True, exist_ok=True)
 
     try:

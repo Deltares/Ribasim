@@ -63,7 +63,7 @@ def label_flow_rate(value: float) -> str:
     """
     if abs(value) >= 1:
         return f"{value:.2f}"
-    if abs(value) == 0.0:
+    if not value:
         return "0"
     else:
         return f"{value:.2e}"
