@@ -137,9 +137,10 @@ function mass_through_junctions!(integrator::DEIntegrator)::Nothing
     ) = junction
     (; inflow_link_offsets, return_mass) = user_demand
     # The volume that flowed over a routed link in the last timestep. It is what remains after a
-    # UserDemand abstracted from the Junction node, which can be negative by rounding.
-    link_volume(idx) =
-        max(routed_flow(link_weights[idx], cumulative_flow_dt, flow_boundary.cumulative_flow_dt), 0.0)
+    # UserDemand abstracted from the Junction node. This can be negative, when the UserDemand takes
+    # more water than flows in within the solver tolerance. It is not clamped to zero, since the
+    # mass has to follow the volume that is added to or removed from the Basins.
+    link_volume(idx) = routed_flow(link_weights[idx], cumulative_flow_dt, flow_boundary.cumulative_flow_dt)
 
     for subgraph in routed_subgraphs, id in subgraph
         if id.is_routed
