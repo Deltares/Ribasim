@@ -152,9 +152,11 @@ def two_basin_user_demand_model() -> Model:
     model.terminal.add(Node(6, Point(2, 0), subnetwork_id=1))
 
     # Allocation-controlled drains so the basins do not overflow when the UD pulls
-    # less than their upstream FlowBoundary supplies.
+    # less than their upstream FlowBoundary supplies. The route priority of Outlet 7
+    # makes draining Basin 3 instead of supplying the UserDemand from it more costly,
+    # otherwise which Basin supplies the UserDemand is a tie.
     model.outlet.add(
-        Node(7, Point(1, 1), subnetwork_id=1),
+        Node(7, Point(1, 1), subnetwork_id=1, route_priority=50),
         [
             outlet.Static(
                 flow_rate=[0.0], max_flow_rate=[1.0], allocation_controlled=True
