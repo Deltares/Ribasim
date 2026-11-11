@@ -306,7 +306,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 <tr class="even">
 <td><a href="#ribasim.LinkTable.read">read</a></td>
-<td>Read the data for this Table from disk.</td>
+<td>Read the data for this Table from disk, replacing the data in memory.</td>
 </tr>
 <tr class="odd">
 <td><a href="#ribasim.LinkTable.sort">sort</a></td>
@@ -465,8 +465,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="ribasim.LinkTable.read" class="level3" data-number="1.2.10">
 <h3 data-number="1.2.10" class="anchored" data-anchor-id="ribasim.LinkTable.read"><span class="header-section-number">1.2.10</span> read</h3>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>LinkTable.read()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Read the data for this Table from disk.</p>
-<p>Required when this Table was lazily loaded, otherwise it will either overwrite (reset) the existing data in the underlying DataFrame.</p>
+<p>Read the data for this Table from disk, replacing the data in memory.</p>
+<p>This is how a lazily loaded Table gets its data. Warns if the Table already holds rows, since those are replaced, including any unsaved edits.</p>
 </section>
 <section id="ribasim.LinkTable.sort" class="level3" data-number="1.2.11">
 <h3 data-number="1.2.11" class="anchored" data-anchor-id="ribasim.LinkTable.sort"><span class="header-section-number">1.2.11</span> sort</h3>
