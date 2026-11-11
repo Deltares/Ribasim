@@ -139,8 +139,13 @@ function mass_through_junctions!(integrator::DEIntegrator)::Nothing
     # The volume that flowed over a routed link in the last timestep. It is what remains after a
     # UserDemand abstracted from the Junction node. This can be negative, when the UserDemand takes
     # more water than flows in within the solver tolerance. It is not clamped to zero, since the
-    # mass has to follow the volume that is added to or removed from the Basins.
+    # mass has to follow the volume that is added to or removed from the Basins. Only volumes that
+    # are rounding errors relative to the other outflows of the Junction node are set to zero.
     link_volume(idx) = routed_flow(link_weights[idx], cumulative_flow_dt, flow_boundary.cumulative_flow_dt)
+    function link_volume(idx, scale)
+        volume = link_volume(idx)
+        return abs(volume) <= 1.0e-12 * scale ? 0.0 : volume
+    end
 
     for subgraph in routed_subgraphs, id in subgraph
         if id.is_routed
@@ -164,13 +169,24 @@ function mass_through_junctions!(integrator::DEIntegrator)::Nothing
                 end
             end
 
+            outflow_scale = 0.0
+            for (outflow_link, link_idx) in zip(outflow_links[id.idx], outflow_link_idx[id.idx])
+                outflow_scale += abs(
+                    if iszero(link_idx)
+                        user_demand_id = outflow_link.link[2]
+                        cumulative_flow_dt.horizontal.user_demand_inflow[inflow_link_offsets[user_demand_id.idx] + 1]
+                    else
+                        link_volume(link_idx)
+                    end
+                )
+            end
             outflow_volume = 0.0
             for (outflow_link, link_idx) in zip(outflow_links[id.idx], outflow_link_idx[id.idx])
                 outflow_volume += if iszero(link_idx)
                     user_demand_id = outflow_link.link[2]
                     cumulative_flow_dt.horizontal.user_demand_inflow[inflow_link_offsets[user_demand_id.idx] + 1]
                 else
-                    link_volume(link_idx)
+                    link_volume(link_idx, outflow_scale)
                 end
             end
 
@@ -184,7 +200,7 @@ function mass_through_junctions!(integrator::DEIntegrator)::Nothing
                 # The mass abstracted by a UserDemand is handled at the UserDemand
                 iszero(link_idx) && continue
                 link_mass_out = view(link_mass, :, link_idx)
-                link_mass_out .= link_volume(link_idx) .* concentration_node
+                link_mass_out .= link_volume(link_idx, outflow_scale) .* concentration_node
                 target_id = outflow_link.link[2]
                 target_id.is_basin && (view(mass, :, target_id.idx) .+= link_mass_out)
             end
