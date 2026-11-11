@@ -25,7 +25,7 @@ def test_multiple_outflows(basic):
     ):
         model.link.add(
             model.flow_boundary[16],
-            model.basin[1],
+            model.basin[3],
             name="multiple-outflows",
         )
 

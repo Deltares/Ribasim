@@ -5,6 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+- Python: `model.link.add` now replaces an existing link between the same nodes with a warning, like `node.add` does for an existing node ID, so re-running notebook cells that build a model no longer fails. Without a `link_id`, the replacing link keeps the ID of the link it replaces.
+
+### Fixed
+- Python: a `model.link.add` that fails validation no longer leaves the link in the link table.
+- Python: `model.link.add` with the `link_id` of an existing link no longer fails when the nodes are already at their maximum number of links.
+
 ## [v2026.2.0-rc1] - 2026-11-11
 
 ### Added
