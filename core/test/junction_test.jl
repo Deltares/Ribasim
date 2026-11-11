@@ -131,6 +131,22 @@ end
     @test concentration[1, findfirst(==("Continuity"), substances), :] ≈ fill(1.0, 60) rtol = 1.0e-8
 end
 
+@testitem "Junction tracers with a negative flow into a Basin" begin
+    # UserDemand #4 takes all water from Junction #3, so the flow from Junction #5 into Basin #6
+    # is negative within the solver tolerance. That water leaves Basin #6 with its own concentration,
+    # and not with the concentration of Pulse that reaches the Junction nodes from 2020-01-20.
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/junction_shortage_tracer/ribasim.toml")
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    substances = String.(model.integrator.p.p_independent.basin.concentration_data.substances)
+    concentration = Ribasim.concentration_data(model; table = false).concentration
+    @test all(isapprox.(concentration[:, findfirst(==("Continuity"), substances), :], 1.0; rtol = 1.0e-12))
+    pulse = concentration[:, findfirst(==("Pulse"), substances), :]
+    @test last(pulse[1, :]) > 0.01
+    @test all(abs.(pulse[2, :]) .<= 1.0e-12)
+end
+
 @testitem "Junction tracers in all configurations" begin
     model = Ribasim.run(normpath(@__DIR__, "../../generated_testmodels/junction_fraction/ribasim.toml"))
     @test success(model)
