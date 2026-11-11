@@ -614,13 +614,6 @@ JuMP.set_normalized_rhs(constraints[node_id, sign], -sign * previous_flow)
 - The slightly increasing weights make the objective itself generically have a unique optimum
 - The structure only depends on which nodes are allocation controlled; the previous flows are right hand sides
 
-**Uniqueness check** (`controlled_flow_uniqueness`):
-- Uses the optimal simplex basis from HiGHS. Nonbasic variables and inequality constraints with a reduced cost or dual that is not (near) zero stay at their bound in every optimal solution
-- For the other nonbasic ones, the column of $B^{-1}A$ (`Highs_getReducedColumn`, or `Highs_getBasisSolve` for a constraint) gives how the basic variables change when they move
-- If none of these columns affects a controlled flow, the controlled flows are unique and the flow change objective is skipped
-- Otherwise moving along such a column is tried, with a step that is halved until no constraint gets more violated than at the solution. If that works the controlled flows are not unique, which after the flow change objective gives a warning, or an error if `allocation.error_on_non_unique_flow` is set (`check_controlled_flow_uniqueness`)
-- If neither can be shown, for instance because a degenerate basis blocks the move, the result is unknown and the flow change objective is optimized without error
-
 ### Low Storage Factor Objective
 
 **Mathematical formulation:**

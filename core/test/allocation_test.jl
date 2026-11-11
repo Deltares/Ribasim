@@ -612,46 +612,6 @@ end
     @test change < 3 * change_of_sum
 end
 
-@testitem "Uniqueness of the allocation controlled flows" begin
-    import BasicModelInterface as BMI
-    import JuMP
-    using Ribasim: Uniqueness, controlled_flow_uniqueness
-
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/tied_routes/ribasim.toml")
-    @test ispath(toml_path)
-    model = Ribasim.Model(toml_path)
-    BMI.update_until(model, 5 * 86400.0)
-    allocation_model = only(model.integrator.p.p_independent.allocation.allocation_models)
-    (; problem, objectives) = allocation_model
-
-    # The flow change objective was optimized, after which the Pump flows are unique
-    @test JuMP.objective_function(problem) == last(objectives).expressions[1]
-    @test controlled_flow_uniqueness(allocation_model) == (Uniqueness.unique, Ribasim.NodeID[])
-
-    # Before it they are not, since the Pumps have the same route priority
-    previous_expression =
-        last(filter(!iszero, reduce(vcat, [objective.expressions for objective in objectives[1:(end - 1)]])))
-    JuMP.@objective(problem, Min, previous_expression)
-    Ribasim.optimize_cold!(problem)
-    uniqueness, node_ids = controlled_flow_uniqueness(allocation_model)
-    @test uniqueness == Uniqueness.not_unique
-    @test [node_id.value for node_id in node_ids] == [7, 8]
-
-    # By default this gives a warning, and with the config flag an error
-    @test !model.config.allocation.error_on_non_unique_flow
-    @test_logs (:warn, r"multiple optimal solutions") Ribasim.check_controlled_flow_uniqueness(
-        allocation_model,
-        model.config,
-        0.0,
-    )
-    config = Ribasim.Config(toml_path; allocation_error_on_non_unique_flow = true)
-    @test_throws "multiple optimal solutions" Ribasim.check_controlled_flow_uniqueness(
-        allocation_model,
-        config,
-        0.0,
-    )
-end
-
 @testitem "Allocation solves from scratch" begin
     import BasicModelInterface as BMI
     import JuMP

@@ -28,7 +28,6 @@ block_transition_period = 0  # optional, default 0
 intervention_interval = 86400 # optional, default 86400
 dt = 86400                  # optional, remove for adaptive time stepping
 dtmin = 3600.0              # optional, 3600.0
-error_on_non_unique_flow = false # optional, default false
 
 [allocation.route_priority]
 level_boundary = 1000       # optional, default 1000

@@ -106,9 +106,6 @@ class Allocation(ChildModel):
         Values above `intervention_interval` are reduced to it.
     route_priority : RoutePriority
         The default route priority per node type
-    error_on_non_unique_flow : bool
-        Whether to stop with an error instead of a warning if the flows through the allocation controlled nodes
-        can be shown to differ between optimal solutions of the allocation problem (Optional, defaults to False)
     """
 
     intervention_interval: float = 86400.0
@@ -116,7 +113,6 @@ class Allocation(ChildModel):
     dtmin: float = 3600.0
     dtmax: float = 86400.0
     route_priority: RoutePriority = RoutePriority()
-    error_on_non_unique_flow: bool = False
 
     @model_validator(mode="before")
     @classmethod

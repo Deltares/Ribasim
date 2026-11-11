@@ -238,7 +238,6 @@ end
     # Deprecated and ignored, accepted so TOML files from v2026.1.2 can still be read
     reltol_linearization::Union{Float64, Nothing} = nothing
     route_priority::RoutePriority = RoutePriority()
-    error_on_non_unique_flow::Bool = false
 end
 
 @option struct Experimental <: TableOption

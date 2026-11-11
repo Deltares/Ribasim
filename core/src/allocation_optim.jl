@@ -954,12 +954,6 @@ function optimize_multi_objective!(
 
         for (expression_idx, expression) in enumerate(expressions)
             iszero(expression) && continue
-            # The flow change objective only chooses between optimal solutions, so it is
-            # not needed if the controlled flows are the same in all of them
-            if type == AllocationObjectiveType.flow_change &&
-                    first(controlled_flow_uniqueness(model)) == Uniqueness.unique
-                continue
-            end
             if !iszero(latest_optimized_expression) && !latest_expression_is_constrained
                 # Only add a constraint from the latest expression if there is a new expression
                 # to optimize for, otherwise we get an error when trying to retrieve results
@@ -986,9 +980,6 @@ function optimize_multi_objective!(
             @debug objective expression JuMP.solution_summary(problem)
             latest_constraint = isempty(temporary_constraints) ? nothing : last(temporary_constraints)
             parse_termination_status(model, objective, expression, latest_constraint, config, t; can_retry)
-            if type == AllocationObjectiveType.flow_change
-                check_controlled_flow_uniqueness(model, config, t)
-            end
             if objective.retain_expressions[expression_idx]
                 # Not the objective value, which belongs to the feasibility objective
                 # if the problem was only found feasible by the infeasibility analysis
@@ -1080,39 +1071,6 @@ function parse_termination_status(
             expression:        $expression
             """
         )
-    end
-    return nothing
-end
-
-"""
-After the flow change objective, warn if the flows through the allocation controlled nodes can
-be shown to differ between optimal solutions. The solver could then return another one every
-allocation timestep, which makes the flow switch between these nodes. If
-`allocation.error_on_non_unique_flow` is set, throw an error instead. The warning is only
-given once per subnetwork.
-"""
-function check_controlled_flow_uniqueness(
-        allocation_model::AllocationModel,
-        config::Config,
-        t::Number,
-    )::Nothing
-    (; subnetwork_id, problem) = allocation_model
-    uniqueness, node_ids = controlled_flow_uniqueness(allocation_model)
-    uniqueness == Uniqueness.not_unique || return nothing
-    message = """
-    Allocation for subnetwork $subnetwork_id at t = $t s has multiple optimal solutions
-    with different flows through the allocation controlled nodes $node_ids, also after minimizing the
-    change of these flows since the previous allocation timestep. The flow could then switch between these
-    nodes from one allocation timestep to the next.
-    This can be resolved by making the routes through these nodes differ for the allocation objectives,
-    for instance by giving them a different `route_priority` in the Node table, or by limiting their flow
-    with `min_flow_rate` and `max_flow_rate`."""
-    if config.allocation.error_on_non_unique_flow
-        write_problem_to_file(problem, config)
-        error(message)
-    else
-        @warn "$message\nThis warning is only given once per subnetwork. Set `allocation.error_on_non_unique_flow = true` to stop with an error instead." _id =
-            (:non_unique_flow, subnetwork_id) maxlog = 1
     end
     return nothing
 end
