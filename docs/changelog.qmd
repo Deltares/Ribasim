@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - ContinuousControl can listen to flows set by other ContinuousControl or PidControl nodes, also via Junctions. Before, such a flow was read as 0 without an error. A circular dependency in the control of flows is now an error. [#3408](https://github.com/Deltares/Ribasim/issues/3408)
+- The reduced linear solve is now exact for chained control, so the Newton iterations of models where ContinuousControl listens to a flow set by ContinuousControl or PidControl converge as fast as those without.
 
 ### Changed
 - PidControl: the derivative term now includes the flows set by ContinuousControl and other PidControl nodes into the listened Basin, also via Junctions. Before, these were left out or depended on the order of the nodes. [#3408](https://github.com/Deltares/Ribasim/issues/3408)

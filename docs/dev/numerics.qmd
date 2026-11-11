@@ -170,7 +170,10 @@ With `reduced_implicit_solve = true`, the Jacobian is never materialized. Instea
 - `cache` — the `RibasimJacobianEvaluationCache` with the AD preparation and the Jacobians described above;
 - `J_inner_local` — the $n_\text{basin} \times n_\text{basin}$ matrix $M K Q_S$, the dependence of the Basin storage rates on the Basin storages via the flows (including via ContinuousControl and the routing through Junction subgraphs, which is in $M$);
 - `area_pid_controlled` — the area of the Basin listened to by each PidControl node;
-- `flow_buffer` — a work vector for the linear solve.
+- `flow_buffer` — a work vector for the linear solve;
+- `compound_derivatives` — the total derivatives of the ContinuousControl compound variables with respect to the Basin storages and the PID integrals (`CompoundDerivatives`).
+
+The total derivatives of the compound variables include the dependence of the listened flows on other compound variables and on the PID integrals, so that the Jacobian is also exact for chained control. `update_compound_derivatives!` computes them in the order of `control_order`, so the compound variables that a listened flow depends on are known first. It reads the rows of `∂continuous_control_compound_∂continuous_control_input` and of `∂flow_∂flow_input` for the listened flows from precomputed lists of their stored entries (`row_entries`), since the matrices are stored by column. The entries include those with a value of 0, so that the sparsity pattern of `J_inner` stays the same, see [Custom linear solver](#custom-linear-solver).
 
 The entries of $Q_S$ (`∂q_∂storage`) are never stored, but iterated over by `foreach_∂flow_∂storage`, and similarly the dependence of the flows on the PID integrals by `foreach_∂flow_∂pid_integral`. The contributions of the flow in these entries to the Basin storages are added for every flow that depends on it via $K$, see `foreach_∂flow_∂flow_np`. Without Junction nodes that stay in the simulation $K$ is the identity and this is skipped (`has_routed_junctions`). These are used both to build the inner linear system and to expand its solution, which keeps the two consistent.
 
@@ -179,7 +182,7 @@ OrdinaryDiffEq calls `update_coefficients!` on the operator whenever the Jacobia
 1. Computes the current Basin storages and from those `storage_uplink` and `storage_downlink` (`set_uplink_downlink_storage!`);
 2. Evaluates `∂flow_∂flow_input`, which also caches the flows that ContinuousControl listens to;
 3. Computes `area_pid_controlled`;
-4. Evaluates `∂continuous_control_compound_∂continuous_control_input`;
+4. Evaluates `∂continuous_control_compound_∂continuous_control_input`, and from it the total derivatives of the compound variables (`update_compound_derivatives!`);
 5. Evaluates `∂junction_flow_∂flow` at the flows cached in step 2, if the model has Junction nodes that stay in the simulation;
 6. Computes `J_inner_local` (`update_J_inner_local!`).
 

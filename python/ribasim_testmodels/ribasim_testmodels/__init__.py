@@ -52,8 +52,10 @@ from ribasim_testmodels.basic import (
 from ribasim_testmodels.bucket import bucket_model, leaky_bucket_model
 from ribasim_testmodels.continuous_control import (
     chained_continuous_control_model,
+    junction_chained_continuous_control_model,
     outlet_continuous_control_model,
     pid_continuous_control_model,
+    pid_listened_by_continuous_control_model,
 )
 from ribasim_testmodels.discrete_control import (
     circular_flow_model,
@@ -192,6 +194,7 @@ __all__ = [
     "junction_allocation_shortage_model",
     "junction_bidirectional",
     "junction_chained",
+    "junction_chained_continuous_control_model",
     "junction_combined",
     "junction_continuous_control_model",
     "junction_control",
@@ -231,6 +234,7 @@ __all__ = [
     "pid_continuous_control_model",
     "pid_control_equation_model",
     "pid_control_model",
+    "pid_listened_by_continuous_control_model",
     "polder_management_model",
     "precompile_workload_allocation_model",
     "precompile_workload_model",
