@@ -427,15 +427,6 @@ def invalid_junction_subnetwork_boundary_model() -> Model:
     return model
 
 
-def invalid_junction_no_basin_allocation_model() -> Model:
-    """Allocation subnetwork without a Basin, which allocation does not support."""
-    from ribasim_testmodels.junction import _junction_chain
-
-    model = _invalid_subnetwork_model()
-    _junction_chain(model, 2)
-    return model
-
-
 def invalid_subnetwork_to_primary_model() -> Model:
     """Flow from a subnetwork into the primary network."""
     model = _invalid_subnetwork_model()

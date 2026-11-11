@@ -214,12 +214,36 @@ end
     @test mean_flow_rate(5, 6) ≈ 0.0 atol = 1.0e-12
     @test mean_flow_rate(5, 9) ≈ 0.0 atol = 1.0e-12
 
-    # Allocation needs a Basin in the subnetwork
+    # With allocation the boundary flow goes to UserDemand #6, which has the higher
+    # demand priority. Without a Basin, the subnetwork is scaled by its boundary flows.
     toml_path = normpath(
         @__DIR__,
-        "../../generated_testmodels/invalid_junction_no_basin_allocation/ribasim.toml",
+        "../../generated_testmodels/junction_no_basin_allocation/ribasim.toml",
     )
-    @test_throws "Allocation subnetwork 2 has no Basin, which is not supported." Ribasim.Model(toml_path)
+    model = Ribasim.run(toml_path)
+    @test success(model)
+    (; scaling) = only(model.integrator.p.p_independent.allocation.allocation_models)
+    @test scaling.flow ≈ 1.0e-3
+
+    flow_data = Ribasim.flow_data(model) |> DataFrame
+    @test mean_flow_rate(1, 2) ≈ 1.0e-3
+    @test mean_flow_rate(2, 3) ≈ 0.0 atol = 1.0e-9
+    @test mean_flow_rate(5, 6) ≈ 1.0e-3 rtol = 1.0e-6
+
+    # A demand of UserDemand #3 far above the available flow doesn't dominate the scaling
+    model = Ribasim.Model(toml_path)
+    model.integrator.p.p_independent.user_demand.demand[1, 2] = 1.0e6
+    Ribasim.solve!(model)
+    flow_data = Ribasim.flow_data(model) |> DataFrame
+    @test mean_flow_rate(5, 6) ≈ 1.0e-3 rtol = 1.0e-6
+
+    # Without demands there is no objective left to optimize, but allocation still runs
+    model = Ribasim.Model(toml_path)
+    model.integrator.p.p_independent.user_demand.demand .= 0.0
+    Ribasim.solve!(model)
+    @test success(model)
+    flow_data = Ribasim.flow_data(model) |> DataFrame
+    @test mean_flow_rate(5, 9) ≈ 1.0e-3
 end
 
 @testitem "Downstream level through Junction nodes" begin

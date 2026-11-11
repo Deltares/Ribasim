@@ -644,6 +644,38 @@ def flow_boundary_interpolation_model() -> Model:
     return model
 
 
+def flow_boundary_terminal_model() -> Model:
+    """Create a model with a FlowBoundary that flows straight into a Terminal.
+
+    Basin #3 only has an outflow via Pump #4, which is off, so it must not change.
+    """
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 1, 10),
+        crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
+    )
+
+    fb = model.flow_boundary.add(
+        Node(1, Point(0, 0)), [flow_boundary.Static(flow_rate=[1.0])]
+    )
+    tml = model.terminal.add(Node(2, Point(1, 0)))
+    bsn = model.basin.add(
+        Node(3, Point(0, 1)),
+        [
+            basin.State(level=[1.0]),
+            basin.Profile(level=[0.0, 10.0], area=[1000.0, 1000.0]),
+        ],
+    )
+    pmp = model.pump.add(Node(4, Point(1, 1)), [pump.Static(flow_rate=[0.0])])
+
+    model.link.add(fb, tml)
+    model.link.add(bsn, pmp)
+    model.link.add(pmp, tml)
+
+    return model
+
+
 def build_model_with_basin(model, basin_definition) -> Model:
     # FlowBoundary nodes
     data = pd.DataFrame({
