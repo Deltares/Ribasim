@@ -1,5 +1,5 @@
 minimize
-obj: 1 flow_change_Pump_#6_ + 1 flow_change_Pump_#11_ + 1 flow_change_Outlet_#3_ + 1 flow_change_Outlet_#4_ + 1 flow_change_Outlet_#8_ + 1 flow_change_Outlet_#9_ + 1 flow_change_Outlet_#16_ + 1 flow_change_Outlet_#21_
+obj: 1 flow_change_Pump_#6_ + 1.0014285714285713 flow_change_Pump_#11_ + 1.002857142857143 flow_change_Outlet_#3_ + 1.0042857142857142 flow_change_Outlet_#4_ + 1.0057142857142858 flow_change_Outlet_#8_ + 1.0071428571428571 flow_change_Outlet_#9_ + 1.0085714285714287 flow_change_Outlet_#16_ + 1.01 flow_change_Outlet_#21_
 subject to
 c1: -1 low_storage_factor_Basin_#2_ - 1 low_storage_factor_Basin_#5_ - 1 low_storage_factor_Basin_#7_ - 1 low_storage_factor_Basin_#10_ <= -4
 c2: 1 level_demand_error_Basin_#2,1,lower,first_ + 1 level_demand_error_Basin_#2,1,upper,first_ + 1 level_demand_error_Basin_#5,1,lower,first_ + 1 level_demand_error_Basin_#5,1,upper,first_ + 1 level_demand_error_Basin_#7,1,lower,first_ + 1 level_demand_error_Basin_#7,1,upper,first_ + 1 level_demand_error_Basin_#10,1,lower,first_ + 1 level_demand_error_Basin_#10,1,upper,first_ <= 0

@@ -244,6 +244,205 @@ end
 "The primal and dual feasibility tolerance of an optimization, which is the default of HiGHS"
 const FEASIBILITY_TOLERANCE = 1.0e-7
 
+@enumx Uniqueness unique not_unique unknown
+
+"""
+Relative tolerance below which a reduced cost or dual is considered zero when checking
+whether the controlled flows are unique.
+"""
+const UNIQUENESS_TOLERANCE = 1.0e-6
+
+"Change of a scaled flow that counts as a different solution when checking uniqueness"
+const UNIQUENESS_FLOW_CHANGE = 1.0e-6
+
+"Absolute tolerance on entries of the basis inverse times a column when checking uniqueness"
+const UNIQUENESS_PIVOT_TOLERANCE = 1.0e-9
+
+"Maximum number of directions tried to prove that the controlled flows are not unique"
+const UNIQUENESS_MAX_DIRECTIONS = 20
+
+"""
+Check whether the flows through the allocation controlled nodes are the same in all optimal
+solutions of the problem as last solved, using its optimal basis.
+
+In every optimal solution a nonbasic variable or inequality constraint with a clearly nonzero
+reduced cost or dual is at its bound. So the basic variables can only differ from the found
+solution through the other nonbasic ones, via the corresponding columns of ``B^{-1}A``. If none
+of these columns affects a controlled flow, the controlled flows are unique. Otherwise moving
+along such a column gives another optimal solution, unless a constraint that is already tight
+blocks it. This move is tried, and if it is feasible the controlled flows are not unique.
+If that can't be shown either, the result is unknown.
+
+Returns the result and, if not unique, the nodes whose flows differ between solutions.
+"""
+function controlled_flow_uniqueness(
+        allocation_model::AllocationModel,
+    )::Tuple{Uniqueness.T, Vector{NodeID}}
+    (; problem, allocation_controlled_flows) = allocation_model
+    no_nodes = NodeID[]
+    isempty(allocation_controlled_flows) && return Uniqueness.unique, no_nodes
+    (JuMP.termination_status(problem) == JuMP.OPTIMAL && JuMP.has_duals(problem)) ||
+        return Uniqueness.unknown, no_nodes
+    objective = JuMP.objective_function(problem)
+    objective isa JuMP.AffExpr || return Uniqueness.unknown, no_nodes
+    tolerance =
+        UNIQUENESS_TOLERANCE * max(1.0, maximum(abs, values(objective.terms); init = 0.0))
+
+    highs = JuMP.unsafe_backend(problem)
+    index_map = JuMP.backend(problem).model_to_optimizer_map
+    highs_column(variable) = HiGHS.column(highs, index_map[JuMP.index(variable)])
+    highs_row(constraint) = HiGHS.row(highs, index_map[JuMP.index(constraint)])
+
+    num_row = Int(HiGHS.Highs_getNumRow(highs))
+    basic_variables = Vector{HiGHS.HighsInt}(undef, num_row)
+    HiGHS.Highs_getBasicVariables(highs, basic_variables) == HiGHS.kHighsStatusOk ||
+        return Uniqueness.unknown, no_nodes
+
+    variables = JuMP.all_variables(problem)
+    variable_of_column = Dict(highs_column(variable) => variable for variable in variables)
+    node_of_column =
+        Dict(highs_column(flow) => node_id for (node_id, flow) in allocation_controlled_flows)
+    # The position in the basis of the controlled flows that are basic
+    controlled_positions = [
+        (k, node_of_column[b]) for (k, b) in enumerate(basic_variables) if
+            b >= 0 && haskey(node_of_column, b)
+    ]
+
+    # The nonbasic variables (as HiGHS column) and inequality constraints (as HiGHS row)
+    # that can move off their bound without changing the objective
+    candidates = Tuple{Symbol, Int}[]
+    try
+        for variable in variables
+            JuMP.is_fixed(variable) && continue
+            if JuMP.has_lower_bound(variable) && JuMP.has_upper_bound(variable) &&
+                    JuMP.lower_bound(variable) == JuMP.upper_bound(variable)
+                continue
+            end
+            status = JuMP.MOI.get(problem, JuMP.MOI.VariableBasisStatus(), variable)
+            status == JuMP.MOI.BASIC && continue
+            abs(JuMP.reduced_cost(variable)) > tolerance && continue
+            push!(candidates, (:column, highs_column(variable)))
+        end
+        for (F, S) in JuMP.list_of_constraint_types(problem)
+            # Variable bounds are covered by the reduced costs above
+            (F <: JuMP.VariableRef || S <: JuMP.MOI.EqualTo) && continue
+            for constraint in JuMP.all_constraints(problem, F, S)
+                set = JuMP.constraint_object(constraint).set
+                set isa JuMP.MOI.Interval && set.lower == set.upper && continue
+                status = JuMP.MOI.get(problem, JuMP.MOI.ConstraintBasisStatus(), constraint)
+                status == JuMP.MOI.BASIC && continue
+                abs(JuMP.dual(constraint)) > tolerance && continue
+                push!(candidates, (:row, highs_row(constraint)))
+            end
+        end
+    catch exception
+        # No basis is available, for instance when HiGHS did not end with simplex
+        exception isa JuMP.MOI.GetAttributeNotAllowed || rethrow()
+        return Uniqueness.unknown, no_nodes
+    end
+
+    # For each candidate, the change of the basic variables per unit move of the candidate
+    column_vector = zeros(num_row)
+    column_index = Vector{HiGHS.HighsInt}(undef, num_row)
+    num_nz = Ref{HiGHS.HighsInt}(0)
+    unit_vector = zeros(num_row)
+    affecting = Tuple{Symbol, Int, Vector{Float64}}[]
+    for (kind, index) in candidates
+        fill!(column_vector, 0.0)
+        if kind == :column
+            status = HiGHS.Highs_getReducedColumn(
+                highs, index, column_vector, num_nz, column_index
+            )
+        else
+            unit_vector[index + 1] = 1.0
+            status = HiGHS.Highs_getBasisSolve(
+                highs, unit_vector, column_vector, num_nz, column_index
+            )
+            unit_vector[index + 1] = 0.0
+        end
+        status == HiGHS.kHighsStatusOk || return Uniqueness.unknown, no_nodes
+        if (kind == :column && haskey(node_of_column, index)) || any(
+                abs(column_vector[k]) > UNIQUENESS_PIVOT_TOLERANCE for (k, _) in controlled_positions
+            )
+            push!(affecting, (kind, index, copy(column_vector)))
+        end
+    end
+    isempty(affecting) && return Uniqueness.unique, no_nodes
+
+    # Try to move along the candidates that affect a controlled flow
+    point = Dict(variable => JuMP.value(variable) for variable in variables)
+    base_violation = JuMP.primal_feasibility_report(problem, point; atol = 0.0)
+    # Before the flow change objective the flow change variables can follow the flows freely
+    flow_change_constraints = if haskey(problem, :flow_change) && !any(
+            haskey(objective.terms, variable) for variable in problem[:flow_change]
+        )
+        problem[:flow_change_constraint]
+    else
+        nothing
+    end
+    for (kind, index, column) in first(affecting, UNIQUENESS_MAX_DIRECTIONS)
+        # The change of each variable per unit move of the candidate
+        direction = Dict{JuMP.VariableRef, Float64}()
+        if kind == :column
+            direction[variable_of_column[index]] = 1.0
+        end
+        for (k, b) in enumerate(basic_variables)
+            (b >= 0 && !iszero(column[k])) || continue
+            # For a column the basic variables compensate: B Δx_B = -a_j Δx_j
+            direction[variable_of_column[b]] = kind == :column ? -column[k] : column[k]
+        end
+        flow_change = OrderedDict(
+            node_id => get(direction, flow, 0.0) for
+                (node_id, flow) in allocation_controlled_flows
+        )
+        max_flow_change = maximum(abs, values(flow_change))
+
+        for sign in (1.0, -1.0)
+            # The largest step for which the variable bounds hold, capped at 1
+            step = 1.0
+            for (variable, Δ) in direction
+                value = point[variable]
+                if sign * Δ > 0 && JuMP.has_upper_bound(variable)
+                    step = min(step, (JuMP.upper_bound(variable) - value) / (sign * Δ))
+                elseif sign * Δ < 0 && JuMP.has_lower_bound(variable)
+                    step = min(step, (value - JuMP.lower_bound(variable)) / (-sign * Δ))
+                end
+            end
+            # Halve the step until no constraint gets more violated than at the solution
+            while step * max_flow_change > UNIQUENESS_FLOW_CHANGE
+                trial = copy(point)
+                for (variable, Δ) in direction
+                    trial[variable] += sign * step * Δ
+                end
+                if !isnothing(flow_change_constraints)
+                    # flow_change ≥ sign * flow + rhs
+                    for (node_id, flow) in allocation_controlled_flows
+                        flow_change_variable = problem[:flow_change][node_id]
+                        for flow_sign in (-1, 1)
+                            rhs = JuMP.normalized_rhs(flow_change_constraints[node_id, flow_sign])
+                            trial[flow_change_variable] =
+                                max(trial[flow_change_variable], flow_sign * trial[flow] + rhs)
+                        end
+                    end
+                end
+                violation = JuMP.primal_feasibility_report(problem, trial; atol = 0.0)
+                if all(
+                        v <= get(base_violation, constraint, 0.0) + UNIQUENESS_PIVOT_TOLERANCE for
+                            (constraint, v) in violation
+                    )
+                    node_ids = [
+                        node_id for (node_id, Δ) in flow_change if
+                            step * abs(Δ) > UNIQUENESS_FLOW_CHANGE
+                    ]
+                    return Uniqueness.not_unique, node_ids
+                end
+                step /= 2
+            end
+        end
+    end
+    return Uniqueness.unknown, no_nodes
+end
+
 """
 Solve the problem from scratch, without the basis of a previous solve or start values.
 HiGHS only uses presolve without a basis. Presolve removes nearly all rows of the allocation

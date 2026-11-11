@@ -482,10 +482,14 @@ In @fig-subnetwork-example the water can take multiple routes from the flow boun
 
 ## Staying close to the previous timestep
 
-After the objectives above there can still be many optimal solutions, for instance when two Pumps with the same route priority can supply the same demand. The solver could then return a different one every allocation timestep, which makes the flow switch between routes. Therefore the last objective minimizes the change of the flows through the set of allocation controlled nodes $AC$ since the previous allocation timestep:
+After the objectives above there can still be many optimal solutions, for instance when two Pumps with the same route priority can supply the same demand. The solver could then return a different one every allocation timestep, which makes the flow switch between routes. Therefore the last objective minimizes the change of the flows through the allocation controlled nodes $i = 1, \ldots, n$ since the previous allocation timestep:
 
 $$
-\min \sum_{i \in AC} \left| Q_i - Q_i^\text{prev} \right|
+\min \sum_{i=1}^n w_i \left| Q_i - Q_i^\text{prev} \right|, \quad w_i = 1 + 0.01 \frac{i - 1}{n - 1}
 $$
 
-Here $Q_i^\text{prev}$ is the flow of the previous allocation timestep, or for the first timestep of an intervention interval the average flow over the previous interval. At the start of the simulation it is the `flow_rate` from the input, and 0 for a TabulatedRatingCurve. This objective is skipped for subnetworks without allocation controlled nodes, and it does not apply to the demands that secondary networks pass to the primary network.
+Here $Q_i^\text{prev}$ is the flow of the previous allocation timestep, or for the first timestep of an intervention interval the average flow over the previous interval. At the start of the simulation it is the `flow_rate` from the input, and 0 for a TabulatedRatingCurve. The nodes are ordered by node type (Pump, Outlet, TabulatedRatingCurve) and node ID. Without the slightly increasing weights $w_i$ this objective itself would often have many optimal solutions, for instance when two tied Pumps both need to supply more, since any division of the increase would then be equally good. With them the flow of the first node changes. This objective does not apply to the demands that secondary networks pass to the primary network.
+
+The flow change objective is skipped if the flows through the allocation controlled nodes can be shown to be the same in all optimal solutions of the previous objectives, which saves an optimization. This is checked with the optimal basis of the previous optimization: only nonbasic variables and constraints with a zero reduced cost can move without making that objective worse, and if none of these affects the flow through an allocation controlled node, these flows are unique. It is also skipped for subnetworks without allocation controlled nodes.
+
+After the flow change objective the same check is done. If it shows that the flows through the allocation controlled nodes still differ between optimal solutions, a warning that lists these nodes is given once per subnetwork. With `error_on_non_unique_flow = true` in the [allocation settings](/reference/usage.qmd#sec-allocation-settings) the simulation stops with an error instead. This can be resolved by making the routes through these nodes differ for the allocation objectives, for instance with a different `route_priority`, or by limiting their flows with `min_flow_rate` and `max_flow_rate`.

@@ -935,23 +935,30 @@ function add_flow_change_objective!(allocation_model::AllocationModel)::Nothing
     return nothing
 end
 
+"Relative difference between the largest and smallest weight in the flow change objective"
+const FLOW_CHANGE_WEIGHT_SPREAD = 1.0e-2
+
 """
 Add a variable for the absolute change of the flow through each allocation controlled node
-since the previous allocation timestep, and minimize their sum in the last objective.
-The previous flow is the flow rate last set by allocation, or at the start of the simulation
-the one from the input.
+since the previous allocation timestep, and minimize their weighted sum in the last objective.
+The weights increase slightly over the nodes, ordered by node type and node ID. Without them
+this objective would itself often have many optimal solutions, for instance when two tied
+Pumps both need to supply more, since then any division of the increase is equally good. With
+them the flow of the first node changes. The previous flows are the right hand sides of the
+constraints, which are set every allocation timestep in `set_flow_change_rhs!`.
 """
 function add_flow_change!(
         allocation_model::AllocationModel,
         p_independent::ParametersIndependent,
     )::Nothing
-    (; problem, objectives, scaling, node_ids_in_subnetwork) = allocation_model
+    (; problem, objectives, node_ids_in_subnetwork, allocation_controlled_flows) =
+        allocation_model
     (; pump, outlet, tabulated_rating_curve, graph) = p_independent
     (; pump_ids_subnetwork, outlet_ids_subnetwork, tabulated_rating_curve_ids_subnetwork) =
         node_ids_in_subnetwork
     flow = problem[:flow]
 
-    previous_flow = OrderedDict{NodeID, Float64}()
+    empty!(allocation_controlled_flows)
     for (node, node_ids) in (
             (pump, pump_ids_subnetwork),
             (outlet, outlet_ids_subnetwork),
@@ -959,12 +966,12 @@ function add_flow_change!(
         )
         for node_id in node_ids
             if node.allocation_controlled[node_id.idx]
-                previous_flow[node_id] = node.flow_rate[node_id.idx] / scaling.flow
+                allocation_controlled_flows[node_id] = flow[inflow_link(graph, node_id).link]
             end
         end
     end
 
-    node_ids = collect(keys(previous_flow))
+    node_ids = collect(keys(allocation_controlled_flows))
     flow_change =
         problem[:flow_change] = JuMP.@variable(
         problem,
@@ -975,11 +982,17 @@ function add_flow_change!(
     problem[:flow_change_constraint] = JuMP.@constraint(
         problem,
         [node_id = node_ids, sign = (-1, 1)],
-        flow_change[node_id] ≥
-            sign * (flow[inflow_link(graph, node_id).link] - previous_flow[node_id]),
+        flow_change[node_id] ≥ sign * allocation_controlled_flows[node_id],
         base_name = "flow_change_constraint"
     )
-    last(objectives).expressions[1] = variable_sum(flow_change)
+
+    expression = JuMP.AffExpr()
+    n = length(node_ids)
+    for (i, node_id) in enumerate(node_ids)
+        weight = 1.0 + FLOW_CHANGE_WEIGHT_SPREAD * (i - 1) / max(n - 1, 1)
+        JuMP.add_to_expression!(expression, weight, flow_change[node_id])
+    end
+    last(objectives).expressions[1] = expression
     return nothing
 end
 

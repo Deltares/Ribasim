@@ -1,5 +1,5 @@
 minimize
-obj: 1 flow_change_Pump_#7_ + 1 flow_change_Pump_#8_
+obj: 1 flow_change_Pump_#7_ + 1.01 flow_change_Pump_#8_
 subject to
 c1: -1 low_storage_factor_Basin_#1_ - 1 low_storage_factor_Basin_#5_ - 1 low_storage_factor_Basin_#6_ <= -3
 c2: 1 user_demand_error_UserDemand_#2,1,first_ <= 0

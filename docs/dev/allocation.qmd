@@ -589,9 +589,9 @@ end
 ### Flow Change Objective
 
 **Mathematical formulation:**
-$$\min \sum_i \left| Q_i - Q_i^\text{prev} \right|$$
+$$\min \sum_{i=1}^n w_i \left| Q_i - Q_i^\text{prev} \right|, \quad w_i = 1 + 0.01 \frac{i - 1}{n - 1}$$
 
-over the allocation controlled nodes $i$.
+over the allocation controlled nodes $i$, ordered by node type and node ID.
 
 **Code implementation:**
 
@@ -601,16 +601,25 @@ flow_change = JuMP.@variable(problem, [node_ids], lower_bound = 0.0)
 JuMP.@constraint(
     problem,
     [node_id = node_ids, sign = (-1, 1)],
-    flow_change[node_id] ≥
-        sign * (flow[inflow_link(graph, node_id).link] - previous_flow[node_id]),
+    flow_change[node_id] ≥ sign * allocation_controlled_flows[node_id],
 )
-last(objectives).expressions[1] = variable_sum(flow_change)
+# From set_flow_change_rhs!, called in set_simulation_data!:
+# flow_change - sign * flow ≥ -sign * previous_flow
+JuMP.set_normalized_rhs(constraints[node_id, sign], -sign * previous_flow)
 ```
 
 **Key points:**
 - Optimized last, so it only chooses between solutions that are equally good for all other objectives
 - The previous flow is `flow_rate` of the node, which is where allocation writes its result
-- Rebuilt every timestep, since DiscreteControl can switch allocation control on and off
+- The slightly increasing weights make the objective itself generically have a unique optimum
+- The structure only depends on which nodes are allocation controlled; the previous flows are right hand sides
+
+**Uniqueness check** (`controlled_flow_uniqueness`):
+- Uses the optimal simplex basis from HiGHS. Nonbasic variables and inequality constraints with a reduced cost or dual that is not (near) zero stay at their bound in every optimal solution
+- For the other nonbasic ones, the column of $B^{-1}A$ (`Highs_getReducedColumn`, or `Highs_getBasisSolve` for a constraint) gives how the basic variables change when they move
+- If none of these columns affects a controlled flow, the controlled flows are unique and the flow change objective is skipped
+- Otherwise moving along such a column is tried, with a step that is halved until no constraint gets more violated than at the solution. If that works the controlled flows are not unique, which after the flow change objective gives a warning, or an error if `allocation.error_on_non_unique_flow` is set (`check_controlled_flow_uniqueness`)
+- If neither can be shown, for instance because a degenerate basis blocks the move, the result is unknown and the flow change objective is optimized without error
 
 ### Low Storage Factor Objective
 
