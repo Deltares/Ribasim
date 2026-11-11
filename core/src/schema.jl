@@ -234,6 +234,7 @@ module Schema
             node_id::Int32
             time::DateTime
             flow_rate::Float64
+            interpolation::Union{Missing, String}
         end
 
         struct Concentration <: Table

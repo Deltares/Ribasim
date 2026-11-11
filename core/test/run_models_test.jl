@@ -991,20 +991,27 @@ end
     )
     @test ispath(toml_path)
 
+    # FlowBoundary #1 uses the interpolation type from the config,
+    # FlowBoundary #5 sets linear interpolation in the Time table
     model = Ribasim.Model(toml_path)
     (; flow_rate) = model.integrator.p.p_independent.flow_boundary
     (; interpolation) = model.config
 
     @test interpolation.flow_boundary == "block"
-    itp = only(flow_rate)
-    @test itp isa ConstantInterpolation
+    @test flow_rate[1] isa ConstantInterpolation
+    @test flow_rate[2] isa LinearInterpolation
     Ribasim.solve!(model)
 
-    flow_rates_input = itp.u
-    flow_rates_output =
-        filter(row -> row.from_node_id == 1, DataFrame(Ribasim.flow_data(model))).flow_rate
-    @test flow_rates_output[1:4] ≈ flow_rates_input
-    @test flow_rates_output[4:7] ≈ flow_rates_input
+    flow_rates_input = flow_rate[1].u
+    flow_table = DataFrame(Ribasim.flow_data(model))
+    flow_rates_block = filter(row -> row.from_node_id == 1, flow_table).flow_rate
+    flow_rates_linear = filter(row -> row.from_node_id == 5, flow_table).flow_rate
+    @test flow_rates_block[1:4] ≈ flow_rates_input
+    @test flow_rates_block[4:7] ≈ flow_rates_input
+    # The mean flow rate over a day of a linear interpolation between daily values
+    flow_rates_daily_mean = (flow_rates_input[1:3] + flow_rates_input[2:4]) / 2
+    @test flow_rates_linear[1:3] ≈ flow_rates_daily_mean
+    @test flow_rates_linear[4:6] ≈ flow_rates_daily_mean
 
     config = Ribasim.Config(toml_path; interpolation_flow_boundary = "linear")
     model = Ribasim.Model(config)
@@ -1012,7 +1019,7 @@ end
     (; interpolation) = model.config
 
     @test interpolation.flow_boundary == "linear"
-    @test only(flow_rate) isa LinearInterpolation
+    @test all(itp -> itp isa LinearInterpolation, flow_rate)
 
     @test_throws "Invalid TOML config." Ribasim.Config(
         toml_path;

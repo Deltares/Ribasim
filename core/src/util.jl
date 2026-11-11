@@ -1167,6 +1167,44 @@ function parse_interpolation_type(name::AbstractString)::Union{InterpolationType
     return nothing
 end
 
+"""
+The interpolation type per node from the `interpolation` column of a Time table, or the
+`default` for nodes without a value or not in the Time table. Interpolation types cannot
+vary over time, so all rows of a node must have the same value.
+Returns the interpolation types and whether they are all valid.
+"""
+function get_interpolation_types(
+        time::StructVector,
+        node_id::Vector{NodeID},
+        default::InterpolationType.T,
+    )::Tuple{Vector{InterpolationType.T}, Bool}
+    interpolation_types = fill(default, length(node_id))
+    valid = true
+
+    for rows in group_ranges(time.node_id)
+        idx = searchsortedfirst(node_id, time.node_id[first(rows)])
+        # Rows of other node IDs are reported by the node ID validation
+        (idx > length(node_id) || node_id[idx] != time.node_id[first(rows)]) && continue
+        id = node_id[idx]
+
+        name = time.interpolation[last(rows)]
+        if any(i -> !isequal(time.interpolation[i], name), rows)
+            @error "$id has multiple different values over time for 'interpolation', which does not support time-varying values."
+            valid = false
+        elseif !ismissing(name)
+            interpolation_type = parse_interpolation_type(name)
+            if isnothing(interpolation_type)
+                options = join(Symbol.(instances(InterpolationType.T)), ", ")
+                @error "$id has an invalid interpolation type '$name', the options are: $options."
+                valid = false
+            else
+                interpolation_types[idx] = interpolation_type
+            end
+        end
+    end
+    return interpolation_types, valid
+end
+
 function check_new_t!(p::Parameters, t::Number)::Nothing
     (; time_dependent_cache, p_mutable) = p
 

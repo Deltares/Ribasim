@@ -755,15 +755,18 @@ function FlowBoundary(db::DB, config::Config, graph::MetaGraph)
         config,
     )
 
-    # The interpolation type from the config, validated in `validate_config`
-    interpolation_type =
+    # The interpolation type from the config, validated in `validate_config`, applies to
+    # nodes that don't specify one
+    default_interpolation_type =
         parse_interpolation_type(config.interpolation.flow_boundary)::InterpolationType.T
-    interpolation_types = fill(interpolation_type, length(node_id))
+    interpolation_types, valid =
+        get_interpolation_types(time, node_id, default_interpolation_type)
+    errors = !valid
 
     flow_boundary = FlowBoundary(; node_id, concentration_itp)
 
     set_inoutflow_links!(flow_boundary, graph; inflow = false)
-    errors = parse_parameter!(
+    errors |= parse_parameter!(
         flow_boundary,
         config,
         Val(:flow_rate);
@@ -2301,7 +2304,16 @@ function load_netcdf(
             table[:time] = repeat(repeat(time; inner = n_priority); inner = n_node_id)
         end
 
+        n = n_node_id * n_time * n_priority
         for data_varname in data_varnames
+            column_type = fieldtype(table_type, data_varname)
+            if !haskey(ds, String(data_varname))
+                # Optional columns can be left out, such as columns added in a newer version
+                Missing <: column_type ||
+                    error("Variable $data_varname not found in NetCDF file $table_path.")
+                table[data_varname] = Vector{column_type}(missing, n)
+                continue
+            end
             var = ds[data_varname]
             # For most tables, each data variable has all dimensions of the table.
             # For "UserDemand / time", variables are either:
@@ -2325,11 +2337,17 @@ function load_netcdf(
             else
                 data = Array(var)
             end
+            if column_type == Union{Missing, String}
+                # NetCDF has no missing strings. Python writes them as empty strings, or as
+                # NaN values if they are all missing.
+                data = Union{Missing, String}[
+                    x isa AbstractString && !isempty(x) ? String(x) : missing for x in data
+                ]
+            end
             table[data_varname] = vec(data)
         end
 
         # Drop rows where all data variables are missing (happens with NetCDF dense grids)
-        n = n_node_id * n_time * n_priority
         mask = trues(n)
         for i in 1:n
             if all(name -> ismissing(table[name][i]), data_varnames)
