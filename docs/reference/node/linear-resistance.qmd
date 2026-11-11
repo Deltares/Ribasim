@@ -52,3 +52,12 @@ Water flows from high to low; either direction is possible.
 $\phi$ is the reduction factor which makes the flow go smoothly to $0$ as the upstream water depth (as determined by the flow direction) goes from `depth_threshold` to the Basin bottom.
 
 For `depth_threshold` see [Solver settings](/reference/usage.qmd#sec-solver-settings).
+
+# Behavior in allocation
+
+[Allocation](/concept/allocation.qmd) cannot set the flow of a LinearResistance directly: like in the simulation, the flow follows from the water levels on either side of it.
+Allocation predicts this flow with a simplified version of the equations above, so the flow that allocation planned, in [`allocation_flow.nc`](/reference/usage.qmd#sec-results), can differ from the simulated flow in `flow.nc`.
+
+A [FlowDemand](/reference/node/flow-demand.qmd) on a LinearResistance can only be met when allocation can raise the flow by changing the water levels, for instance by steering an allocation-controlled Pump or Outlet upstream.
+
+With a route priority for LinearResistance nodes, see [allocation settings](/reference/usage.qmd#sec-allocation-settings), allocation can be made to prefer or avoid routing water through them.

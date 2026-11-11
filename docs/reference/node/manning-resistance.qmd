@@ -302,3 +302,12 @@ and the width of the water surface is:
 $$
 T = w + 2 d \frac{\Delta y}{\Delta z}
 $$
+
+# Behavior in allocation
+
+[Allocation](/concept/allocation.qmd) cannot set the flow of a ManningResistance directly: like in the simulation, the flow follows from the water levels on either side of it.
+Allocation predicts this flow with a simplified version of the equations above, so the flow that allocation planned, in [`allocation_flow.nc`](/reference/usage.qmd#sec-results), can differ from the simulated flow in `flow.nc`.
+
+A [FlowDemand](/reference/node/flow-demand.qmd) on a ManningResistance can only be met when allocation can raise the flow by changing the water levels, for instance by steering an allocation-controlled Pump or Outlet upstream.
+
+With a route priority for ManningResistance nodes, see [allocation settings](/reference/usage.qmd#sec-allocation-settings), allocation can be made to prefer or avoid routing water through them.

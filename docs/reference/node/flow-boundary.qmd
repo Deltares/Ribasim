@@ -80,3 +80,10 @@ geom      | Polygon or MultiPolygon | (optional)
 
 A FlowBoundary can be connected directly to a Basin and prescribes the flow to that Basin.
 Since the `flow_rate` cannot be negative a FlowBoundary can only add water to the model.
+
+# Behavior in allocation
+
+Allocation cannot change the flow of a FlowBoundary.
+Each time [allocation](/concept/allocation.qmd) runs, it assumes the flow of the FlowBoundary stays at its current value until the next intervention time, set by `intervention_interval` in the [allocation settings](/reference/usage.qmd#sec-allocation-settings), so it does not anticipate later changes in the timeseries.
+When the flow changes in between, the water that is actually available differs from what allocation planned with.
+The flow of a FlowBoundary can be used to supply demands downstream.
