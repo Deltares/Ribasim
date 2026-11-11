@@ -1,4 +1,4 @@
-__version__ = "2026.1.2"
+__version__ = "2026.2.0-rc1"
 
 from collections.abc import Callable
 
@@ -20,6 +20,7 @@ from ribasim_testmodels.allocation import (
     level_demand_model,
     level_demand_with_rating_curve_model,
     linear_resistance_demand_model,
+    linear_resistance_demand_negative_flow_model,
     medium_primary_secondary_network_model,
     medium_primary_secondary_network_verification_model,
     minimal_subnetwork_model,
@@ -108,6 +109,7 @@ from ribasim_testmodels.junction import (
     junction_no_basin_allocation_model,
     junction_no_basin_model,
     junction_pid_model,
+    junction_shortage_tracer_model,
     junction_tracer_model,
 )
 from ribasim_testmodels.observation import observation_model
@@ -194,6 +196,7 @@ __all__ = [
     "junction_no_basin_allocation_model",
     "junction_no_basin_model",
     "junction_pid_model",
+    "junction_shortage_tracer_model",
     "junction_tracer_model",
     "leaky_bucket_model",
     "level_boundary_condition_model",
@@ -201,6 +204,7 @@ __all__ = [
     "level_demand_with_rating_curve_model",
     "level_range_model",
     "linear_resistance_demand_model",
+    "linear_resistance_demand_negative_flow_model",
     "linear_resistance_model",
     "local_pidcontrolled_cascade_model",
     "manning_resistance_control_model",

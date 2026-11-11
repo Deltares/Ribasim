@@ -632,6 +632,8 @@ struct TracerTransport
     rhs::Matrix{Float64}
     # Per Basin the weight 1 - θ of the concentration at the start of the timestep in its outflows
     weight_start::Vector{Float64}
+    # Volume that flowed back from each Basin into a Junction node over the timestep
+    backflow::Vector{Float64}
     # KLU factorization of A, refactorized with new values each timestep
     linear_solve::TracerLinearSolve
 end

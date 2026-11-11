@@ -611,6 +611,25 @@ end
     @test isfinite(last(pump_table.supplied))
 end
 
+@testitem "FlowDemand on a node with negative physical flow" begin
+    using DataFrames: DataFrame
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/linear_resistance_demand_negative_flow/ribasim.toml",
+    )
+    @test ispath(toml_path)
+
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    # The physical flow is from basin 3 to basin 1, against the direction of the LinearResistance
+    flow_table = DataFrame(Ribasim.flow_data(model))
+    @test all(<(0), filter(:link_id => ==(1), flow_table).flow_rate)
+    allocation_table = DataFrame(Ribasim.allocation_data(model))
+    @test !isempty(filter(:node_id => ==(2), allocation_table))
+end
+
 @testitem "Control constraints are only rebuilt when allocation control changes" begin
     import BasicModelInterface as BMI
     import JuMP

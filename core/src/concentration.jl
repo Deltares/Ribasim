@@ -113,6 +113,8 @@ in `formulate_junction_flow!`. The mass that flows over each link is stored in `
   UserDemand nodes abstracting from Basins return water with the concentration of the Basins, see
   `mass_inflows_from_user_demand!`. The mass in the water it consumes leaves the model.
 - The mass that flows from a Junction node or a UserDemand node into a Basin is added to the mass of the Basin.
+  A negative volume from a Junction node into a Basin, when a UserDemand takes more water than flows in within
+  the solver tolerance, leaves the Basin with the concentration of the Basin as an outflow in `transport_tracers!`.
 
 The concentration of Basins is used as it was at the start of the timestep, and the mass that reaches Basins
 is a source in `transport_tracers!`.
@@ -137,9 +139,10 @@ function mass_through_junctions!(integrator::DEIntegrator)::Nothing
     ) = junction
     (; inflow_link_offsets, return_mass) = user_demand
     # The volume that flowed over a routed link in the last timestep. It is what remains after a
-    # UserDemand abstracted from the Junction node, which can be negative by rounding.
-    link_volume(idx) =
-        max(routed_flow(link_weights[idx], cumulative_flow_dt, flow_boundary.cumulative_flow_dt), 0.0)
+    # UserDemand abstracted from the Junction node. This can be negative, when the UserDemand takes
+    # more water than flows in within the solver tolerance. It is not clamped to zero, since the
+    # mass has to follow the volume that is added to or removed from the Basins.
+    link_volume(idx) = routed_flow(link_weights[idx], cumulative_flow_dt, flow_boundary.cumulative_flow_dt)
 
     for subgraph in routed_subgraphs, id in subgraph
         if id.is_routed
@@ -183,9 +186,18 @@ function mass_through_junctions!(integrator::DEIntegrator)::Nothing
                 # The mass abstracted by a UserDemand is handled at the UserDemand
                 iszero(link_idx) && continue
                 link_mass_out = view(link_mass, :, link_idx)
-                link_mass_out .= link_volume(link_idx) .* concentration_node
+                volume = link_volume(link_idx)
+                link_mass_out .= volume .* concentration_node
                 target_id = outflow_link.link[2]
-                target_id.is_basin && (view(mass, :, target_id.idx) .+= link_mass_out)
+                if target_id.is_basin
+                    if volume < 0
+                        # Water that flows back leaves the Basin with the concentration of the
+                        # Basin, as an outflow in `transport_tracers!`
+                        p_independent.tracer_transport.backflow[target_id.idx] -= volume
+                    else
+                        view(mass, :, target_id.idx) .+= link_mass_out
+                    end
+                end
             end
         elseif id.type == NodeType.UserDemand
             junction_id = only(user_demand.inflow_links[id.idx]).link[1]
@@ -339,6 +351,7 @@ function TracerTransport(
         zeros(n_basin),
         rhs,
         zeros(n_basin),
+        zeros(n_basin),
         init_tracer_linear_solve(A, rhs),
     )
 end
@@ -358,13 +371,15 @@ function transport_tracers!(
     )::Nothing
     (; tracer_transport, basin, level_boundary, cumulative_flow_dt, inflow_id, outflow_id, flow_ranges) =
         p_independent
-    (; A, diagonal_nz, forward_nz, backward_nz, outflow, rhs, weight_start, linear_solve) = tracer_transport
+    (; A, diagonal_nz, forward_nz, backward_nz, outflow, rhs, weight_start, backflow, linear_solve) = tracer_transport
     (; mass, evaporate_mass, concentration_state) = basin.concentration_data
     (; storage_prev_dt) = basin
     isempty(diagonal_nz) && return nothing
     nzval = nonzeros(A)
     fill!(nzval, 0.0)
-    fill!(outflow, 0.0)
+    # Start with the water that flowed back into Junction nodes, see `mass_through_junctions!`
+    outflow .= backflow
+    fill!(backflow, 0.0)
 
     for flow_idx in eachindex(cumulative_flow_dt)
         # Without evaporating mass, the evaporated water leaves the mass behind

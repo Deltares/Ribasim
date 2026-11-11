@@ -14,7 +14,7 @@ For more granular access, see:
 """
 module Ribasim
 
-const RIBASIM_VERSION = "2026.1.2"
+const RIBASIM_VERSION = "2026.2.0-rc1"
 
 using PrecompileTools: @setup_workload, @compile_workload
 

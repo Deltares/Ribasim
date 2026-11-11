@@ -12,7 +12,7 @@ crs = "EPSG:4326"      # required
 input_dir = "input"     # required
 results_dir = "results" # required
 
-ribasim_version = "2026.1.2" # required
+ribasim_version = "2026.2.0-rc1" # required
 
 # Specific tables can also go into NetCDF files rather than the database.
 # For large tables this can benefit from better compressed file sizes.
