@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [v2026.2.0-rc1] - 2026-11-11
+
 ### Added
 - BMI: Set FlowBoundary flow rates during a simulation and read cumulative flow for online coupling. [#3251](https://github.com/Deltares/Ribasim/pull/3251)
 - Warn on rapidly oscillating DiscreteControl states with the configurable `solver.min_discrete_control_interval`. [#3237](https://github.com/Deltares/Ribasim/pull/3237)
