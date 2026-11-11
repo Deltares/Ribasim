@@ -234,6 +234,7 @@ module Schema
             node_id::Int32
             time::DateTime
             flow_rate::Float64
+            interpolation::Union{Missing, String}
         end
 
         struct Concentration <: Table
@@ -392,13 +393,6 @@ module Schema
             return_factor::Float64
             min_level::Union{Float64, Missing} = NaN
             demand_priority::Union{Missing, Int32} = 1
-        end
-
-        struct Concentration <: Table
-            node_id::Int32
-            time::DateTime
-            substance::String
-            concentration::Float64
         end
 
     end

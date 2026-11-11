@@ -105,7 +105,11 @@ def _make_boundary(data, boundary_type, values="concentration"):
         "name": bid,
         "substances": list(map(_quote, piv.columns[1:])),
         "df": piv.to_string(
-            formatters={"time": _quote}, header=False, index=False, na_rep=-999
+            formatters={"time": _quote},
+            float_format="{:.9g}".format,
+            header=False,
+            index=False,
+            na_rep=-999,
         ),
     }
     substances = data.substance.unique()
@@ -178,6 +182,15 @@ def _setup_graph(nodes, link, evaporate_mass=True, routed_junction_ids=frozenset
                 id=[row.Index],
             )
 
+    # The links into each UserDemand, whose flows add up to its abstraction
+    user_demand_inflow_ids = {
+        node_id: [
+            link_id for _, _, d in G.in_edges(node_id, data=True) for link_id in d["id"]
+        ]
+        for node_id, node_type in G.nodes(data="type")
+        if node_type == "UserDemand"
+    }
+
     # Simplify network, only keeping Basins and Boundaries.
     # We find an unwanted node, remove it,
     # and merge the flow links to/from the node.
@@ -249,14 +262,31 @@ def _setup_graph(nodes, link, evaporate_mass=True, routed_junction_ids=frozenset
     # see `_junction_term_flows`. Such a link has `terms` instead of `id`:
     # (link_id, [(numerator link ids, denominator link ids), ...], sign).
     # Upstream nodes are removed first, so that the terms compose along chains.
-    routed_ids = [n for n, d in G.nodes(data=True) if d["routed"]]
+    #
+    # A UserDemand passes on water in the same way: its return flow carries the concentrations
+    # of the water it abstracted. Each link into a UserDemand is passed on over its return
+    # links, with the share of the return flow in the abstraction. The UserDemand stays in the
+    # network as a boundary, that only receives the water it consumes: the links into it get
+    # the passed on flow as negative terms.
+    routed_ids = [
+        n for n, d in G.nodes(data=True) if d["routed"] or d["type"] == "UserDemand"
+    ]
     while routed_ids:
         node_id = next(
-            n for n in routed_ids if not any(G.nodes[m]["routed"] for m in G.pred[n])
+            (n for n in routed_ids if not any(m in routed_ids for m in G.pred[n])),
+            None,
         )
+        if node_id is None:
+            raise ValueError(
+                f"Cannot simplify network with a cycle of UserDemand and Junction nodes: {routed_ids}."
+            )
         routed_ids.remove(node_id)
+        is_user_demand = G.nodes[node_id]["type"] == "UserDemand"
         out_edges = list(G.out_edges(node_id, data=True))
-        denominator = [link_id for _, _, d in out_edges for link_id in d["id"]]
+        if is_user_demand:
+            denominator = user_demand_inflow_ids[node_id]
+        else:
+            denominator = [link_id for _, _, d in out_edges for link_id in d["id"]]
         for in_id, _, d_in in list(G.in_edges(node_id, data=True)):
             in_terms = [
                 *d_in.get("terms", []),
@@ -271,7 +301,14 @@ def _setup_graph(nodes, link, evaporate_mass=True, routed_junction_ids=frozenset
                     G.edges[in_id, out_id].setdefault("terms", []).extend(new_terms)
                 else:
                     G.add_edge(in_id, out_id, id=[], terms=new_terms)
-        G.remove_node(node_id)
+                if is_user_demand:
+                    d_in.setdefault("terms", []).extend(
+                        (base, ratios, -sign) for base, ratios, sign in new_terms
+                    )
+        if is_user_demand:
+            G.remove_edges_from(list(G.out_edges(node_id)))
+        else:
+            G.remove_node(node_id)
 
     remove_nodes = []
     for node_id, out in G.succ.items():
@@ -306,29 +343,8 @@ def _setup_graph(nodes, link, evaporate_mass=True, routed_junction_ids=frozenset
     for node_id in remove_nodes:
         G.remove_node(node_id)
 
-    # Due to the simplification, we can end up with cycles of length 2.
-    # This happens when a UserDemand is connected to and from a Basin,
-    # but can also happen in other cases (rivers with a outlet and pump),
-    # for which we do nothing. We merge these UserDemand cycles links to
-    # a single link, and later merge the flows.
-    merge_links = []
-    for loop in nx.simple_cycles(G, length_bound=2):
-        if len(loop) == 2:
-            node_a = G.nodes[loop[0]]
-            node_b = G.nodes[loop[1]]
-            if node_a["type"] != "UserDemand" and node_b["type"] != "UserDemand":
-                logger.debug(
-                    f"Found non UserDemand cycle between {node_a['type']} #{loop[0]} and {node_b['type']} #{loop[1]}."
-                )
-            else:
-                link_ids = G.edges[loop]["id"]
-                G.edges[reversed(loop)]["id"].extend(link_ids)
-                merge_links.extend(link_ids)
-                G.edges[reversed(loop)].setdefault("terms", []).extend(
-                    (base, ratios, -sign)
-                    for base, ratios, sign in G.edges[loop].get("terms", [])
-                )
-                G.remove_edge(*loop)
+    # Water that returns to where it came from, through a UserDemand, needs no link
+    G.remove_edges_from(list(nx.selfloop_edges(G)))
 
     # Remove boundary to boundary links
     remove_double_boundary = []
@@ -468,7 +484,7 @@ def _setup_graph(nodes, link, evaporate_mass=True, routed_junction_ids=frozenset
 
     assert len(basin_mapping) == basin_id
 
-    return G, merge_links, node_mapping, link_mapping, basin_mapping
+    return G, node_mapping, link_mapping, basin_mapping
 
 
 def _setup_boundaries(model, node_mapping):
@@ -485,12 +501,6 @@ def _setup_boundaries(model, node_mapping):
     if model.flow_boundary.concentration.df is not None:
         for _, rows in model.flow_boundary.concentration.df.groupby("node_id"):
             boundary, substance = _make_boundary(rows, "FlowBoundary")
-            concentrations.append(boundary)
-            substances.update(substance)
-
-    if model.user_demand.concentration.df is not None:
-        for _, rows in model.user_demand.concentration.df.groupby("node_id"):
-            boundary, substance = _make_boundary(rows, "UserDemand")
             concentrations.append(boundary)
             substances.update(substance)
 
@@ -555,7 +565,7 @@ def generate(
     include_path.mkdir(exist_ok=True)
 
     # Setup flow network
-    G, merge_links, node_mapping, link_mapping, basin_mapping = _setup_graph(
+    G, node_mapping, link_mapping, basin_mapping = _setup_graph(
         model.node,
         model.link,
         evaporate_mass=evaporate_mass,
@@ -627,12 +637,9 @@ def generate(
         (basins["time"] - basins["time"].iloc[0]).dt.total_seconds().astype("int32")
     )
 
-    # The flows over links that bypass the Junction nodes that divide the flow are computed from the original flows
+    # The flows over links that bypass the UserDemand nodes and the Junction nodes that divide
+    # the flow are computed from the original flows
     term_flows = _junction_term_flows(G, flows)
-
-    # Invert flows for half-link of cycles so later summing is correct
-    m = flows.link_id.isin(merge_links)
-    flows.loc[m, "flow_rate"] = flows.loc[m, "flow_rate"] * -1
 
     # Map link_id to the new link_id and merge any duplicate flows
     flows["riba_link_id"] = flows["link_id"]
@@ -676,6 +683,7 @@ def generate(
     # Save flows to Delwaq format
     nflows.sort_values(by=["time", "link_id"], inplace=True)
     # nflows.to_csv(output_path / "flows.csv", index=False)  # not needed
+    assert (nflows.groupby("time").size() == total_exchanges).all()
     nflows.drop(
         columns=["link_id", "riba_link_id"],
         inplace=True,
@@ -729,7 +737,6 @@ def generate(
         "Initial": 1.0,
         "LevelBoundary": 0.0,
         "FlowBoundary": 0.0,
-        "UserDemand": 0.0,
         "Precipitation": 0.0,
         "Drainage": 0.0,
         "SurfaceRunoff": 0.0,
@@ -868,7 +875,6 @@ def add_tracer(
         "Basin",
         "LevelBoundary",
         "FlowBoundary",
-        "UserDemand",
     ]:
         raise ValueError("Can only trace Basins and boundaries")
     snake_node_type = _pascal_to_snake(node_type)

@@ -930,7 +930,7 @@ function aggregate_flows!(
                 for (basin_idx, routing_weight) in routed_basins_boundary[idx]
                     aggregate[basin_idx] += routing_weight * boundary_flow[idx]
                 end
-            else
+            elseif downstream_id.is_basin
                 aggregate[downstream_id.idx] += boundary_flow[idx]
             end
         end
@@ -1027,7 +1027,6 @@ function get_timeseries_tstops(
         get_concentration_tstops!(tstops, t_end, concentration_data.loads.itp)
         get_concentration_tstops!(tstops, t_end, flow_boundary.concentration_itp)
         get_concentration_tstops!(tstops, t_end, level_boundary.concentration_itp)
-        get_concentration_tstops!(tstops, t_end, user_demand.concentration_itp)
     end
 
     return tstops
@@ -1168,6 +1167,44 @@ function parse_interpolation_type(name::AbstractString)::Union{InterpolationType
     return nothing
 end
 
+"""
+The interpolation type per node from the `interpolation` column of a Time table, or the
+`default` for nodes without a value or not in the Time table. Interpolation types cannot
+vary over time, so all rows of a node must have the same value.
+Returns the interpolation types and whether they are all valid.
+"""
+function get_interpolation_types(
+        time::StructVector,
+        node_id::Vector{NodeID},
+        default::InterpolationType.T,
+    )::Tuple{Vector{InterpolationType.T}, Bool}
+    interpolation_types = fill(default, length(node_id))
+    valid = true
+
+    for rows in group_ranges(time.node_id)
+        idx = searchsortedfirst(node_id, time.node_id[first(rows)])
+        # Rows of other node IDs are reported by the node ID validation
+        (idx > length(node_id) || node_id[idx] != time.node_id[first(rows)]) && continue
+        id = node_id[idx]
+
+        name = time.interpolation[last(rows)]
+        if any(i -> !isequal(time.interpolation[i], name), rows)
+            @error "$id has multiple different values over time for 'interpolation', which does not support time-varying values."
+            valid = false
+        elseif !ismissing(name)
+            interpolation_type = parse_interpolation_type(name)
+            if isnothing(interpolation_type)
+                options = join(Symbol.(instances(InterpolationType.T)), ", ")
+                @error "$id has an invalid interpolation type '$name', the options are: $options."
+                valid = false
+            else
+                interpolation_types[idx] = interpolation_type
+            end
+        end
+    end
+    return interpolation_types, valid
+end
+
 function check_new_t!(p::Parameters, t::Number)::Nothing
     (; time_dependent_cache, p_mutable) = p
 
@@ -1241,18 +1278,15 @@ end
 
 function initialize_concentration_itp(
         n_substance,
-        substance_idx_node_type;
-        continuity_tracer = true,
+        substance_idx_node_type,
     )::Vector{ScalarConstantInterpolation}
     # Default: concentration of 0
     concentration_itp = fill(zero_constant_itp, n_substance)
 
     # Set the concentration corresponding to the node type to 1
     concentration_itp[substance_idx_node_type] = unit_constant_itp
-    if continuity_tracer
-        # Set the concentration corresponding of the continuity tracer to 1
-        concentration_itp[Substance.Continuity] = unit_constant_itp
-    end
+    # Set the concentration corresponding of the continuity tracer to 1
+    concentration_itp[Substance.Continuity] = unit_constant_itp
     return concentration_itp
 end
 

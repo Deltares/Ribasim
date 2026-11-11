@@ -967,6 +967,7 @@ function optimize_multi_objective!(
     latest_optimized_expression = JuMP.AffExpr()
     latest_bound = 0.0
     latest_expression_is_constrained = false
+    optimized = false
 
     for objective in objectives
         (; expressions, type, demand_priority_idx) = objective
@@ -981,6 +982,7 @@ function optimize_multi_objective!(
             end
             JuMP.@objective(problem, Min, expression)
             JuMP.optimize!(problem)
+            optimized = true
             if JuMP.termination_status(problem) != JuMP.OPTIMAL && !isempty(temporary_constraints)
                 # The constraints on the previous objectives hold at their optimum only up to
                 # the solver tolerance, which can make this problem infeasible, so relax them
@@ -1014,6 +1016,16 @@ function optimize_multi_objective!(
                 model.secondary_network_demand[link][demand_priority_idx] = demand
             end
         end
+    end
+
+    if !optimized
+        # All objective expressions are zero, for instance when all demands are zero in a
+        # subnetwork without Basins. Solve for a feasible point so there are results to read.
+        JuMP.@objective(problem, Min, 0)
+        JuMP.optimize!(problem)
+        parse_termination_status(
+            model, last(objectives), JuMP.AffExpr(), nothing, config, t; can_retry
+        )
     end
 
     return nothing
@@ -1663,7 +1675,7 @@ function update_allocation!(
     # Don't run the allocation algorithm if allocation is not active
     !is_active(allocation) && return nothing
 
-    update_scaling!(p, Δt)
+    update_scaling!(p, t, Δt, t_known)
 
     for secondary_network in get_secondary_networks(allocation_models)
         update_control_states!(secondary_network, p_independent)

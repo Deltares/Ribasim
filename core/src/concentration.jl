@@ -7,7 +7,7 @@ Basin that mass is added to the Basin, if it goes to Junction nodes it is passed
 UserDemand nodes in a Junction subgraph are also handled there.
 """
 function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
-    (; p, tprev) = integrator
+    (; p) = integrator
     (; basin, user_demand, cumulative_flow_dt) = p.p_independent
     (; concentration_state, mass) = basin.concentration_data
     (; return_mass) = user_demand
@@ -38,39 +38,10 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
             end
         end
 
-        add_user_demand_tracer_mass!(
-            return_mass_node,
-            user_demand,
-            node_idx,
-            cumulative_flow_dt.horizontal.user_demand_outflow[node_idx],
-            tprev,
-        )
-
         if to_node.is_basin
             view(mass, :, to_node.idx) .+= return_mass_node
         end
     end
-    return nothing
-end
-
-"""
-Replace the UserDemand tracer in the mass of the return flow, so that the UserDemand tracer from upstream is excluded
-and only the fresh tracer from the concentration of the UserDemand ends up in the return flow.
-"""
-function add_user_demand_tracer_mass!(
-        return_mass_node::AbstractVector{Float64},
-        user_demand::UserDemand,
-        node_idx::Int,
-        cumulative_outflow::Float64,
-        t::Float64,
-    )::Nothing
-    return_mass_node[Substance.UserDemand] = 0.0
-    add_substance_mass!(
-        return_mass_node,
-        user_demand.concentration_itp[node_idx],
-        cumulative_outflow,
-        t,
-    )
     return nothing
 end
 
@@ -165,8 +136,10 @@ function mass_through_junctions!(integrator::DEIntegrator)::Nothing
         routed_subgraphs,
     ) = junction
     (; inflow_link_offsets, return_mass) = user_demand
-    # The volume that flowed over a routed link in the last timestep
-    link_volume(idx) = routed_flow(link_weights[idx], cumulative_flow_dt, flow_boundary.cumulative_flow_dt)
+    # The volume that flowed over a routed link in the last timestep. It is what remains after a
+    # UserDemand abstracted from the Junction node, which can be negative by rounding.
+    link_volume(idx) =
+        max(routed_flow(link_weights[idx], cumulative_flow_dt, flow_boundary.cumulative_flow_dt), 0.0)
 
     for subgraph in routed_subgraphs, id in subgraph
         if id.is_routed
@@ -219,7 +192,6 @@ function mass_through_junctions!(integrator::DEIntegrator)::Nothing
             return_flow = cumulative_flow_dt.horizontal.user_demand_outflow[id.idx]
             return_mass_node = view(return_mass, :, id.idx)
             return_mass_node .= return_flow .* view(concentration, :, junction_id.idx)
-            add_user_demand_tracer_mass!(return_mass_node, user_demand, id.idx, return_flow, tprev)
 
             # The return mass into a Junction node is picked up there via `set_junction_source_mass!`
             target_id = user_demand.outflow_link[id.idx].link[2]
@@ -245,15 +217,11 @@ function get_concentration_itp(
         substances,
         substance_idx_node_type,
         cyclic_times,
-        config;
-        continuity_tracer = true,
+        config,
     )::Vector{Vector{ScalarConstantInterpolation}}
     concentration_itp = [
-        initialize_concentration_itp(
-            length(substances),
-            substance_idx_node_type;
-            continuity_tracer,
-        ) for _ in node_id
+        initialize_concentration_itp(length(substances), substance_idx_node_type) for
+            _ in node_id
     ]
 
     for (id, cyclic_time) in zip(node_id, cyclic_times)
@@ -390,7 +358,7 @@ function transport_tracers!(
     )::Nothing
     (; tracer_transport, basin, level_boundary, cumulative_flow_dt, inflow_id, outflow_id, flow_ranges) =
         p_independent
-    (; A, diagonal_nz, forward_nz, backward_nz, outflow, rhs, theta, linear_solve) = tracer_transport
+    (; A, diagonal_nz, forward_nz, backward_nz, outflow, rhs, weight_start, linear_solve) = tracer_transport
     (; mass, evaporate_mass, concentration_state) = basin.concentration_data
     (; storage_prev_dt) = basin
     isempty(diagonal_nz) && return nothing
@@ -440,36 +408,39 @@ function transport_tracers!(
         storage = storage_prev_dt[i]
         # The diagonal can already hold a flow from a Basin to itself
         net_outflow = outflow[i] + nzval[diagonal_nz[i]]
-        θ = if storage > 0 && net_outflow > 0
-            max(0.5, 1 - storage / net_outflow)
+        # The weight 1 - θ is computed directly, since 1 - θ loses precision for θ close to 1
+        ω = if storage > 0 && net_outflow > 0
+            min(0.5, storage / net_outflow)
         else
-            1.0
+            0.0
         end
-        theta[i] = θ
-        diagonal = current_storage[i] + θ * net_outflow
+        weight_start[i] = ω
+        diagonal = current_storage[i] + (1 - ω) * net_outflow
         # An empty Basin without inflow has no mass
         nzval[diagonal_nz[i]] = diagonal > 0 ? diagonal : 1.0
         # The residence time tracer gets older, integrated with the trapezoidal rule
         mass[Substance.ResidenceTime, i] += dt * (storage + current_storage[i]) / 2
         for substance_idx in axes(mass, 1)
-            rhs[i, substance_idx] = mass[substance_idx, i] -
-                (1 - θ) * net_outflow * concentration_state[substance_idx, i]
+            mass_start = mass[substance_idx, i]
+            remaining = mass_start - ω * net_outflow * concentration_state[substance_idx, i]
+            # If all water from the start of the timestep flows out, nothing remains of its mass,
+            # which can be negative by rounding
+            rhs[i, substance_idx] = -8eps(mass_start) <= remaining < 0 ? 0.0 : remaining
         end
     end
 
     # The inflows from other Basins with the same weights as their outflows
     rows = rowvals(A)
     for j in eachindex(diagonal_nz)
-        θ = theta[j]
+        ω = weight_start[j]
         for nz in nzrange(A, j)
             i = rows[nz]
             (i == j || iszero(nzval[nz])) && continue
             volume = -nzval[nz]
-            nzval[nz] = -θ * volume
-            if θ < 1
+            nzval[nz] = -(1 - ω) * volume
+            if ω > 0
                 for substance_idx in axes(mass, 1)
-                    rhs[i, substance_idx] +=
-                        (1 - θ) * volume * concentration_state[substance_idx, j]
+                    rhs[i, substance_idx] += ω * volume * concentration_state[substance_idx, j]
                 end
             end
         end

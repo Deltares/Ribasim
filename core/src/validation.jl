@@ -243,7 +243,6 @@ sort_key(::Type{Schema.Pump.Time}) = (:node_id, :time)
 sort_key(::Type{Schema.TabulatedRatingCurve.Static}) = (:node_id, :control_state, :level)
 sort_key(::Type{Schema.TabulatedRatingCurve.Time}) = (:node_id, :time, :level)
 
-sort_key(::Type{Schema.UserDemand.Concentration}) = (:node_id, :substance, :time)
 sort_key(::Type{Schema.UserDemand.Static}) = (:node_id, :demand_priority)
 sort_key(::Type{Schema.UserDemand.Time}) = (:node_id, :demand_priority, :time)
 
@@ -299,8 +298,9 @@ function valid_unique_rows(table::StructVector{T})::Bool where {T <: Table}
 end
 
 """
-Check that the return_factor and min_level of each UserDemand node are the same for all its
-demand priorities (at the same time), since they cannot differ per demand priority.
+Check that the return_factor of each UserDemand node is between 0 and 1, and that its
+return_factor and min_level are the same for all its demand priorities (at the same time),
+since they cannot differ per demand priority.
 """
 function valid_user_demand_parameters(
         table::StructVector{T},
@@ -310,6 +310,11 @@ function valid_user_demand_parameters(
         parameters = Dict{Union{Nothing, DateTime}, Tuple{Float64, Union{Float64, Missing}}}()
         for row in node_group
             time = T <: Schema.UserDemand.Time ? row.time : nothing
+            if !(0 <= row.return_factor <= 1)
+                @error "The return_factor of UserDemand #$(row.node_id) must be between 0 and 1, got $(row.return_factor)."
+                errors = true
+                break
+            end
             row_parameters = (row.return_factor, row.min_level)
             if !isequal(get!(parameters, time, row_parameters), row_parameters)
                 @error "The return_factor and min_level of UserDemand #$(row.node_id) must be the same for all demand priorities."

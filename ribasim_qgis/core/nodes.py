@@ -109,7 +109,6 @@ tables = {
     "Pump / time",
     "TabulatedRatingCurve / static",
     "TabulatedRatingCurve / time",
-    "UserDemand / concentration",
     "UserDemand / static",
     "UserDemand / time",
 }

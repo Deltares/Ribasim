@@ -1,5 +1,6 @@
 import os
 import re
+import shutil
 from pathlib import Path
 
 import numpy as np
@@ -60,11 +61,9 @@ def test_offline_delwaq_coupling(tmp_path):
         "Precipitation",
         "SurfaceRunoff",
         "Tracer",
-        "UserDemand",
     ]
 
     assert all(df[df.substance == "Continuity"].concentration >= 1.0 - 1e-6)
-    assert all(np.isclose(df[df.substance == "UserDemand"].concentration, 0.0))
     assert any(
         df[df.substance == "Basic"].concentration > 0
     )  # MassLoad should be positive
@@ -124,13 +123,45 @@ def test_offline_delwaq_coupling_evaporate_mass(tmp_path):
         "SurfaceRunoff",
         "Terrible' &%20Name",
         "Tracer",
-        "UserDemand",
     ]
 
     assert all(np.isclose(df[df.substance == "Continuity"].concentration, 1.0))
-    assert all(np.isclose(df[df.substance == "UserDemand"].concentration, 0.0))
 
     model.write(tmp_path / "basic/ribasim.toml")
+
+
+@pytest.mark.skipif(
+    not (
+        ("D3D_HOME" in os.environ)
+        and (
+            delwaq_dir.parents[2]
+            / "generated_testmodels/tracer_user_demand/results/flow.nc"
+        ).is_file()
+    ),
+    reason="Requires Delwaq to be installed and tracer_user_demand model results.",
+)
+def test_offline_delwaq_coupling_user_demand(tmp_path):
+    """UserDemand return flows carry the concentrations of the abstracted water."""
+    repo_dir = delwaq_dir.parents[2]
+    # Copy the model, since parse overwrites the results
+    shutil.copytree(
+        repo_dir / "generated_testmodels/tracer_user_demand", tmp_path / "model"
+    )
+    model = Model.read(tmp_path / "model/ribasim.toml")
+    model_dir = tmp_path / "delwaq"
+
+    generate(model, model_dir)
+    run_delwaq(model_dir)
+    model = parse(model, model_dir, to_input=True)
+
+    df = model.basin.concentration_external.df
+    assert df is not None
+    df = df.pivot_table(
+        index=["time", "node_id"], columns="substance", values="concentration"
+    )
+    assert np.allclose(df["Continuity"], 1.0)
+    # Without the return flows, a UserDemand would be a source of water in Basin #6
+    assert np.allclose(df["FlowBoundary"] + df["Initial"], 1.0)
 
 
 @pytest.mark.parametrize("name", ["Foo;123", "π", 'Double"Quote'])
@@ -164,7 +195,7 @@ def test_junction_tracer_network():
         delwaq_dir.parents[2] / "generated_testmodels/junction_tracer/ribasim.toml"
     )
     model = Model.read(toml_path)
-    G, _merge_links, node_mapping, _link_mapping, _basin_mapping = _setup_graph(
+    G, node_mapping, _link_mapping, _basin_mapping = _setup_graph(
         model.node,
         model.link,
         evaporate_mass=model.solver.evaporate_mass,
@@ -195,9 +226,7 @@ def test_junction_tracer_network():
 
 def test_junction_group_one_basin():
     model = junction_bidirectional()
-    G, merge_links, _, _, basin_mapping = _setup_graph(
-        model.node, model.link, evaporate_mass=False
-    )
+    G, _, _, basin_mapping = _setup_graph(model.node, model.link, evaporate_mass=False)
     df_link = model.link.df
     assert df_link is not None
 
@@ -222,10 +251,15 @@ def test_junction_group_one_basin():
     }
     assert {link_id(4, 2), link_id(7, 3), link_id(10, 3)} <= in_ids
     assert {link_id(5, 6), link_id(8, 6)} <= out_ids
-    # A UserDemand in both directions is merged into a single link, as without Junctions
-    user_demand_links = {link_id(3, 9), link_id(9, 3)}
-    assert user_demand_links <= in_ids | out_ids
-    assert set(merge_links) & user_demand_links
+    # A UserDemand in both directions only has a link for the water it consumes, as
+    # without Junctions: its inflow minus its return flow
+    assert link_id(3, 9) in out_ids
+    assert link_id(9, 3) not in in_ids
+    (consumption,) = (
+        d for _, _, d in G.out_edges(basin_1, data=True) if link_id(3, 9) in d["id"]
+    )
+    ratio = ([link_id(9, 3)], [link_id(3, 9)])
+    assert consumption["terms"] == [(link_id(3, 9), [ratio], -1)]
     # The links of the group with the Basin and between its Junctions have no flow of their own
     assert not {link_id(1, 2), link_id(3, 2)} & (in_ids | out_ids)
     assert not any(data["type"] == "Junction" for _, data in G.nodes(data=True))

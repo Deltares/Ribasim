@@ -216,8 +216,9 @@ function update_concentrations!(u, t, integrator)::Nothing
     # Exact boundary flow over time step
     for (id, outflow_link) in zip(flow_boundary.node_id, flow_boundary.outflow_link)
         to_node = outflow_link.link[2]
-        # The mass into a Junction node is handled in `mass_through_junctions!`
-        to_node.is_routed && continue
+        # The mass into a Junction node is handled in `mass_through_junctions!`,
+        # and the mass into a Terminal or LevelBoundary leaves the model
+        to_node.is_basin || continue
         add_substance_mass!(
             view(mass, :, to_node.idx),
             flow_boundary.concentration_itp[id.idx],

@@ -51,7 +51,6 @@ from ribasim.schemas import (
     PumpTimeSchema,
     TabulatedRatingCurveStaticSchema,
     TabulatedRatingCurveTimeSchema,
-    UserDemandConcentrationSchema,
     UserDemandStaticSchema,
     UserDemandTimeSchema,
 )
@@ -78,7 +77,8 @@ class Interpolation(ChildModel):
     Attributes
     ----------
     flow_boundary : string
-        The interpolation type used for the flow rate timeseries (optional, defaults to 'block')
+        The interpolation type used for the flow rate timeseries (optional, defaults to 'block').
+        FlowBoundary nodes can override this with the `interpolation` column of their time table.
     block_transition_period : float
         If block interpolation is used, this is the maximum time span on either side of the data points over which
         the transition between data points is smoothed.
@@ -323,10 +323,6 @@ class UserDemand(NodeModel):
     time: TableModel[UserDemandTimeSchema] = Field(
         default_factory=TableModel[UserDemandTimeSchema],
         json_schema_extra={"sort_keys": ["node_id", "demand_priority", "time"]},
-    )
-    concentration: TableModel[UserDemandConcentrationSchema] = Field(
-        default_factory=TableModel[UserDemandConcentrationSchema],
-        json_schema_extra={"sort_keys": ["node_id", "substance", "time"]},
     )
 
 

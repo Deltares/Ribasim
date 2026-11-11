@@ -202,6 +202,8 @@ The links in the subgraphs of routed Junctions have no states. `set_routing!` co
 
 **PID control.** The derivative term of PID control uses the storage rate of the listened Basin, which includes the flows into it via routed Junctions. Since those are computed after the controlled flows, `formulate_provisional_junction_flow!` computes them once before PID control from the flows known at that point, in `water_balance!` and in the Jacobian closure alike. The flows of PID and ContinuousControl controlled nodes are still zero then, so a controlled flow that reaches the listened Basin via routed Junctions is not part of the derivative term, in the same way that a controlled flow is only accounted for in the derivative term when it flows into the listened Basin directly.
 
+**ContinuousControl.** ContinuousControl can listen to the flow rate of a routed Junction or of a UserDemand that abstracts from one, which depend on the UserDemand flows in the subgraph. `formulate_provisional_junction_flow!` therefore computes those once more before the compound variables, after the PID controlled flows. The flows of ContinuousControl controlled nodes are still zero then, as for any flow ContinuousControl listens to. In the Jacobian the closure of the compound variables computes the flows in the subgraphs from its input flows first, so the compound variables are differentiated with respect to the flows that enter the subgraphs, which is where `foreach_∂flow_∂storage` picks up their dependence on the storages.
+
 # Callbacks
 
 Ribasim uses SciML's [callback mechanism](https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/) to handle events that occur during simulation. These are set up in `core/src/callback.jl`:

@@ -48,7 +48,9 @@ see the RibasmimJacobian docstring.
     du_cache::RibasimStateCVector{Float64}
     # Jacobian of mapping (storage_uplink, storage_downlink, pid_integral, continuous_control_compound) -> (flow, pid_error)
     jac_flow::SubJacobian{FlowInputCVector{Float64}, FlowInputCVector{Int}, M}
-    # # Jacobian of mapping (storage, flow) -> continuous_control_compound
+    # Jacobian of mapping (storage, flow) -> continuous_control_compound, where the flows are those before
+    # the Junction subgraphs. With routed Junction nodes the rows of the compound variables come after
+    # the rows of the flows in the Junction subgraphs they are computed from, which are not used.
     jac_continuous_control::SubJacobian{ContinuousControlInputCVector{Float64}, ContinuousControlInputCVector{Int}, M}
     # Jacobian of mapping flow -> Junction subnetwork flow
     jac_junction::SubJacobian{FlowCVector{Float64}, FlowCVector{Int}, M}
@@ -99,7 +101,7 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
 
         formulate_vertical_flux!(du.flow, flow_input.storage_uplink, p, t)
         formulate_flows!(formulate_flows_args...)
-        formulate_provisional_junction_flow!(du.flow, p, t)
+        formulate_provisional_junction_flow!(du.flow, p, t, ContinuousControlType.PID)
         formulate_PID_control!(du.pid_integral, flow_input.storage_uplink, flow_input.storage_downlink, p, t)
         formulate_flows!(formulate_flows_args...; control_type = ContinuousControlType.PID)
         formulate_flows!(formulate_flows_args...; control_type = ContinuousControlType.Continuous)
@@ -141,14 +143,33 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
 
     continuous_control_input_axes = concatenate_axes((; storage = 1:length(basin), flow = flow_ranges))
     continuous_control_input = cvector_from_axes(continuous_control_input_axes)
+    # The compound variables can depend on the flows in the Junction subgraphs, which are computed
+    # from the input flows first. These flows are part of the output, before the compound variables,
+    # so that they have the element type of the input. Without routed Junction nodes this part is empty.
+    has_routed_junctions = !isempty(p_independent.junction.routed_ids)
+    continuous_control_output_axes = concatenate_axes(
+        (;
+            flow = has_routed_junctions ? flow_ranges : CVectors.empty_axes(typeof(flow_ranges)),
+            compound = 1:length(continuous_control),
+        )
+    )
     # Separate buffer so the compound variables cached by water_balance! are not overwritten
-    continuous_control_compound = zeros(length(continuous_control))
+    continuous_control_output = zero(cvector_from_axes(continuous_control_output_axes))
 
-    function continuous_control_closure!(compound_variables, continuous_control_input, t)
+    function continuous_control_closure!(continuous_control_output, continuous_control_input, t)
+        flow = if has_routed_junctions
+            formulate_junction_flow!(
+                continuous_control_output.flow, p, t;
+                flow_in = continuous_control_input.flow
+            )
+            continuous_control_output.flow
+        else
+            continuous_control_input.flow
+        end
         compute_continuous_control_compound_variables!(
-            compound_variables,
+            continuous_control_output.compound,
             continuous_control_input.storage,
-            continuous_control_input.flow,
+            flow,
             p,
             t
         )
@@ -157,7 +178,7 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
 
     ∂continuous_control_compound_∂continuous_control_input_prep = @ad_active p prepare_jacobian(
         continuous_control_closure!,
-        continuous_control_compound,
+        continuous_control_output,
         backend_jac,
         continuous_control_input,
         Constant(t),
@@ -165,11 +186,11 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
 
     ∂continuous_control_compound_∂continuous_control_input = solver.sparse ?
         ∂continuous_control_compound_∂continuous_control_input_prep.sparsity * 1.0 :
-        zeros(length(continuous_control), length(continuous_control_input))
+        zeros(length(continuous_control_output), length(continuous_control_input))
 
     eval_∂continuous_control_compound_∂continuous_control_input!(t) = @ad_active p jacobian!(
         continuous_control_closure!,
-        continuous_control_compound,
+        continuous_control_output,
         ∂continuous_control_compound_∂continuous_control_input,
         ∂continuous_control_compound_∂continuous_control_input_prep,
         backend_jac,
@@ -432,6 +453,8 @@ flows on the Basin storages (excluding the dependence via the PID integral state
 ∂q_∂storage_uplink and ∂q_∂storage_downlink are not necessarily diagonal, e.g. the derivative term of PID control
 depends on all flows of the listened Basin. For ∂continuous_control_compound_∂storage only the dependence of
 listened flows on their own up- and downlink storage is taken into account, as chained control is not supported.
+A listened flow in a Junction subgraph is a function of the flows that enter the subgraph, which is part of
+∂continuous_control_compound_∂continuous_control_input, so those flows take the place of the listened flow here.
 """
 function foreach_∂flow_∂storage(f::F, J::RibasimJacobian) where {F}
     (; p_independent, cache) = J
@@ -463,8 +486,13 @@ function foreach_∂flow_∂storage(f::F, J::RibasimJacobian) where {F}
     storage_offset = 0
     n_storage_input = length(continuous_control_input_ranges.storage)
     flow_offset = n_storage_input
+    # The rows of the compound variables come last, see `RibasimJacobianEvaluationCache`
+    n_continuous_control = length(flow_input_ranges.continuous_control_compound)
+    cc_row_offset = size(∂continuous_control_compound_∂continuous_control_input, 1) - n_continuous_control
     for input_idx in axes(∂continuous_control_compound_∂continuous_control_input, 2)
-        foreach_column_entry(∂continuous_control_compound_∂continuous_control_input, input_idx) do cc_idx, cc_val
+        foreach_column_entry(∂continuous_control_compound_∂continuous_control_input, input_idx) do row, cc_val
+            cc_idx = row - cc_row_offset
+            cc_idx > 0 || return
             col = flow_input_ranges.continuous_control_compound[cc_idx]
             foreach_column_entry(∂flow_∂flow_input, col) do flow_idx, val
                 flow_idx <= n_flow || return

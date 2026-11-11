@@ -260,7 +260,6 @@ end
                     "Initial",
                     "LevelBoundary",
                     "FlowBoundary",
-                    "UserDemand",
                     "Drainage",
                     "Precipitation",
                     "SurfaceRunoff",
@@ -277,7 +276,6 @@ end
         "Initial",
         "LevelBoundary",
         "FlowBoundary",
-        "UserDemand",
         "Drainage",
         "Precipitation",
         "SurfaceRunoff",
@@ -400,11 +398,22 @@ end
 
     table = Ribasim.concentration_data(model)
     concentration(substance) = table.concentration[table.substance .== substance]
-    # The return flow carries the concentrations of the abstracted water
+    # The return flows carry the concentrations of the abstracted water
     @test all(isapprox.(concentration("Continuity"), 1.0))
     @test all(isapprox.(concentration("FlowBoundary") .+ concentration("Initial"), 1.0))
-    # A quarter of the inflow of 1.25 m³/s comes from the UserDemand
-    @test last(concentration("UserDemand")) ≈ 0.2 rtol = 1.0e-4
+end
+
+@testitem "Tracers with masses that round to below zero" begin
+    # allocation_control has a Basin that loses nearly all its water in one timestep, and in
+    # junction_allocation_shortage a UserDemand abstracts all water that flows into a Junction
+    for name in ("allocation_control", "junction_allocation_shortage")
+        toml_path = normpath(@__DIR__, "../../generated_testmodels/$name/ribasim.toml")
+        @test ispath(toml_path)
+        model = Ribasim.run(Ribasim.Config(toml_path; experimental_concentration = true))
+        @test success(model)
+        table = Ribasim.concentration_data(model)
+        @test all(isapprox.(table.concentration[table.substance .== "Continuity"], 1.0))
+    end
 end
 
 @testitem "Sparse, AD/FDM and reduced implicit solve jac solver options" begin
@@ -955,6 +964,23 @@ end
     @test all(x -> abs(x) < 1.0e-5, basin_table.infiltration)
 end
 
+@testitem "FlowBoundary into Terminal" begin
+    using DataFrames: DataFrame
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/flow_boundary_terminal/ribasim.toml")
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    # The boundary flow and its tracer leave the model, and don't end up in Basin #3
+    flow_data = DataFrame(Ribasim.flow_data(model))
+    @test all(≈(1.0), filter(row -> row.from_node_id == 1, flow_data).flow_rate)
+    @test all(≈(1000.0), DataFrame(Ribasim.basin_data(model)).storage)
+    (; substances) = model.integrator.p.p_independent.basin.concentration_data
+    (; concentration) = Ribasim.concentration_data(model; table = false)
+    @test all(iszero, concentration[1, findfirst(==(:FlowBoundary), collect(substances)), :])
+end
+
 @testitem "FlowBoundary interpolation type" begin
     using DataInterpolations: LinearInterpolation, ConstantInterpolation
     using DataFrames
@@ -965,20 +991,27 @@ end
     )
     @test ispath(toml_path)
 
+    # FlowBoundary #1 uses the interpolation type from the config,
+    # FlowBoundary #5 sets linear interpolation in the Time table
     model = Ribasim.Model(toml_path)
     (; flow_rate) = model.integrator.p.p_independent.flow_boundary
     (; interpolation) = model.config
 
     @test interpolation.flow_boundary == "block"
-    itp = only(flow_rate)
-    @test itp isa ConstantInterpolation
+    @test flow_rate[1] isa ConstantInterpolation
+    @test flow_rate[2] isa LinearInterpolation
     Ribasim.solve!(model)
 
-    flow_rates_input = itp.u
-    flow_rates_output =
-        filter(row -> row.from_node_id == 1, DataFrame(Ribasim.flow_data(model))).flow_rate
-    @test flow_rates_output[1:4] ≈ flow_rates_input
-    @test flow_rates_output[4:7] ≈ flow_rates_input
+    flow_rates_input = flow_rate[1].u
+    flow_table = DataFrame(Ribasim.flow_data(model))
+    flow_rates_block = filter(row -> row.from_node_id == 1, flow_table).flow_rate
+    flow_rates_linear = filter(row -> row.from_node_id == 5, flow_table).flow_rate
+    @test flow_rates_block[1:4] ≈ flow_rates_input
+    @test flow_rates_block[4:7] ≈ flow_rates_input
+    # The mean flow rate over a day of a linear interpolation between daily values
+    flow_rates_daily_mean = (flow_rates_input[1:3] + flow_rates_input[2:4]) / 2
+    @test flow_rates_linear[1:3] ≈ flow_rates_daily_mean
+    @test flow_rates_linear[4:6] ≈ flow_rates_daily_mean
 
     config = Ribasim.Config(toml_path; interpolation_flow_boundary = "linear")
     model = Ribasim.Model(config)
@@ -986,7 +1019,7 @@ end
     (; interpolation) = model.config
 
     @test interpolation.flow_boundary == "linear"
-    @test only(flow_rate) isa LinearInterpolation
+    @test all(itp -> itp isa LinearInterpolation, flow_rate)
 
     @test_throws "Invalid TOML config." Ribasim.Config(
         toml_path;
