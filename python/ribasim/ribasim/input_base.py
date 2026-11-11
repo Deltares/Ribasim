@@ -552,15 +552,15 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
             )
 
     def read(self) -> None:
-        """Read the data for this Table from disk.
+        """Read the data for this Table from disk, replacing the data in memory.
 
-        Required when this Table was lazily loaded, otherwise it will either
-        overwrite (reset) the existing data in the underlying DataFrame.
+        This is how a lazily loaded Table gets its data. Warns if the Table
+        already holds rows, since those are replaced, including any unsaved edits.
         """
-        if not self.lazy:
-            warnings.warn(f"Resetting {self.tablename()}.", stacklevel=2)
-        if self.df is not None:
-            warnings.warn(f"Overwriting {self.tablename()}.", stacklevel=2)
+        if self.df is not None and len(self.df) > 0:
+            warnings.warn(
+                f"Replacing the rows in memory of {self.tablename()}.", stacklevel=2
+            )
 
         context_file_loading.set({})
 

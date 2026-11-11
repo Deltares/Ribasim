@@ -1011,13 +1011,13 @@ class Model(FileModel, ParentModel):
         uds = uds.assign_coords(to_node_id=(link_dim, to_node_id))
 
         if add_flow:
-            uds = self._add_flow(uds, node_lookup)
+            uds = self._add_flow(uds)
         elif add_allocation:
             uds = self._add_allocation(uds)
 
         return uds
 
-    def _add_flow(self, uds, node_lookup):
+    def _add_flow(self, uds):
         basin_path = self.results_path / "basin.nc"
         flow_path = self.results_path / "flow.nc"
         basin_df = xr.open_dataset(basin_path).to_dataframe().reset_index()
