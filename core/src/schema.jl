@@ -394,13 +394,6 @@ module Schema
             demand_priority::Union{Missing, Int32} = 1
         end
 
-        struct Concentration <: Table
-            node_id::Int32
-            time::DateTime
-            substance::String
-            concentration::Float64
-        end
-
     end
 
     module LevelDemand

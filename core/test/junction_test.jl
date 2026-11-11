@@ -120,13 +120,11 @@ end
     c_foo = 2.0 * 0.04 / 0.06
     @test mass_per_inflow_volume(7, 2, "Foo") ≈ fill(c_foo, 59) rtol = 1.0e-8
     @test mass_per_inflow_volume(7, 2, "FlowBoundary") ≈ fill(1.0, 59) rtol = 1.0e-8
-    @test all(isapprox.(mass_per_inflow_volume(7, 2, "UserDemand"), 0.0; atol = 1.0e-12))
 
     # The return flow has the concentration of the abstracted water, like for a UserDemand
     # abstracting from a Basin, so the mass in the consumed half leaves the model
     @test mass_per_inflow_volume(6, 1, "Foo") ≈ fill(c_foo, 59) rtol = 1.0e-8
     @test mass_per_inflow_volume(6, 1, "FlowBoundary") ≈ fill(1.0, 59) rtol = 1.0e-8
-    @test mass_per_inflow_volume(6, 1, "UserDemand") ≈ fill(1.0, 59) rtol = 1.0e-8
     # The Continuity tracer stays 1, as the initial water has it as well
     @test concentration[1, findfirst(==("Continuity"), substances), :] ≈ fill(1.0, 60) rtol = 1.0e-8
 end

@@ -795,7 +795,7 @@ end
         "UserDemand #1 has multiple different values over time for 'min_level', which does not support time-varying values."
 end
 
-@testitem "UserDemand parameters equal per demand priority" begin
+@testitem "UserDemand parameter validation" begin
     using Logging
     using Dates: DateTime
     using StructArrays: StructVector
@@ -845,6 +845,25 @@ end
     end
     @test only(logger.logs).message ==
         "The return_factor and min_level of UserDemand #1 must be the same for all demand priorities."
+
+    # A UserDemand cannot return more than it abstracts
+    static = StructVector(
+        [
+            Schema.UserDemand.Static(1, 1.0, 0.0, 0.0, Int32(1)),
+            Schema.UserDemand.Static(2, 1.0, 1.0, 0.0, Int32(1)),
+            Schema.UserDemand.Static(3, 1.0, 1.2, 0.0, Int32(1)),
+            Schema.UserDemand.Static(4, 1.0, -0.1, 0.0, Int32(1)),
+        ]
+    )
+    logger = TestLogger()
+    with_logger(logger) do
+        @test !valid_user_demand_parameters(static)
+    end
+    @test length(logger.logs) == 2
+    @test logger.logs[1].message ==
+        "The return_factor of UserDemand #3 must be between 0 and 1, got 1.2."
+    @test logger.logs[2].message ==
+        "The return_factor of UserDemand #4 must be between 0 and 1, got -0.1."
 end
 
 @testitem "UserDemand min_level required for Basin inflow" begin
