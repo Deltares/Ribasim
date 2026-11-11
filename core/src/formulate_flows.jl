@@ -38,9 +38,7 @@ function water_balance!(
     #   because of the error derivative term.
     # - Continuous control can depend on flows (which are not continuously controlled themselves),
     #   so these flows have to be formulated first.
-
-    # Basin forcings (precipitation, evaporation, infiltration, drainage, surface_runoff)
-    formulate_vertical_flux!(du.flow, storage_uplink, p, t)
+    # The Jacobian closures in `RibasimJacobianEvaluationCache` use the same steps.
 
     formulate_flows_args = (
         du,
@@ -52,39 +50,11 @@ function water_balance!(
         t,
     )
 
-    # Formulate intermediate flows (non continuously controlled)
-    formulate_flows!(formulate_flows_args...)
-
-    # Provisional Junction flows, so that the derivative term of PID control sees the
-    # flow into the listened Basin via Junction nodes
-    formulate_provisional_junction_flow!(du.flow, p, t, ContinuousControlType.PID)
-
-    # Formulate the PID control integral term rate
-    formulate_PID_control!(
-        du.pid_integral,
-        storage_uplink,
-        storage_downlink,
-        p,
-        t
-    )
-
-    # Formulate intermediate flow (controlled by PID control)
-    formulate_flows!(
-        formulate_flows_args...;
-        control_type = ContinuousControlType.PID
-    )
-
-    # Provisional Junction flows, so that ContinuousControl sees the flows in the Junction subgraphs
-    formulate_provisional_junction_flow!(du.flow, p, t, ContinuousControlType.Continuous)
+    # Formulate the flows that ContinuousControl can listen to
+    formulate_flows_before_continuous_control!(formulate_flows_args...)
 
     # Compute ContinuousControl compound variables
-    compute_continuous_control_compound_variables!(
-        compound_variables,
-        storage,
-        du.flow,
-        p,
-        t
-    )
+    formulate_continuous_control_compound_variables!(compound_variables, storage, du.flow, p, t)
 
     # Formulate intermediate flows (controlled by ContinuousControl)
     formulate_flows!(
@@ -94,6 +64,70 @@ function water_balance!(
 
     # Formulate Junction flows and the UserDemand flows in the Junction subgraphs
     formulate_junction_flow!(du.flow, p, t)
+    return nothing
+end
+
+"""
+Formulate the flows that ContinuousControl can listen to: the Basin forcings, the flows that are
+not continuously controlled and the flows controlled by PidControl, as well as the PID integral rates.
+The arguments are those of `formulate_flows!`.
+"""
+function formulate_flows_before_continuous_control!(
+        du::RibasimStateCVector,
+        storage_uplink::FlowCVector,
+        storage_downlink::FlowCVector,
+        continuous_control_compound_variables::AbstractVector,
+        pid_integral::AbstractVector,
+        p::Parameters,
+        t::Number,
+    )::Nothing
+    formulate_flows_args = (
+        du,
+        storage_uplink,
+        storage_downlink,
+        continuous_control_compound_variables,
+        pid_integral,
+        p,
+        t,
+    )
+
+    # Basin forcings (precipitation, evaporation, infiltration, drainage, surface_runoff)
+    formulate_vertical_flux!(du.flow, storage_uplink, p, t)
+
+    # Formulate intermediate flows (non continuously controlled)
+    formulate_flows!(formulate_flows_args...)
+
+    # Provisional Junction flows, so that the derivative term of PID control sees the
+    # flow into the listened Basin via Junction nodes
+    formulate_provisional_junction_flow!(du.flow, p, t, ContinuousControlType.PID)
+
+    # Formulate the PID control integral term rate
+    formulate_PID_control!(du.pid_integral, storage_uplink, storage_downlink, p, t)
+
+    # Formulate intermediate flow (controlled by PID control)
+    formulate_flows!(
+        formulate_flows_args...;
+        control_type = ContinuousControlType.PID
+    )
+    return nothing
+end
+
+"""
+Compute the ContinuousControl compound variables from the Basin `storage` and the flows `flow_in`
+before the Junction subgraphs. Provisional Junction flows are computed into `flow` first, so that
+ContinuousControl sees the flows in the Junction subgraphs, see `formulate_provisional_junction_flow!`.
+`flow` and `flow_in` are the same vector, except in the Jacobian closure where the flows are input.
+"""
+function formulate_continuous_control_compound_variables!(
+        compound_variables::AbstractVector,
+        storage::AbstractVector,
+        flow::FlowCVector,
+        p::Parameters,
+        t::Number;
+        flow_in::FlowCVector = flow,
+    )::Nothing
+    formulate_provisional_junction_flow!(flow, p, t, ContinuousControlType.Continuous; flow_in)
+    compute_continuous_control_compound_variables!(compound_variables, storage, flow, p, t)
     return nothing
 end
 
@@ -1148,21 +1182,31 @@ from the flows known at that point:
   that abstracts from one. The flows of ContinuousControl controlled nodes are still zero
   then, like for any other flow that ContinuousControl listens to.
 
-`control_type` is the type of control that is formulated next.
+`control_type` is the type of control that is formulated next. With `flow_in` the provisional
+Junction flows are computed from `flow_in` into `flow`, see `formulate_junction_flow!`.
 """
 function formulate_provisional_junction_flow!(
-        flow::FlowCVector,
+        flow::FlowCVector{T},
         p::Parameters,
         t::Number,
-        control_type::ContinuousControlType.T,
-    )::Nothing
-    (; junction, pid_control, continuous_control) = p.p_independent
-    control_node_id = control_type == ContinuousControlType.PID ?
-        pid_control.node_id : continuous_control.node_id
-    if !isempty(junction.routed_ids) && !isempty(control_node_id)
-        formulate_junction_flow!(flow, p, t)
+        control_type::ContinuousControlType.T;
+        flow_in::FlowCVector{T} = flow,
+    )::Nothing where {T}
+    if has_provisional_junction_flow(p.p_independent, control_type)
+        formulate_junction_flow!(flow, p, t; flow_in)
     end
     return nothing
+end
+
+"Whether provisional Junction flows are computed before the control of type `control_type`."
+function has_provisional_junction_flow(
+        p_independent::ParametersIndependent,
+        control_type::ContinuousControlType.T,
+    )::Bool
+    (; junction, pid_control, continuous_control) = p_independent
+    control_node_id = control_type == ContinuousControlType.PID ?
+        pid_control.node_id : continuous_control.node_id
+    return !isempty(junction.routed_ids) && !isempty(control_node_id)
 end
 
 """
