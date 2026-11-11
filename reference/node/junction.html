@@ -437,11 +437,12 @@ window.Quarto = {
   <ul class="collapse">
   <li><a href="#downstream-level" id="toc-downstream-level" class="nav-link" data-scroll-target="#downstream-level"><span class="header-section-number">3.2.1</span> Downstream level</a></li>
   <li><a href="#tracers" id="toc-tracers" class="nav-link" data-scroll-target="#tracers"><span class="header-section-number">3.2.2</span> Tracers</a></li>
-  <li><a href="#allocation" id="toc-allocation" class="nav-link" data-scroll-target="#allocation"><span class="header-section-number">3.2.3</span> Allocation</a></li>
-  <li><a href="#water-quality" id="toc-water-quality" class="nav-link" data-scroll-target="#water-quality"><span class="header-section-number">3.2.4</span> Water quality</a></li>
+  <li><a href="#water-quality" id="toc-water-quality" class="nav-link" data-scroll-target="#water-quality"><span class="header-section-number">3.2.3</span> Water quality</a></li>
   </ul></li>
+  <li><a href="#flow-rate" id="toc-flow-rate" class="nav-link" data-scroll-target="#flow-rate"><span class="header-section-number">3.3</span> Flow rate</a></li>
   </ul></li>
-  <li><a href="#connectivity-rules" id="toc-connectivity-rules" class="nav-link" data-scroll-target="#connectivity-rules"><span class="header-section-number">4</span> Connectivity rules</a></li>
+  <li><a href="#behavior-in-allocation" id="toc-behavior-in-allocation" class="nav-link" data-scroll-target="#behavior-in-allocation"><span class="header-section-number">4</span> Behavior in allocation</a></li>
+  <li><a href="#connectivity-rules" id="toc-connectivity-rules" class="nav-link" data-scroll-target="#connectivity-rules"><span class="header-section-number">5</span> Connectivity rules</a></li>
   </ul>
 </nav>
     </div>
@@ -468,13 +469,14 @@ window.Quarto = {
 
 
 <p>A Junction node allows explicitly representing confluences and bifurcations in the network. It has no storage, so the sum of its inflows is always equal to the sum of its outflows, and it does not need any profile information.</p>
-<p>A Junction that is not in the <a href="#static">Static</a> table does not introduce new behavior, it makes the network layout recognizable: the flow goes where the links go, as if the nodes around the Junction were connected directly. See <a href="#junctions-not-in-the-static-table">Junctions not in the Static table</a> for examples.</p>
-<p>A Junction that is in the <a href="#static">Static</a> table divides the flow it receives over its outflow links by the fractions in that table, and can supply a UserDemand, which takes its demand before the remainder is divided. The flow over each of its links is in the flow results. Such Junctions can be combined into larger networks, see <a href="#junctions-in-the-static-table">Junctions in the Static table</a>.</p>
+<p>A Junction can supply a UserDemand, as long as (i) the return flow of the UserDemand does not create a cycle of Junctions with the UserDemand, and (ii) the Junction has at least one other outflow link to pass on the remainder of its inflow.</p>
+<p>Except for the UserDemand abstraction, a Junction that is not in the <a href="#static">Static</a> table does not introduce new behavior, it makes the network layout recognizable: the flow goes where the links go, as if the nodes around the Junction were connected directly. See <a href="#junctions-not-in-the-static-table">Junctions not in the Static table</a> for examples.</p>
+<p>A Junction that is in the <a href="#static">Static</a> table divides the flow it receives over its outflow links by the fractions in that table. A UserDemand that abstracts from the Junction receives its flow before the remainder is divided. The flow over each of its links is in the flow results. Such Junctions can be combined into larger networks, see <a href="#junctions-in-the-static-table">Junctions in the Static table</a>.</p>
 <p>Flow cannot be divided directly by other nodes: a connector node (e.g.&nbsp;Pump or Outlet), FlowBoundary or UserDemand has a single outflow link. To divide such flow, put a Junction that is in the Static table downstream of it.</p>
 <section id="allowed-connectivity" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> Allowed connectivity</h1>
 <p>The diagram below shows which node types are allowed directly upstream (left) and downstream (right) of this node. This is a connectivity illustration, not a valid simulation model.</p>
-<div id="e1cb1b91" class="cell" data-execution_count="1">
+<div id="d8e9bc7b" class="cell" data-execution_count="1">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="op">%</span>run ..<span class="op">/</span>..<span class="op">/</span>..<span class="op">/</span>utils<span class="op">/</span>plot_node_connectivity.py</span>
@@ -498,7 +500,7 @@ window.Quarto = {
 <p>This table is optional. A Junction that isn’t in the table only connects its neighbors, see <a href="#equations">Equations</a>. A Junction that is in the table divides the flow it receives.</p>
 <p>The fractions are defined per link from the Junction <code>node_id</code> to the node <code>to_node_id</code>. All outflow links of the Junction have a fraction, except the link to a UserDemand node, which gets the abstraction instead. A single outflow link gets the whole flow, so a row with a fraction of 1 or no fraction is enough for a Junction with one outflow, for instance to supply a UserDemand from it.</p>
 <p>The <code>to_node_id</code> can be a Junction that isn’t in the table. The row then applies to the node that Junction passes the flow on to, or to the Basin of its group. Such a Junction cannot divide the flow it receives from a Junction in the table, since nothing says how: add it to the table as well, or name the nodes downstream of it directly.</p>
-<div id="9d25e8be" class="cell" data-execution_count="2">
+<div id="d7286df2" class="cell" data-execution_count="2">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="op">%</span>run ..<span class="op">/</span>..<span class="op">/</span>gen_docs_table.py</span>
@@ -712,7 +714,7 @@ window.Quarto = {
 </div>
 </div>
 <p>This translates to the same model.</p>
-<p>The flow rate of a Junction in such a tree, which control nodes can listen to, is the net flow through it, positive in the direction of its link towards the Basin. The flow rate of the other Junctions that are not in the Static table is their total inflow.</p>
+<p>The flow rate of a Junction in such a tree is the net flow on its link towards the Basin, see <a href="#flow-rate">Flow rate</a>.</p>
 </section>
 </section>
 <section id="junctions-in-the-static-table" class="level2" data-number="3.2">
@@ -788,9 +790,8 @@ window.Quarto = {
 </ul></li>
 <li>For UserDemand nodes it works like the standard <a href="../../reference/node/user-demand.html#equations">UserDemand flow</a>, but without the low storage factor or minimum level.</li>
 </ul>
-<p>Without allocation, a UserDemand abstracting from a Junction takes its demand before anything is passed on, regardless of its <code>demand_priority</code>: in a chain of Junctions the upstream UserDemand is served first. Demand priorities are only applied by <a href="#allocation">allocation</a>, which bounds the abstraction of each UserDemand by what it allocated.</p>
-<p>A model does not need a Basin when all flow comes from FlowBoundary nodes and passes through Junctions, for instance into UserDemand or Terminal nodes. Allocation does require a Basin in each subnetwork.</p>
-<p>The flow rate of such a Junction, which control nodes can listen to, is its total inflow.</p>
+<p>Without allocation, a UserDemand abstracting from a Junction takes its demand before anything is passed on, regardless of its <code>demand_priority</code>: in a chain of Junctions the upstream UserDemand is served first. Demand priorities are only applied by <a href="#behavior-in-allocation">allocation</a>, which bounds the abstraction of each UserDemand by what it allocated.</p>
+<p>A model does not need a Basin when all flow comes from FlowBoundary nodes and passes through Junctions, for instance into UserDemand or Terminal nodes.</p>
 <section id="downstream-level" class="level3" data-number="3.2.1">
 <h3 data-number="3.2.1" class="anchored" data-anchor-id="downstream-level"><span class="header-section-number">3.2.1</span> Downstream level</h3>
 <p>A Junction has no level of its own. A structure that flows into a Junction sees the level of the single Basin or LevelBoundary downstream of it, if the Junction, and the Junctions downstream of it, do not divide the flow: then the structure behaves as if it flowed into that node directly, so a Pump or Outlet can still be drowned by <code>max_downstream_level</code>. This holds whether or not the Junction is in the Static table. Where the flow is divided over several nodes there is no single level, and the structure has free outflow: <code>max_downstream_level</code> and the downstream level reduction of a TabulatedRatingCurve are not applied. In the example above the Pump has free outflow, since J1 divides the flow over Basin A and Basin B.</p>
@@ -801,22 +802,34 @@ window.Quarto = {
 <ul>
 <li>For flows into a subgraph the mass is the flow times the concentration of the source: the concentration of the FlowBoundary or LevelBoundary, or of the Basin upstream of a Pump, Outlet or TabulatedRatingCurve. For a UserDemand outside the subgraph it is the mass in its return flow.</li>
 <li>The mass of the inflows of a Junction is mixed: the concentration of the flow out of a Junction, including the flow abstracted by a UserDemand, is the total mass in divided by the total volume out.</li>
-<li>A UserDemand abstracting from a Junction handles tracers like a UserDemand abstracting from Basins: its return flow has the concentration of the water it abstracts, with the UserDemand tracer replaced by the one of the UserDemand itself. The mass in the water it consumes leaves the model.</li>
+<li>A UserDemand abstracting from a Junction handles tracers like a UserDemand abstracting from Basins: its return flow has the concentration of the water it abstracts. The mass in the water it consumes leaves the model.</li>
 <li>The mass that flows from a subgraph into a Basin is added to the mass of that Basin, as a source in the <a href="../../concept/core.html#sec-tracer">implicit transport between Basins</a>. The flows into a subgraph use the Basin concentrations at the start of the timestep, so unlike the transport between Basins this part is explicit. A Junction itself does not store water, so tracers do not age in it.</li>
 </ul>
 </section>
-<section id="allocation" class="level3" data-number="3.2.3">
-<h3 data-number="3.2.3" class="anchored" data-anchor-id="allocation"><span class="header-section-number">3.2.3</span> Allocation</h3>
-<p>Junctions in the Static table can be used in <a href="../../concept/allocation.html#sec-allocation-junction">allocation</a> subnetworks, where the UserDemand abstracting from a Junction abstracts up to its allocated demand and the rest of the flow is divided over the downstream nodes. Such a Junction must have the same subnetwork ID as the nodes it is connected to: Junctions at the boundary between the primary network and a subnetwork, or between subnetworks, are not supported yet.</p>
-</section>
-<section id="water-quality" class="level3" data-number="3.2.4">
-<h3 data-number="3.2.4" class="anchored" data-anchor-id="water-quality"><span class="header-section-number">3.2.4</span> Water quality</h3>
+<section id="water-quality" class="level3" data-number="3.2.3">
+<h3 data-number="3.2.3" class="anchored" data-anchor-id="water-quality"><span class="header-section-number">3.2.3</span> Water quality</h3>
 <p>In the offline <a href="../../guide/delwaq.html">Delwaq coupling</a> a Junction has no volume, so it is removed from the Delwaq network like the connector nodes: each node that flows into the Junction gets an exchange with each node it flows into. The flow over such an exchange is the flow of the link into the Junction times the share of the outflow link in the total outflow, per timestep, so the mixing in the Junction is the same as in the <a href="#tracers">tracers</a> of the core. An exchange between two boundary nodes, like a FlowBoundary and the UserDemand that abstracts from the Junction, is dropped, since it does not touch a Basin.</p>
 </section>
 </section>
+<section id="flow-rate" class="level2" data-number="3.3">
+<h2 data-number="3.3" class="anchored" data-anchor-id="flow-rate"><span class="header-section-number">3.3</span> Flow rate</h2>
+<p>Control nodes can listen to the <code>flow_rate</code> of a Junction, and QGIS plots it. There are two rules:</p>
+<ul>
+<li>The flow rate of a Junction is its total inflow: the sum of the flows on its incoming links. For a Junction in the Static table this is the flow before its UserDemand abstracts, so listen to a Junction downstream of it to get the remainder.</li>
+<li>In <a href="#a-junction-tree-with-one-basin">a Junction tree with one Basin</a> the links can carry flow in both directions. There the flow rate of a Junction is the net flow on its link towards the Basin, positive in the direction of that link. It is the same value as that link has in the flow results, and it is negative when the water flows against the link.</li>
+</ul>
+<p>Both rules give the same value as long as the water flows along the links, for instance at a confluence or a bifurcation.</p>
 </section>
-<section id="connectivity-rules" class="level1" data-number="4">
-<h1 data-number="4"><span class="header-section-number">4</span> Connectivity rules</h1>
+</section>
+<section id="behavior-in-allocation" class="level1" data-number="4">
+<h1 data-number="4"><span class="header-section-number">4</span> Behavior in allocation</h1>
+<p><a href="../../concept/allocation.html">Allocation</a> can give it less water than the inflows into the Junction, to leave water for demands downstream with an higher priority.</p>
+<p>A Junction that is in the Static table divides the flow over its outflow links by the same fractions as in the simulation. Allocation cannot change these fractions; it can only change how much water flows into the Junction, for instance by steering an allocation-controlled Pump or Outlet upstream.</p>
+<p>A UserDemand that abstracts from a Junction gets an allocated flow rate per demand priority, like a UserDemand that abstracts from a Basin. Allocation can give it less than flows into the Junction, to leave water for demands downstream with an earlier priority. The remainder of the flow is divided over the other outflow links.</p>
+<p>Such a Junction must have the same subnetwork ID as the nodes it is connected to: Junctions at the boundary between the primary network and a subnetwork, or between subnetworks, are not supported yet.</p>
+</section>
+<section id="connectivity-rules" class="level1" data-number="5">
+<h1 data-number="5"><span class="header-section-number">5</span> Connectivity rules</h1>
 <p>A Junction in the Static table has some specific connectivity rules:</p>
 <ul>
 <li>Its inflow comes from a Pump, Outlet, TabulatedRatingCurve, FlowBoundary, UserDemand or another Junction in the Static table, in the direction of the flow.</li>

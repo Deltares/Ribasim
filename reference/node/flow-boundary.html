@@ -399,6 +399,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#area" id="toc-area" class="nav-link" data-scroll-target="#area"><span class="header-section-number">2.4</span> Area</a></li>
   </ul></li>
   <li><a href="#equations" id="toc-equations" class="nav-link" data-scroll-target="#equations"><span class="header-section-number">3</span> Equations</a></li>
+  <li><a href="#behavior-in-allocation" id="toc-behavior-in-allocation" class="nav-link" data-scroll-target="#behavior-in-allocation"><span class="header-section-number">4</span> Behavior in allocation</a></li>
   </ul>
 </nav>
     </div>
@@ -489,17 +490,28 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="time" class="level2" data-number="2.2">
 <h2 data-number="2.2" class="anchored" data-anchor-id="time"><span class="header-section-number">2.2</span> Time</h2>
-<p>This table is the transient form of the <code>FlowBoundary</code> table. The only difference is that a time column is added. With this the flow rates can be updated over time. In between the given times the flow rate is interpolated in a way specified in the <a href="../../reference/usage.html#interpolation-settings">interpolation settings</a> (block interpolation by default), and outside the flow rate is constant given by the nearest time value unless the node is cyclic in time. Note that a <code>node_id</code> can be either in this table or in the static one, but not both.</p>
+<p>This table is the transient form of the <code>FlowBoundary</code> table. The difference is that a time column is added, and an optional interpolation column. With this the flow rates can be updated over time. In between the given times the flow rate is interpolated, and outside the flow rate is constant given by the nearest time value unless the node is cyclic in time. Note that a <code>node_id</code> can be either in this table or in the static one, but not both.</p>
+<p>The <code>interpolation</code> column sets the interpolation type per node, either <code>block</code> or <code>linear</code>. It cannot change over time, so it must have the same value in all rows of a node. If it is missing, the <code>flow_boundary</code> interpolation type from the <a href="../../reference/usage.html#interpolation-settings">interpolation settings</a> is used, which is <code>block</code> by default.</p>
 <div id="6" class="cell" data-execution_count="1">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table_from_schema</span>(</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    Ribasim.Schema.FlowBoundary.<span class="dt">Time</span>;</span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    restrictions <span class="op">=</span> <span class="fu">Dict</span>(<span class="op">:</span>flow_rate <span class="op">=&gt;</span> <span class="st">"non-negative"</span>),</span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    restrictions <span class="op">=</span> <span class="fu">Dict</span>(</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>        <span class="op">:</span>flow_rate <span class="op">=&gt;</span> <span class="st">"non-negative"</span>,</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>        <span class="op">:</span>interpolation <span class="op">=&gt;</span> <span class="st">"block or linear, constant per node"</span>,</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
 <table class="caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 18%">
+<col style="width: 12%">
+<col style="width: 10%">
+<col style="width: 12%">
+<col style="width: 45%">
+</colgroup>
 <thead>
 <tr class="header">
 <th>column</th>
@@ -530,6 +542,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>m³ s⁻¹</td>
 <td>x</td>
 <td>non-negative</td>
+</tr>
+<tr class="even">
+<td>interpolation</td>
+<td>String</td>
+<td>-</td>
+<td>✓</td>
+<td>block or linear, constant per node</td>
 </tr>
 </tbody>
 </table>
@@ -628,6 +647,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="equations" class="level1" data-number="3">
 <h1 data-number="3"><span class="header-section-number">3</span> Equations</h1>
 <p>A FlowBoundary can be connected directly to a Basin and prescribes the flow to that Basin. Since the <code>flow_rate</code> cannot be negative a FlowBoundary can only add water to the model.</p>
+</section>
+<section id="behavior-in-allocation" class="level1" data-number="4">
+<h1 data-number="4"><span class="header-section-number">4</span> Behavior in allocation</h1>
+<p>Allocation cannot change the flow of a FlowBoundary. Each time <a href="../../concept/allocation.html">allocation</a> runs, it assumes the flow of the FlowBoundary stays at its current value until the next intervention time, set by <code>intervention_interval</code> in the <a href="../../reference/usage.html#sec-allocation-settings">allocation settings</a>, so it does not anticipate later changes in the timeseries. When the flow changes in between, the water that is actually available differs from what allocation planned with. The flow of a FlowBoundary can be used to supply demands downstream.</p>
 
 
 </section>

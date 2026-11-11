@@ -395,6 +395,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </ul></li>
   <li><a href="#examples" id="toc-examples" class="nav-link" data-scroll-target="#examples"><span class="header-section-number">2</span> Examples</a></li>
   <li><a href="#notes" id="toc-notes" class="nav-link" data-scroll-target="#notes"><span class="header-section-number">3</span> Notes</a></li>
+  <li><a href="#behavior-in-allocation" id="toc-behavior-in-allocation" class="nav-link" data-scroll-target="#behavior-in-allocation"><span class="header-section-number">4</span> Behavior in allocation</a></li>
   </ul>
 </nav>
     </div>
@@ -552,6 +553,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li>Flow links cannot be observed directly; link to the connector node with variable <code>flow_rate</code> instead.</li>
 <li>Non-conservative nodes don’t have <code>flow_rate</code>; specify either <code>inflow_rate</code> or <code>outflow_rate</code> for e.g.&nbsp;Basin or UserDemand.</li>
 </ul>
+</section>
+<section id="behavior-in-allocation" class="level1" data-number="4">
+<h1 data-number="4"><span class="header-section-number">4</span> Behavior in allocation</h1>
+<p>An Observation node is not used in <a href="../../concept/allocation.html">allocation</a>, like it is not used in the simulation.</p>
 
 
 </section>

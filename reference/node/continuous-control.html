@@ -424,6 +424,7 @@ window.Quarto = {
   <li><a href="#variable" id="toc-variable" class="nav-link" data-scroll-target="#variable"><span class="header-section-number">1.1</span> Variable</a></li>
   <li><a href="#function" id="toc-function" class="nav-link" data-scroll-target="#function"><span class="header-section-number">1.2</span> Function</a></li>
   </ul></li>
+  <li><a href="#behavior-in-allocation" id="toc-behavior-in-allocation" class="nav-link" data-scroll-target="#behavior-in-allocation"><span class="header-section-number">2</span> Behavior in allocation</a></li>
   </ul>
 </nav>
     </div>
@@ -613,9 +614,13 @@ Note
 </table>
 </div>
 </div>
-
-
 </section>
+</section>
+<section id="behavior-in-allocation" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> Behavior in allocation</h1>
+<p><a href="../../concept/allocation.html">Allocation</a> assumes that the flow rate that this node sets on a Pump or Outlet stays the same until the next intervention time, set by <code>intervention_interval</code> in the <a href="../../reference/usage.html#sec-allocation-settings">allocation settings</a>. Since a ContinuousControl node changes the flow rate continuously, the simulated flows can differ from what allocation planned.</p>
+
+
 </section>
 
 </main> <!-- /main -->

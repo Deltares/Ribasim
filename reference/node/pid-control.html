@@ -429,6 +429,7 @@ window.Quarto = {
   <li><a href="#the-derivative-term" id="toc-the-derivative-term" class="nav-link" data-scroll-target="#the-derivative-term"><span class="header-section-number">2.1</span> The derivative term</a></li>
   <li><a href="#the-sign-of-the-parameters" id="toc-the-sign-of-the-parameters" class="nav-link" data-scroll-target="#the-sign-of-the-parameters"><span class="header-section-number">2.2</span> The sign of the parameters</a></li>
   </ul></li>
+  <li><a href="#behavior-in-allocation" id="toc-behavior-in-allocation" class="nav-link" data-scroll-target="#behavior-in-allocation"><span class="header-section-number">3</span> Behavior in allocation</a></li>
   </ul>
 </nav>
     </div>
@@ -663,9 +664,13 @@ Q_\text{pump/outlet} = \text{clamp}\left(\phi(u_\text{us})\frac{K_pe + K_iI + K_
 <h2 data-number="2.2" class="anchored" data-anchor-id="the-sign-of-the-parameters"><span class="header-section-number">2.2</span> The sign of the parameters</h2>
 <p>Note by <a href="#eq-error" class="quarto-xref">Equation&nbsp;1</a> that the error is positive if the setpoint is larger than the Basin level and negative if the setpoint is smaller than the Basin level.</p>
 <p>We enforce the convention that when a Pump is controlled, its link points away from the Basin, and when an Outlet is controlled, its link points towards the Basin, so that the main flow direction along these links is positive. Therefore, positive flows of the Pump and Outlet have opposite effects on the Basin, and thus the parameters <span class="math inline">\(K_p,K_i,K_d\)</span> of the Pump and Outlet must have opposite signs to achieve the same goal.</p>
-
-
 </section>
+</section>
+<section id="behavior-in-allocation" class="level1" data-number="3">
+<h1 data-number="3"><span class="header-section-number">3</span> Behavior in allocation</h1>
+<p><a href="../../concept/allocation.html">Allocation</a> assumes that the flow rate that this node sets on a Pump or Outlet stays the same until the next intervention time, set by <code>intervention_interval</code> in the <a href="../../reference/usage.html#sec-allocation-settings">allocation settings</a>. Since a PidControl node changes the flow rate continuously, the simulated flows can differ from what allocation planned.</p>
+
+
 </section>
 
 </main> <!-- /main -->

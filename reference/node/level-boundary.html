@@ -398,6 +398,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#sec-level-boundary-conc" id="toc-sec-level-boundary-conc" class="nav-link" data-scroll-target="#sec-level-boundary-conc"><span class="header-section-number">2.3</span> Concentration</a></li>
   </ul></li>
   <li><a href="#equations" id="toc-equations" class="nav-link" data-scroll-target="#equations"><span class="header-section-number">3</span> Equations</a></li>
+  <li><a href="#behavior-in-allocation" id="toc-behavior-in-allocation" class="nav-link" data-scroll-target="#behavior-in-allocation"><span class="header-section-number">4</span> Behavior in allocation</a></li>
   </ul>
 </nav>
     </div>
@@ -589,6 +590,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="equations" class="level1" data-number="3">
 <h1 data-number="3"><span class="header-section-number">3</span> Equations</h1>
 <p>A LevelBoundary can be connected to a Basin via a LinearResistance. This boundary node will then exchange water with the Basin based on the difference in water level between the two.</p>
+</section>
+<section id="behavior-in-allocation" class="level1" data-number="4">
+<h1 data-number="4"><span class="header-section-number">4</span> Behavior in allocation</h1>
+<p>In <a href="../../concept/allocation.html">allocation</a> a LevelBoundary can supply or receive any amount of water. How much water is exchanged with the network is limited only by the node between the LevelBoundary and the network, for instance by the capacity of a Pump or the water level difference over a LinearResistance. Allocation uses the level of the LevelBoundary as it will be at the end of each allocation timestep.</p>
+<p>With a route priority for LevelBoundary nodes, see <a href="../../reference/usage.html#sec-allocation-settings">allocation settings</a>, allocation can be made to prefer or avoid a LevelBoundary as a source of water.</p>
 
 
 </section>

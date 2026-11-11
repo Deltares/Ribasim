@@ -395,6 +395,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#static" id="toc-static" class="nav-link" data-scroll-target="#static"><span class="header-section-number">1.1</span> Static</a></li>
   <li><a href="#time" id="toc-time" class="nav-link" data-scroll-target="#time"><span class="header-section-number">1.2</span> Time</a></li>
   </ul></li>
+  <li><a href="#behavior-in-allocation" id="toc-behavior-in-allocation" class="nav-link" data-scroll-target="#behavior-in-allocation"><span class="header-section-number">2</span> Behavior in allocation</a></li>
   </ul>
 </nav>
     </div>
@@ -556,9 +557,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </table>
 </div>
 </div>
-
-
 </section>
+</section>
+<section id="behavior-in-allocation" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> Behavior in allocation</h1>
+<p>A LevelDemand only has an effect with <a href="../../concept/allocation.html">allocation</a>. For each connected Basin, allocation tries to keep the level between the minimum and maximum level of each demand priority. When the level is below the minimum level, the Basin has a demand for the water needed to reach it, which is met in the order of its demand priority. When the level is above the maximum level, the water above it is available to supply other demands. When there is not enough water for all Basins with the same priority, allocation divides the shortage so that the levels end up a similar distance below their minimum levels.</p>
+<p>In <a href="../../reference/usage.html#sec-results"><code>allocation.nc</code></a> these demands are listed under the Basin, not the LevelDemand node. They are positive when the Basin is below its minimum level, and negative when the Basin has water to spare above its maximum level. Flow demands and level demands cannot have the same demand priority within a subnetwork.</p>
+
+
 </section>
 
 </main> <!-- /main -->

@@ -395,6 +395,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#static" id="toc-static" class="nav-link" data-scroll-target="#static"><span class="header-section-number">1.1</span> Static</a></li>
   <li><a href="#time" id="toc-time" class="nav-link" data-scroll-target="#time"><span class="header-section-number">1.2</span> Time</a></li>
   </ul></li>
+  <li><a href="#behavior-in-allocation" id="toc-behavior-in-allocation" class="nav-link" data-scroll-target="#behavior-in-allocation"><span class="header-section-number">2</span> Behavior in allocation</a></li>
   </ul>
 </nav>
     </div>
@@ -548,9 +549,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </table>
 </div>
 </div>
-
-
 </section>
+</section>
+<section id="behavior-in-allocation" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> Behavior in allocation</h1>
+<p>With <a href="../../concept/allocation.html">allocation</a>, a FlowDemand is a demand for a minimum flow through the node it is connected to. The water is not consumed, so it remains available downstream, and the flow through the node can be larger than the demand. Like other demands, it is met in the order of its demand priority.</p>
+<p>How well the demand can be met depends on the node. For an allocation-controlled Pump, Outlet or TabulatedRatingCurve, allocation can set the flow through the node directly. For other nodes, the flow follows from the water levels around the node, so allocation can only meet the demand by changing these levels, for instance by steering an allocation-controlled node upstream.</p>
+<p>The demand, allocated and realized flow rates are in <a href="../../reference/usage.html#sec-results"><code>allocation.nc</code></a>. Flow demands and level demands cannot have the same demand priority within a subnetwork.</p>
+
+
 </section>
 
 </main> <!-- /main -->

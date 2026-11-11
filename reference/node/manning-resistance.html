@@ -433,6 +433,7 @@ window.Quarto = {
   <li><a href="#critical-flow" id="toc-critical-flow" class="nav-link" data-scroll-target="#critical-flow"><span class="header-section-number">4.1</span> Critical flow</a></li>
   <li><a href="#relaxation-around-zero" id="toc-relaxation-around-zero" class="nav-link" data-scroll-target="#relaxation-around-zero"><span class="header-section-number">4.2</span> Relaxation around zero</a></li>
   </ul></li>
+  <li><a href="#behavior-in-allocation" id="toc-behavior-in-allocation" class="nav-link" data-scroll-target="#behavior-in-allocation"><span class="header-section-number">5</span> Behavior in allocation</a></li>
   </ul>
 </nav>
     </div>
@@ -791,9 +792,15 @@ P = w + 2 d \sqrt{\left(\frac{\Delta y}{\Delta z}\right)^2 + 1}
 <p><span class="math display">\[
 T = w + 2 d \frac{\Delta y}{\Delta z}
 \]</span></p>
-
-
 </section>
+</section>
+<section id="behavior-in-allocation" class="level1" data-number="5">
+<h1 data-number="5"><span class="header-section-number">5</span> Behavior in allocation</h1>
+<p><a href="../../concept/allocation.html">Allocation</a> cannot set the flow of a ManningResistance directly: like in the simulation, the flow follows from the water levels on either side of it. Allocation predicts this flow with a simplified version of the equations above, so the flow that allocation planned, in <a href="../../reference/usage.html#sec-results"><code>allocation_flow.nc</code></a>, can differ from the simulated flow in <code>flow.nc</code>.</p>
+<p>A <a href="../../reference/node/flow-demand.html">FlowDemand</a> on a ManningResistance can only be met when allocation can raise the flow by changing the water levels, for instance by steering an allocation-controlled Pump or Outlet upstream.</p>
+<p>With a route priority for ManningResistance nodes, see <a href="../../reference/usage.html#sec-allocation-settings">allocation settings</a>, allocation can be made to prefer or avoid routing water through them.</p>
+
+
 </section>
 
 </main> <!-- /main -->

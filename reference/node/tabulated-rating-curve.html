@@ -430,10 +430,9 @@ window.Quarto = {
   <li><a href="#time" id="toc-time" class="nav-link" data-scroll-target="#time"><span class="header-section-number">3.2</span> Time</a></li>
   </ul></li>
   <li><a href="#equations" id="toc-equations" class="nav-link" data-scroll-target="#equations"><span class="header-section-number">4</span> Equations</a></li>
-  <li><a href="#allocation-control" id="toc-allocation-control" class="nav-link" data-scroll-target="#allocation-control"><span class="header-section-number">5</span> Allocation control</a>
+  <li><a href="#allocation-control" id="toc-allocation-control" class="nav-link" data-scroll-target="#allocation-control"><span class="header-section-number">5</span> Behavior in allocation</a>
   <ul class="collapse">
-  <li><a href="#behavior" id="toc-behavior" class="nav-link" data-scroll-target="#behavior"><span class="header-section-number">5.1</span> Behavior</a></li>
-  <li><a href="#route-priority" id="toc-route-priority" class="nav-link" data-scroll-target="#route-priority"><span class="header-section-number">5.2</span> Route priority</a></li>
+  <li><a href="#route-priority" id="toc-route-priority" class="nav-link" data-scroll-target="#route-priority"><span class="header-section-number">5.1</span> Route priority</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -780,33 +779,14 @@ Q = \phi f(h)
 <p>For <code>depth_threshold</code>, <code>level_difference_threshold</code> see <a href="../../reference/usage.html#sec-solver-settings">Solver settings</a>.</p>
 </section>
 <section id="allocation-control" class="level1" data-number="5">
-<h1 data-number="5"><span class="header-section-number">5</span> Allocation control</h1>
-<p>A TabulatedRatingCurve can be controlled by the <a href="../../concept/allocation.html">allocation</a> algorithm. To enable this, set <code>allocation_controlled = True</code> in the Static table. When allocation-controlled, the flow through the TabulatedRatingCurve is no longer determined solely by the <span class="math inline">\(Q(h)\)</span> relationship; instead the allocation algorithm decides the flow rate within the physical capacity of the curve.</p>
-<section id="behavior" class="level2" data-number="5.1">
-<h2 data-number="5.1" class="anchored" data-anchor-id="behavior"><span class="header-section-number">5.1</span> Behavior</h2>
-<p>During each allocation time step the algorithm:</p>
-<ol type="1">
-<li><strong>Computes an upper bound</strong> on the TabulatedRatingCurve flow by evaluating the original <span class="math inline">\(Q(h)\)</span> at the expected upstream and downstream levels at the end of the allocation time step. This ensures allocation never assigns more flow than what is physically possible.</li>
-<li><strong>Optimizes</strong> the flow through the TabulatedRatingCurve together with all other flows in the subnetwork, subject to demand priorities and constraints.</li>
-<li><strong>Communicates</strong> the resulting allocated flow rate back to the physical layer, where it is used as a fixed flow rate for the next allocation period.</li>
-</ol>
-<p>In the physical layer the flow is set to the minimum of the allocated flow rate and the physics-based <span class="math inline">\(Q(h)\)</span> flow rate. This ensures that the flow never exceeds what is physically possible, even if the allocation algorithm assigned a higher value (e.g.&nbsp;because levels changed since the last allocation step). The same reduction factor <span class="math inline">\(\phi\)</span> is still applied:</p>
-<p><span class="math display">\[
-Q = \phi \cdot \min(Q_\text{allocated},\; Q(h))
-\]</span></p>
-<p>This means the flow is still smoothly reduced to zero when:</p>
-<ul>
-<li>the upstream basin storage is low,</li>
-<li>the level difference across the node is small, or</li>
-<li>the downstream level exceeds <code>max_downstream_level</code>.</li>
-</ul>
-<p>When allocation is disabled, <code>allocation_controlled</code> has no effect and the TabulatedRatingCurve follows its normal physics-based <span class="math inline">\(Q(h)\)</span> relationship.</p>
-</section>
-<section id="route-priority" class="level2" data-number="5.2">
-<h2 data-number="5.2" class="anchored" data-anchor-id="route-priority"><span class="header-section-number">5.2</span> Route priority</h2>
-<p>In a typical setup you want the TabulatedRatingCurve to follow its <span class="math inline">\(Q(h)\)</span> relationship under normal conditions and only reduce flow when there is a water shortage (i.e.&nbsp;when a demand cannot be met). This is achieved by giving the TabulatedRatingCurve node a <strong>negative route priority</strong> by default.</p>
-<p><a href="../../concept/allocation.html#route-priority">Route priority</a> acts as a cost in the allocation optimization: higher values make feeding water through a node more expensive. A negative route priority makes it prefer to send water through this node. As a result, the flow will track the physical <span class="math inline">\(Q(h)\)</span> curve as long as there is enough water. When water is scarce and demands compete, allocation will reduce the TabulatedRatingCurve flow to satisfy higher-priority demands first. For how route priorities are configured in the model settings, see <a href="../../reference/usage.html#sec-allocation-settings">Usage: Allocation settings</a>.</p>
-<p>If your TabulatedRatingCurve represents a diversion, you can set a positive route priority, to make sure only the needed water is diverted.</p>
+<h1 data-number="5"><span class="header-section-number">5</span> Behavior in allocation</h1>
+<p>How a TabulatedRatingCurve behaves in <a href="../../concept/allocation.html">allocation</a> depends on <code>allocation_controlled</code> in the <a href="#static">Static</a> table.</p>
+<p>A TabulatedRatingCurve that is not allocation-controlled (the default) follows its <span class="math inline">\(Q(h)\)</span> relationship. Allocation takes this flow into account, but cannot set it directly: it follows from the upstream water level, like in the simulation.</p>
+<p>For an allocation-controlled TabulatedRatingCurve, allocation can reduce the flow below what the <span class="math inline">\(Q(h)\)</span> relationship gives, for instance to keep water upstream for a demand there. Allocation never plans more flow than the rating curve can deliver at the expected upstream level. The flow rate that allocation sets is used until the next intervention time, set by <code>intervention_interval</code> in the <a href="../../reference/usage.html#sec-allocation-settings">allocation settings</a>, and is in <a href="../../reference/usage.html#sec-results"><code>allocation_control.nc</code></a>. The simulated flow in <code>flow.nc</code> is the lower of this flow rate and the flow that <span class="math inline">\(Q(h)\)</span> gives at the current level, so it can be lower than what allocation set, for instance when the upstream level dropped, the upstream Basin is almost empty, or <code>max_downstream_level</code> is reached. Since <code>allocation_controlled</code> can be given per control state, a <a href="../../reference/node/discrete-control.html">DiscreteControl</a> node can switch allocation control on and off.</p>
+<section id="route-priority" class="level2" data-number="5.1">
+<h2 data-number="5.1" class="anchored" data-anchor-id="route-priority"><span class="header-section-number">5.1</span> Route priority</h2>
+<p>Usually a TabulatedRatingCurve should follow its <span class="math inline">\(Q(h)\)</span> relationship, and only pass less water when that water is needed for a demand. This is why TabulatedRatingCurve nodes get a negative <a href="../../concept/allocation.html#route-priority">route priority</a> by default, which makes allocation prefer to send water through them. As long as there is enough water the flow follows the rating curve, and when water is scarce allocation reduces the flow to supply the demands first.</p>
+<p>If a TabulatedRatingCurve represents a diversion, a positive route priority makes allocation divert only the water that is needed. Route priorities are set in the <a href="../../reference/usage.html#sec-allocation-settings">allocation settings</a>, or per node in the Node table.</p>
 <p>For a full worked example, see <a href="../../getting-started/examples.html#allocation-controlled-tabulatedratingcurve">Allocation-controlled TabulatedRatingCurve</a> on the examples page.</p>
 
 

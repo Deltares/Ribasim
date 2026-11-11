@@ -426,6 +426,7 @@ window.Quarto = {
   <li><a href="#static" id="toc-static" class="nav-link" data-scroll-target="#static"><span class="header-section-number">3.1</span> Static</a></li>
   </ul></li>
   <li><a href="#equations" id="toc-equations" class="nav-link" data-scroll-target="#equations"><span class="header-section-number">4</span> Equations</a></li>
+  <li><a href="#behavior-in-allocation" id="toc-behavior-in-allocation" class="nav-link" data-scroll-target="#behavior-in-allocation"><span class="header-section-number">5</span> Behavior in allocation</a></li>
   </ul>
 </nav>
     </div>
@@ -559,6 +560,12 @@ Q_\text{linear\_resistance} = \phi\mathrm{clamp}\left(\frac{h_a - h_b}{R}, -Q_{\
 \]</span></p>
 <p>Here <span class="math inline">\(h_a\)</span> is the water level in the incoming Basin and <span class="math inline">\(h_b\)</span> is the water level in the outgoing Basin. <span class="math inline">\(R\)</span> is the resistance of the link, and <span class="math inline">\(Q_{\max}\)</span> is the maximum flow rate. Water flows from high to low; either direction is possible. <span class="math inline">\(\phi\)</span> is the reduction factor which makes the flow go smoothly to <span class="math inline">\(0\)</span> as the upstream water depth (as determined by the flow direction) goes from <code>depth_threshold</code> to the Basin bottom.</p>
 <p>For <code>depth_threshold</code> see <a href="../../reference/usage.html#sec-solver-settings">Solver settings</a>.</p>
+</section>
+<section id="behavior-in-allocation" class="level1" data-number="5">
+<h1 data-number="5"><span class="header-section-number">5</span> Behavior in allocation</h1>
+<p><a href="../../concept/allocation.html">Allocation</a> cannot set the flow of a LinearResistance directly: like in the simulation, the flow follows from the water levels on either side of it. Allocation predicts this flow with a simplified version of the equations above, so the flow that allocation planned, in <a href="../../reference/usage.html#sec-results"><code>allocation_flow.nc</code></a>, can differ from the simulated flow in <code>flow.nc</code>.</p>
+<p>A <a href="../../reference/node/flow-demand.html">FlowDemand</a> on a LinearResistance can only be met when allocation can raise the flow by changing the water levels, for instance by steering an allocation-controlled Pump or Outlet upstream.</p>
+<p>With a route priority for LinearResistance nodes, see <a href="../../reference/usage.html#sec-allocation-settings">allocation settings</a>, allocation can be made to prefer or avoid routing water through them.</p>
 
 
 </section>

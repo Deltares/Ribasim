@@ -393,6 +393,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#allowed-connectivity" id="toc-allowed-connectivity" class="nav-link active" data-scroll-target="#allowed-connectivity"><span class="header-section-number">1</span> Allowed connectivity</a></li>
   <li><a href="#tables" id="toc-tables" class="nav-link" data-scroll-target="#tables"><span class="header-section-number">2</span> Tables</a></li>
   <li><a href="#equations" id="toc-equations" class="nav-link" data-scroll-target="#equations"><span class="header-section-number">3</span> Equations</a></li>
+  <li><a href="#behavior-in-allocation" id="toc-behavior-in-allocation" class="nav-link" data-scroll-target="#behavior-in-allocation"><span class="header-section-number">4</span> Behavior in allocation</a></li>
   </ul>
 </nav>
     </div>
@@ -422,7 +423,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="allowed-connectivity" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> Allowed connectivity</h1>
 <p>The diagram below shows which node types are allowed directly upstream (left) and downstream (right) of this node. This is a connectivity illustration, not a valid simulation model.</p>
-<div id="53153325" class="cell" data-execution_count="1">
+<div id="79d1a34a" class="cell" data-execution_count="1">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="op">%</span>run ..<span class="op">/</span>..<span class="op">/</span>..<span class="op">/</span>utils<span class="op">/</span>plot_node_connectivity.py</span>
@@ -446,6 +447,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="equations" class="level1" data-number="3">
 <h1 data-number="3"><span class="header-section-number">3</span> Equations</h1>
 <p>The incoming node determines the flow into the Terminal node.</p>
+</section>
+<section id="behavior-in-allocation" class="level1" data-number="4">
+<h1 data-number="4"><span class="header-section-number">4</span> Behavior in allocation</h1>
+<p>In <a href="../../concept/allocation.html">allocation</a> a Terminal can receive any amount of water. Allocation cannot steer the flow into a Terminal directly: it is determined by the node upstream of it. Water that flows into a Terminal leaves the model and can no longer be used to supply demands.</p>
 
 
 </section>

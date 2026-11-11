@@ -427,6 +427,7 @@ window.Quarto = {
   <li><a href="#time" id="toc-time" class="nav-link" data-scroll-target="#time"><span class="header-section-number">3.2</span> Time</a></li>
   </ul></li>
   <li><a href="#equations" id="toc-equations" class="nav-link" data-scroll-target="#equations"><span class="header-section-number">4</span> Equations</a></li>
+  <li><a href="#behavior-in-allocation" id="toc-behavior-in-allocation" class="nav-link" data-scroll-target="#behavior-in-allocation"><span class="header-section-number">5</span> Behavior in allocation</a></li>
   </ul>
 </nav>
     </div>
@@ -701,6 +702,14 @@ Q = \phi_\text{level} \, \mathrm{clamp}(\phi_\text{storage} Q_\text{set}, Q_{\mi
 </ul>
 <p>For <code>depth_threshold</code>, <code>level_difference_threshold</code> see <a href="../../reference/usage.html#sec-solver-settings">Solver settings</a>.</p>
 <p>Since <span class="math inline">\(\phi_\text{level}\)</span> is applied after the clamp, <code>min_flow_rate</code> is not a strict minimum: the level criteria can still reduce the flow to zero.</p>
+</section>
+<section id="behavior-in-allocation" class="level1" data-number="5">
+<h1 data-number="5"><span class="header-section-number">5</span> Behavior in allocation</h1>
+<p>How an Outlet behaves in <a href="../../concept/allocation.html">allocation</a> depends on <code>allocation_controlled</code> in the <a href="#static">Static</a> table.</p>
+<p>An Outlet that is not allocation-controlled (the default) keeps the flow rate given in its tables or by its control node. Allocation takes this flow into account, but does not change it.</p>
+<p>For an allocation-controlled Outlet, allocation sets the flow rate between <code>min_flow_rate</code> and <code>max_flow_rate</code>, to bring water to where it is needed. This flow rate is used until the next intervention time, set by <code>intervention_interval</code> in the <a href="../../reference/usage.html#sec-allocation-settings">allocation settings</a>, and is in <a href="../../reference/usage.html#sec-results"><code>allocation_control.nc</code></a>. The simulated flow in <code>flow.nc</code> can be lower than this flow rate, for instance when the upstream Basin is almost empty, when the upstream level is not higher than the downstream level, or when <code>min_upstream_level</code> or <code>max_downstream_level</code> is reached. An allocation-controlled Outlet needs a finite <code>max_flow_rate</code>. An Outlet that connects the primary network to a secondary network must be allocation-controlled, and a <a href="../../reference/node/discrete-control.html">DiscreteControl</a> node can switch allocation control on and off.</p>
+<p>A <a href="../../reference/node/flow-demand.html">FlowDemand</a> on an Outlet is a minimum flow rate when allocation is not used. With allocation it is a demand like the others: it is met in the order of its demand priority, so it can get less water than demanded when water is scarce.</p>
+<p>With a route priority for Outlet nodes, see <a href="../../reference/usage.html#sec-allocation-settings">allocation settings</a>, allocation can be made to prefer or avoid routing water through them.</p>
 
 
 </section>

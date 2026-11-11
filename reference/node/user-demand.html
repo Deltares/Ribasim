@@ -424,9 +424,9 @@ window.Quarto = {
   <ul class="collapse">
   <li><a href="#static" id="toc-static" class="nav-link" data-scroll-target="#static"><span class="header-section-number">2.1</span> Static</a></li>
   <li><a href="#time" id="toc-time" class="nav-link" data-scroll-target="#time"><span class="header-section-number">2.2</span> Time</a></li>
-  <li><a href="#concentration" id="toc-concentration" class="nav-link" data-scroll-target="#concentration"><span class="header-section-number">2.3</span> Concentration</a></li>
   </ul></li>
   <li><a href="#equations" id="toc-equations" class="nav-link" data-scroll-target="#equations"><span class="header-section-number">3</span> Equations</a></li>
+  <li><a href="#behavior-in-allocation" id="toc-behavior-in-allocation" class="nav-link" data-scroll-target="#behavior-in-allocation"><span class="header-section-number">4</span> Behavior in allocation</a></li>
   </ul>
 </nav>
     </div>
@@ -651,69 +651,6 @@ Note
 </div>
 </div>
 </section>
-<section id="concentration" class="level2" data-number="2.3">
-<h2 data-number="2.3" class="anchored" data-anchor-id="concentration"><span class="header-section-number">2.3</span> Concentration</h2>
-<p>This table defines the concentration of substances for the flow from the UserDemand.</p>
-<div id="8" class="cell" data-execution_count="1">
-<details class="code-fold">
-<summary>Code</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table_from_schema</span>(</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    Ribasim.Schema.UserDemand.Concentration;</span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    restrictions <span class="op">=</span> <span class="fu">Dict</span>(<span class="op">:</span>substance <span class="op">=&gt;</span> <span class="st">"can correspond to known Delwaq substances"</span>),</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</details>
-<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
-<table class="caption-top table table-sm table-striped small">
-<colgroup>
-<col style="width: 17%">
-<col style="width: 11%">
-<col style="width: 8%">
-<col style="width: 11%">
-<col style="width: 50%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>column</th>
-<th>type</th>
-<th>unit</th>
-<th>optional</th>
-<th>restriction</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>node_id</td>
-<td>Int32</td>
-<td>-</td>
-<td>x</td>
-<td>-</td>
-</tr>
-<tr class="even">
-<td>time</td>
-<td>DateTime</td>
-<td>-</td>
-<td>x</td>
-<td>-</td>
-</tr>
-<tr class="odd">
-<td>substance</td>
-<td>String</td>
-<td>-</td>
-<td>x</td>
-<td>can correspond to known Delwaq substances</td>
-</tr>
-<tr class="even">
-<td>concentration</td>
-<td>Float64</td>
-<td>g m⁻³</td>
-<td>x</td>
-<td>-</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-</section>
 </section>
 <section id="equations" class="level1" data-number="3">
 <h1 data-number="3"><span class="header-section-number">3</span> Equations</h1>
@@ -732,6 +669,12 @@ Note
 Q_\text{out} = r \cdot Q_\text{in}.
 \]</span></p>
 <p>Note that this means that the UserDemand has a consumption rate of <span class="math inline">\((1-r)Q_\text{in}\)</span>.</p>
+</section>
+<section id="behavior-in-allocation" class="level1" data-number="4">
+<h1 data-number="4"><span class="header-section-number">4</span> Behavior in allocation</h1>
+<p>Without allocation, a UserDemand tries to abstract its full demand, summed over all demand priorities.</p>
+<p>With <a href="../../concept/allocation.html">allocation</a>, a UserDemand gets an allocated flow rate for each demand priority, and abstracts at most this allocated flow rate until the next intervention time, set by <code>intervention_interval</code> in the <a href="../../reference/usage.html#sec-allocation-settings">allocation settings</a>. Demands with an earlier <code>demand_priority</code> are met first. When there is not enough water for all demands with the same priority, each demand gets the same share of what it asked for. The water can come from the Basins or Junction the UserDemand abstracts from, and from further upstream. When a UserDemand abstracts from several Basins, allocation decides how much is taken from each. The return flow can be used again by demands downstream.</p>
+<p>The demand, allocated and realized flow rates of each UserDemand are in <a href="../../reference/usage.html#sec-results"><code>allocation.nc</code></a>. The realized flow rate can be lower than the allocated flow rate, for instance when the Basin it abstracts from is almost empty or reaches <code>min_level</code>, or because less water arrives than allocation predicted.</p>
 
 
 </section>

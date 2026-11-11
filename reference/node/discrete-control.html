@@ -426,6 +426,7 @@ window.Quarto = {
   <li><a href="#condition" id="toc-condition" class="nav-link" data-scroll-target="#condition"><span class="header-section-number">2.2</span> Condition</a></li>
   <li><a href="#logic" id="toc-logic" class="nav-link" data-scroll-target="#logic"><span class="header-section-number">2.3</span> Logic</a></li>
   </ul></li>
+  <li><a href="#behavior-in-allocation" id="toc-behavior-in-allocation" class="nav-link" data-scroll-target="#behavior-in-allocation"><span class="header-section-number">3</span> Behavior in allocation</a></li>
   </ul>
 </nav>
     </div>
@@ -1003,9 +1004,13 @@ window.Quarto = {
 </table>
 </div>
 </div>
-
-
 </section>
+</section>
+<section id="behavior-in-allocation" class="level1" data-number="3">
+<h1 data-number="3"><span class="header-section-number">3</span> Behavior in allocation</h1>
+<p><a href="../../concept/allocation.html">Allocation</a> uses the parameters that DiscreteControl has set at the moment allocation runs, at each intervention time. It cannot foresee that DiscreteControl changes them before the next intervention time, set by <code>intervention_interval</code> in the <a href="../../reference/usage.html#sec-allocation-settings">allocation settings</a>, so after such a change the simulated flows can differ from what allocation planned. Since <code>allocation_controlled</code> of a Pump, Outlet or TabulatedRatingCurve can differ per control state, DiscreteControl can switch allocation control of these nodes on and off.</p>
+
+
 </section>
 
 </main> <!-- /main -->
