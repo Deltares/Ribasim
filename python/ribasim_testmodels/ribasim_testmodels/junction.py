@@ -603,6 +603,34 @@ def junction_continuous_control_model() -> Model:
     return model
 
 
+def junction_shortage_tracer_model() -> Model:
+    """Create a model with a substance that reaches a Junction node after a UserDemand takes all water from it.
+
+    This is `junction_continuous_control_model` with tracers, in which UserDemand #4 returns nothing to
+    Basin #6. FlowBoundary #20 brings the substance Pulse into Basin #1 from 2020-01-20, after the flow of
+    TabulatedRatingCurve #2 dropped below the demand. Within the solver tolerance the flow from Junction #5
+    into Basin #6 is then negative, which is water from Basin #6 that does not have Pulse.
+    """
+    model = junction_continuous_control_model()
+    model.experimental = Experimental(concentration=True)
+    user_demand_static = model.user_demand.static.df
+    assert user_demand_static is not None
+    user_demand_static.loc[:, "return_factor"] = 0.0
+    fb = model.flow_boundary.add(
+        Node(20, Point(-1, 0)),
+        [
+            flow_boundary.Static(flow_rate=[1e-4]),
+            flow_boundary.Concentration(
+                time=[datetime(2020, 1, 1), datetime(2020, 1, 20)],
+                substance=["Pulse", "Pulse"],
+                concentration=[0.0, 1.0],
+            ),
+        ],
+    )
+    model.link.add(fb, model.basin[1])
+    return model
+
+
 def _junction_chain(model: Model, subnetwork_id: int | None) -> None:
     """Add a chain of Junction nodes that supply two UserDemand nodes, without a Basin.
 
