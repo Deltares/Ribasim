@@ -68,6 +68,7 @@ end
             "junction_fraction",
             "junction_equation",
             "junction_pid",
+            "junction_continuous_control",
         ]
         toml_path = normpath(@__DIR__, "../../generated_testmodels/$model_name/ribasim.toml")
 

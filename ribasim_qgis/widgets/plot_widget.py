@@ -3,7 +3,7 @@
 import importlib.resources
 import json
 from collections import defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from enum import Enum, auto
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
@@ -363,6 +363,7 @@ class PlotWidget(QWidget):
         concentration_for_node_getter: Callable[[int], dict[str, Trace] | None]
         | None = None,
         flow_for_link_getter: Callable[[int], Trace | None] | None = None,
+        junctions_in_static_getter: Callable[[], Collection[int]] | None = None,
     ):
         super().__init__(parent)
         layout = QVBoxLayout(self)
@@ -382,6 +383,7 @@ class PlotWidget(QWidget):
         self._iface = iface
         self._node_layer_getter = node_layer_getter
         self._link_layer_getter = link_layer_getter
+        self._junctions_in_static_getter = junctions_in_static_getter
 
         row.addWidget(QLabel("Select"))
 
@@ -1209,6 +1211,11 @@ class PlotWidget(QWidget):
             return str(feat["node_type"])
         return None
 
+    def _junctions_in_static(self) -> Collection[int]:
+        """Return the Junctions with rows in Junction / static, which are not in a group."""
+        getter = self._junctions_in_static_getter
+        return frozenset() if getter is None else getter()
+
     def _traverse_connector(
         self, connector_node_id: int, current_link_id: int
     ) -> tuple[int, int] | None:
@@ -1323,7 +1330,10 @@ class PlotWidget(QWidget):
         if layer is None:
             return None
 
-        basins, _ = junction_side(layer, self._get_node_type, junction_id, link_id)
+        in_static = self._junctions_in_static()
+        basins, _ = junction_side(
+            layer, self._get_node_type, junction_id, link_id, in_static
+        )
         if len(basins) != 1:
             return None
 
@@ -1335,8 +1345,10 @@ class PlotWidget(QWidget):
         far_type = self._get_node_type(far_node)
         if far_type == "Basin":
             basins.add(far_node)
-        elif far_type == "Junction":
-            basins |= junction_side(layer, self._get_node_type, far_node, link_id)[0]
+        elif far_type == "Junction" and far_node not in in_static:
+            basins |= junction_side(
+                layer, self._get_node_type, far_node, link_id, in_static
+            )[0]
         return next(iter(basins)) if len(basins) == 1 else None
 
     def _build_junction_concentration(
@@ -1471,14 +1483,17 @@ class PlotWidget(QWidget):
         if layer is None or endpoints is None:
             return None
 
+        in_static = self._junctions_in_static()
         sides: list[tuple[set[int], list[tuple[int, int, int]]]] = []
         for node_id in endpoints:
             node_type = self._get_node_type(node_id)
             if node_type == "Basin":
                 sides.append(({node_id}, []))
-            elif node_type == "Junction":
+            elif node_type == "Junction" and node_id not in in_static:
                 sides.append(
-                    junction_side(layer, self._get_node_type, node_id, link_id)
+                    junction_side(
+                        layer, self._get_node_type, node_id, link_id, in_static
+                    )
                 )
             else:
                 return None

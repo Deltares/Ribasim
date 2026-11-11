@@ -1155,7 +1155,7 @@ function parse_variables_and_conditions(ids::Vector{Int32}, db::DB, config::Conf
     cyclic_times = get_cyclic_time(db, "DiscreteControl")
     errors = false
 
-    node_ids_all = get_node_ids(db)
+    node_ids_all = get_node_ids(db, config)
 
     id_index_lookup = Dict(id => i for (i, id) in pairs(ids))
     cyclic_time_lookup = Dict(id => cyclic_time for (id, cyclic_time) in zip(ids, cyclic_times))
@@ -1300,7 +1300,7 @@ function continuous_control_functions(db, config, ids)
 end
 
 function continuous_control_compound_variables(db::DB, config::Config, ids)
-    node_ids_all = get_node_ids(db)
+    node_ids_all = get_node_ids(db, config)
 
     data = load_structvector(db, config, Schema.ContinuousControl.Variable)
     compound_variables = CompoundVariable[]
@@ -1337,7 +1337,7 @@ function PidControl(db::DB, config::Config, graph::MetaGraph)
     static = load_structvector(db, config, Schema.PidControl.Static)
     time = load_structvector(db, config, Schema.PidControl.Time)
     node_id = get_node_ids(db, NodeType.PidControl)
-    node_ids_all = get_node_ids(db)
+    node_ids_all = get_node_ids(db, config)
 
     pid_control = PidControl(; node_id)
 
@@ -1734,7 +1734,7 @@ end
 
 function Junction(db::DB, config::Config, graph::ModelGraph)::Junction
     static = load_structvector(db, config, Schema.Junction.Static)
-    node_id = get_node_ids(db, NodeType.Junction)
+    node_id = get_junction_ids(db, config)
     # Only the routed Junction nodes are in the graph, the others were removed by `simplify_graph!`
     routed_ids = filter(id -> id.is_routed, node_id)
     inflow_links = [id.is_routed ? get_inflow_links(graph, id) : LinkMetadata[] for id in node_id]
@@ -2170,17 +2170,14 @@ end
 The IDs of the Junction nodes that divide the flow or supply a UserDemand: those with rows in
 `Junction / static`. They stay in the simulation as nodes, see `NodeID.is_routed`.
 """
-function routed_junction_ids(db::DB)::Set{Int32}
-    table_name = "Junction / static"
-    sql_exists = "SELECT name FROM sqlite_master WHERE type = 'table' AND name = '$table_name'"
-    isempty(only(execute(columntable, db, sql_exists))) && return Set{Int32}()
-    sql = "SELECT DISTINCT node_id FROM $(esc_id(table_name))"
-    return Set{Int32}(only(execute(columntable, db, sql)))
+function routed_junction_ids(db::DB, config::Config)::Set{Int32}
+    static = load_data(db, config, Schema.Junction.Static)
+    return isnothing(static) ? Set{Int32}() : Set{Int32}(static.node_id)
 end
 
-function get_node_ids(db::DB)::Vector{NodeID}
+function get_node_ids(db::DB, config::Config)::Vector{NodeID}
     nt = get_node_ids_types(db)
-    routed = routed_junction_ids(db)
+    routed = routed_junction_ids(db, config)
     node_ids = Vector{NodeID}(undef, length(nt.node_id))
     count = counter(NodeType.T)
     for (i, (; node_id, node_type)) in enumerate(Tables.rows(nt))
@@ -2192,24 +2189,30 @@ end
 
 # Convenience method for tests
 function get_node_ids(toml_path::String)::Vector{NodeID}
-    cfg = Config(toml_path)
-    db_path = database_path(cfg)
+    config = Config(toml_path)
+    db_path = database_path(config)
     db = SQLite.DB(db_path)
-    node_ids = get_node_ids(db)
+    node_ids = get_node_ids(db, config)
     close(db)
     return node_ids
 end
 
-function get_node_ids(db::DB, node_type)::Vector{NodeID}
+"""
+The IDs of the nodes of a type. Whether a Junction node has rows in `Junction / static` is part
+of its ID, and that table can be outside the database, so the Junction IDs need the config.
+"""
+function get_node_ids(db::DB, node_type, routed::Set{Int32} = Set{Int32}())::Vector{NodeID}
     node_type = NodeType.T(node_type)
     node_ints = get_node_ids_int32(db, node_type)
-    routed = node_type == NodeType.Junction ? routed_junction_ids(db) : Set{Int32}()
     node_ids = Vector{NodeID}(undef, length(node_ints))
     for (index, node_int) in enumerate(node_ints)
         node_ids[index] = NodeID(node_type, node_int, index, node_int in routed)
     end
     return node_ids
 end
+
+get_junction_ids(db::DB, config::Config)::Vector{NodeID} =
+    get_node_ids(db, NodeType.Junction, routed_junction_ids(db, config))
 
 function get_cyclic_time(db::DB, node_type::String)::Vector{Bool}
     sql = "SELECT cyclic_time FROM Node WHERE node_type = $(esc_id(node_type)) ORDER BY node_id"

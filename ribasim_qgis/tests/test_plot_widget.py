@@ -1,5 +1,6 @@
 """Tests for ribasim_qgis.widgets.plot_widget — PlotWidget."""
 
+import sqlite3
 from typing import Any
 
 import numpy as np
@@ -7,6 +8,7 @@ import pytest
 from qgis.core import QgsFeature, QgsVectorLayer
 from qgis.PyQt.QtWidgets import QCheckBox, QWidgetAction
 
+from ribasim_qgis.core.junctions import JUNCTION_STATIC_TABLE, read_junctions_in_static
 from ribasim_qgis.widgets.dataset_widget import DatasetWidget
 from ribasim_qgis.widgets.plot_widget import (
     PlotData,
@@ -1005,6 +1007,7 @@ def _fractional_tracer_flow(
     flows: dict[int, list[float]],
     link_id: int,
     selected_flow: list[float],
+    junctions_in_static: frozenset[int] = frozenset(),
 ) -> tuple[Any, ...]:
     """Plot the fractional flow of one link, on real layers, and return its traces."""
     captured_figures = []
@@ -1041,6 +1044,7 @@ def _fractional_tracer_flow(
         link_layer_getter=lambda: link_layer,
         concentration_for_node_getter=_conc_getter,
         flow_for_link_getter=_flow_getter,
+        junctions_in_static_getter=lambda: junctions_in_static,
     )
     widget._fractional_flow_enabled = True
     widget.set_data(
@@ -1199,8 +1203,32 @@ def test_plot_widget_fractional_flow_connector_between_junction_groups(monkeypat
     assert np.allclose(_signed_values(traces, "Tracer"), [1.2, 1.2])
 
 
+def test_plot_widget_fractional_flow_junction_in_static(monkeypatch):
+    """A Junction in Junction / static mixes its inflows, also next to one Basin."""
+    # Basin 1 --1--> Pump 2 --2--> Junction 3 --3--> Basin 4
+    #                              Junction 3 --4--> UserDemand 5 --5--> Basin 4
+    network = (
+        {1: "Basin", 2: "Pump", 3: "Junction", 4: "Basin", 5: "UserDemand"},
+        {1: (1, 2), 2: (2, 3), 3: (3, 4), 4: (3, 5), 5: (5, 4)},
+        {1: 0.2, 4: 0.8},
+        {2: [5.0, 5.0], 4: [2.0, 2.0]},
+        3,
+        [3.0, 3.0],
+    )
+    # All water over the link to Basin 4 comes from Basin 1: 0.2 * 3
+    traces = _fractional_tracer_flow(monkeypatch, *network, frozenset({3}))
+    assert np.allclose(_signed_values(traces, "Tracer"), [0.6, 0.6])
+    # Without rows it is a Junction group with one Basin, where the UserDemand
+    # abstracts from Basin 4: 0.2 * 5 - 0.8 * 2
+    traces = _fractional_tracer_flow(monkeypatch, *network)
+    assert np.allclose(_signed_values(traces, "Tracer"), [-0.6, -0.6])
+
+
 def _junction_flow_column(
-    node_types: dict[int, str], links: list[tuple[int, int]], flows: list[float]
+    node_types: dict[int, str],
+    links: list[tuple[int, int]],
+    flows: list[float],
+    junctions_in_static: frozenset[int] = frozenset(),
 ) -> np.ndarray | None:
     """Return the flow rate of Junction 2 for flows given at a single time."""
     node_layer = _memory_layer(
@@ -1212,7 +1240,12 @@ def _junction_flow_column(
         [(i, *link, "flow") for i, link in enumerate(links)],
     )
     return DatasetWidget._junction_flow_column(
-        link_layer, node_layer, 2, {i: i for i in range(len(flows))}, np.array([flows])
+        link_layer,
+        node_layer,
+        2,
+        {i: i for i in range(len(flows))},
+        np.array([flows]),
+        junctions_in_static,
     )
 
 
@@ -1249,6 +1282,76 @@ def test_junction_flow_column(node_types, links, flows, expected):
     column = _junction_flow_column(node_types, links, flows)
     assert column is not None
     assert np.allclose(column, [expected])
+
+
+@pytest.mark.parametrize(
+    ("node_types", "links", "flows", "junctions_in_static", "expected"),
+    [
+        # A Junction in Junction / static: its total inflow, before the abstraction
+        # of the UserDemand, not the flow on the link to the Basin.
+        (
+            {1: "Pump", 2: "Junction", 3: "UserDemand", 4: "Basin"},
+            [(1, 2), (2, 3), (2, 4), (3, 4)],
+            [5.0, 2.0, 3.0, 1.0],
+            frozenset({2}),
+            5.0,
+        ),
+        # A confluence in Junction / static.
+        (
+            {1: "Pump", 2: "Junction", 3: "Pump", 4: "Basin"},
+            [(1, 2), (3, 2), (2, 4)],
+            [5.0, 2.0, 7.0],
+            frozenset({2}),
+            7.0,
+        ),
+        # Junction 3 in Junction / static is not part of the group of Junction 2,
+        # which has Basin 4 only: the net flow on the link to that Basin.
+        (
+            {
+                1: "FlowBoundary",
+                2: "Junction",
+                3: "Junction",
+                4: "Basin",
+                5: "LinearResistance",
+                6: "Basin",
+            },
+            [(1, 3), (3, 2), (3, 6), (2, 4), (2, 5)],
+            [10.0, 4.0, 6.0, 3.0, 1.0],
+            frozenset({3}),
+            3.0,
+        ),
+    ],
+)
+def test_junction_flow_column_in_static(
+    node_types, links, flows, junctions_in_static, expected
+):
+    column = _junction_flow_column(node_types, links, flows, junctions_in_static)
+    assert column is not None
+    assert np.allclose(column, [expected])
+
+
+def test_read_junctions_in_static(tmp_path):
+    path = tmp_path / "database.gpkg"
+    assert read_junctions_in_static(path) == frozenset()
+
+    con = sqlite3.connect(path)
+    con.execute("CREATE TABLE Node (node_id INTEGER)")
+    con.commit()
+    assert read_junctions_in_static(path) == frozenset()
+
+    con.execute(
+        f'CREATE TABLE "{JUNCTION_STATIC_TABLE}" '
+        "(fid INTEGER PRIMARY KEY, node_id INTEGER, to_node_id INTEGER, fraction REAL)"
+    )
+    con.executemany(
+        # JUNCTION_STATIC_TABLE is a trusted module constant, not user input.
+        f'INSERT INTO "{JUNCTION_STATIC_TABLE}" '  # noqa: S608
+        "(node_id, to_node_id, fraction) VALUES (?, ?, ?)",
+        [(22, 4, 0.75), (22, 3, None), (6, 25, 1.0)],
+    )
+    con.commit()
+    con.close()
+    assert read_junctions_in_static(path) == frozenset({6, 22})
 
 
 def test_plot_widget_observation_grouped_with_results():

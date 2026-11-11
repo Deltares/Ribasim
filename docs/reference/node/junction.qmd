@@ -159,8 +159,7 @@ flowchart LR
 
 This translates to the same model.
 
-The flow rate of a Junction in such a tree, which control nodes can listen to, is the net flow through it, positive in the direction of its link towards the Basin.
-The flow rate of the other Junctions that are not in the Static table is their total inflow.
+The flow rate of a Junction in such a tree is the net flow on its link towards the Basin, see [Flow rate](#flow-rate).
 
 ## Junctions in the Static table
 
@@ -220,8 +219,6 @@ Without allocation, a UserDemand abstracting from a Junction takes its demand be
 
 A model does not need a Basin when all flow comes from FlowBoundary nodes and passes through Junctions, for instance into UserDemand or Terminal nodes. Allocation does require a Basin in each subnetwork.
 
-The flow rate of such a Junction, which control nodes can listen to, is its total inflow.
-
 ### Downstream level
 
 A Junction has no level of its own. A structure that flows into a Junction sees the level of the single Basin or LevelBoundary downstream of it, if the Junction, and the Junctions downstream of it, do not divide the flow: then the structure behaves as if it flowed into that node directly, so a Pump or Outlet can still be drowned by `max_downstream_level`. This holds whether or not the Junction is in the Static table. Where the flow is divided over several nodes there is no single level, and the structure has free outflow: `max_downstream_level` and the downstream level reduction of a TabulatedRatingCurve are not applied. In the example above the Pump has free outflow, since J1 divides the flow over Basin A and Basin B.
@@ -242,6 +239,15 @@ Junctions in the Static table can be used in [allocation](/concept/allocation.qm
 ### Water quality
 
 In the offline [Delwaq coupling](/guide/delwaq.qmd) a Junction has no volume, so it is removed from the Delwaq network like the connector nodes: each node that flows into the Junction gets an exchange with each node it flows into. The flow over such an exchange is the flow of the link into the Junction times the share of the outflow link in the total outflow, per timestep, so the mixing in the Junction is the same as in the [tracers](#tracers) of the core. An exchange between two boundary nodes, like a FlowBoundary and the UserDemand that abstracts from the Junction, is dropped, since it does not touch a Basin.
+
+## Flow rate
+
+Control nodes can listen to the `flow_rate` of a Junction, and QGIS plots it. There are two rules:
+
+- The flow rate of a Junction is its total inflow: the sum of the flows on its incoming links. For a Junction in the Static table this is the flow before its UserDemand abstracts, so listen to a Junction downstream of it to get the remainder.
+- In [a Junction tree with one Basin](#a-junction-tree-with-one-basin) the links can carry flow in both directions. There the flow rate of a Junction is the net flow on its link towards the Basin, positive in the direction of that link. It is the same value as that link has in the flow results, and it is negative when the water flows against the link.
+
+Both rules give the same value as long as the water flows along the links, for instance at a confluence or a bifurcation.
 
 # Connectivity rules
 
