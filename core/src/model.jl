@@ -126,6 +126,9 @@ function Model(
             error("Invalid PidControl connectivity.")
         end
 
+        # Errors for a circular dependency in the control of flows
+        set_control_order!(parameters)
+
         if !valid_min_upstream_level!(graph, outlet, basin)
             error("Invalid minimum upstream level of Outlet.")
         end

@@ -310,6 +310,84 @@ end
     @test get_link_flow(5, 7) ≈ max.(0.4 .* inflow, 0) rtol = 1.0e-3
 end
 
+@testitem "ContinuousControl listens to a flow set by ContinuousControl" begin
+    using DataFrames: DataFrame
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/chained_continuous_control/ribasim.toml")
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    # The compound variable of ContinuousControl #9 is computed after the flow of Outlet #4,
+    # which is set by ContinuousControl #8
+    (; control_order) = model.integrator.p.p_independent
+    @test [level.compound_idx for level in control_order] == [[1], [], [2], []]
+    @test [level.continuous_idx for level in control_order] == [[], [1], [], [2]]
+
+    flow_data = DataFrame(Ribasim.flow_data(model))
+    get_link_flow(from_node_id, to_node_id) =
+        filter(row -> row.from_node_id == from_node_id && row.to_node_id == to_node_id, flow_data).flow_rate
+    inflow = get_link_flow(2, 3)
+    # Where the inflow changes sign within a saveat interval, the mean flows of the Outlets
+    # are not proportional to the mean inflow
+    positive = inflow .> 0
+    @test get_link_flow(3, 4)[positive] ≈ 0.6 .* inflow[positive] rtol = 1.0e-3
+    # Outlet #5 follows 2/3 of Outlet #4, before it saw a flow of 0
+    @test get_link_flow(3, 5) ≈ (2 / 3) .* get_link_flow(3, 4) rtol = 1.0e-3
+    @test get_link_flow(3, 5)[positive] ≈ 0.4 .* inflow[positive] rtol = 1.0e-3
+    @test maximum(get_link_flow(3, 5)) > 1.0e-3
+end
+
+@testitem "PidControl derivative term sees a flow set by ContinuousControl" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_continuous_control/ribasim.toml")
+    model = Ribasim.Model(toml_path)
+    (; u, p, t) = model.integrator
+    (; control_order, pid_control, basin) = p.p_independent
+
+    # The flow of Outlet #2 into the listened Basin is computed before the flow of Pump #4
+    @test [level.compound_idx for level in control_order] == [[1], [], []]
+    @test [level.continuous_idx for level in control_order] == [[], [1], []]
+    @test [level.pid_idx for level in control_order] == [[], [], [1]]
+
+    # The PID controlled flow solves its implicit equation with the storage rate of Basin #3
+    # including all flows, so also the flow of Outlet #2
+    du = zero(u)
+    Ribasim.water_balance!(du, u, p, t)
+    q_pid = du.flow.horizontal.pump[1]
+    @test du.flow.horizontal.outlet[1] > 1.0e-3
+    dstorage = Ribasim.formulate_dstorage_single_basin(du.flow, p.p_independent, basin.node_id[1]; t)
+    pid_error = pid_control.target[1](t) - p.current_basin_properties.current_level[1]
+    area = p.current_basin_properties.current_area[1]
+    K_p = pid_control.proportional[1](t)
+    K_d = pid_control.derivative[1](t)
+    @test q_pid > 0
+    @test q_pid ≈ K_p * pid_error + K_d * (0.0 - dstorage / area)
+
+    Ribasim.solve!(model)
+    @test success(model)
+    level = Ribasim.get_storages_and_levels(model).level[1, :]
+    @test level[end] ≈ pid_control.target[1](t) atol = 1.0e-2
+end
+
+@testitem "Circular dependency in the control of flows" begin
+    using Logging
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/invalid_circular_control/ribasim.toml")
+    logger = TestLogger()
+    with_logger(logger) do
+        @test_throws "Circular dependency in the control of flows." Ribasim.Model(toml_path)
+    end
+    messages = [string(log.message) for log in logger.logs if log.level == Logging.Error]
+    @test messages == [
+        """
+        Circular dependency in the control of flows, so they cannot be computed one after the other:
+          the flow of Outlet #4 set by ContinuousControl #8
+          which depends on the variables ContinuousControl #8 listens to
+          which depends on the flow of Outlet #5 set by ContinuousControl #9
+          which depends on the variables ContinuousControl #9 listens to
+          which depends on the flow of Outlet #4 set by ContinuousControl #8""",
+    ]
+end
+
 @testitem "Concentration discrete control" begin
     using DataFrames: DataFrame
 

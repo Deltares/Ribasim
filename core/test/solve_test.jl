@@ -69,6 +69,8 @@ end
             "junction_equation",
             "junction_pid",
             "junction_continuous_control",
+            # PidControl derivative term on a Basin fed by a flow set by ContinuousControl
+            "pid_continuous_control",
         ]
         toml_path = normpath(@__DIR__, "../../generated_testmodels/$model_name/ribasim.toml")
 
