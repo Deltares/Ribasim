@@ -1,11 +1,12 @@
 import geopandas as gpd
+import pandas as pd
 import pytest
 import shapely.geometry as sg
 from pandera.errors import SchemaErrors
 from pydantic import ValidationError
 from ribasim import Model, Node
 from ribasim.geometry.link import LinkTable, NodeData, _infer_link_type
-from ribasim.nodes import basin, junction, pump, user_demand
+from ribasim.nodes import basin, junction, linear_resistance, pump, user_demand
 
 
 @pytest.fixture(scope="session")
@@ -162,6 +163,81 @@ def test_validate_link_junction_can_split_into_junctions():
     jct2 = model.junction.add(Node(3, sg.Point(1, -1)))
     model.link.add(jct, jct1)
     model.link.add(jct, jct2)
+
+
+def _basin_resistance_basin() -> tuple[Model, NodeData, NodeData, NodeData]:
+    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+    basins = [
+        model.basin.add(
+            Node(node_id, sg.Point(node_id, 0)),
+            [
+                basin.State(level=[1.0]),
+                basin.Profile(level=[0.0, 2.0], area=[100.0, 200.0]),
+            ],
+        )
+        for node_id in (1, 3)
+    ]
+    lr = model.linear_resistance.add(
+        Node(2, sg.Point(2, 0)), [linear_resistance.Static(resistance=[1.0])]
+    )
+    return model, basins[0], lr, basins[1]
+
+
+@pytest.mark.parametrize("link_id", [None, 7])
+def test_readd_link_replaces(link_id):
+    """Re-running `link.add` replaces the existing link, like re-running `node.add`."""
+    model, b1, lr, _ = _basin_resistance_basin()
+    model.link.add(b1, lr, link_id=link_id)
+    expected_id = model.link.df.index[0]
+
+    geometry = sg.LineString([(1, 0), (1.5, 1), (2, 0)])
+    with pytest.warns(UserWarning, match=f"Replacing link #{expected_id}"):
+        model.link.add(b1, lr, geometry=geometry, name="new", link_id=link_id)
+
+    df = model.link.df
+    assert df.index.tolist() == [expected_id]
+    assert df.loc[expected_id, "name"] == "new"
+    assert df.loc[expected_id, "geometry"].equals(geometry)
+    assert model.link._used_link_ids.node_ids == {expected_id}
+
+
+def test_readd_link_with_other_id():
+    """Re-adding a link between the same nodes with another ID frees the old ID."""
+    model, b1, lr, b3 = _basin_resistance_basin()
+    model.link.add(b1, lr)
+    model.link.add(lr, b3)
+    with pytest.warns(UserWarning, match="Replacing link #1"):
+        model.link.add(b1, lr, link_id=5)
+    assert model.link.df.index.tolist() == [2, 5]
+    assert model.link._used_link_ids.node_ids == {2, 5}
+
+
+def test_readd_nodes_and_links():
+    """Re-running all cells that build a model leaves the model unchanged."""
+    model, b1, lr, b3 = _basin_resistance_basin()
+    model.link.add(b1, lr)
+    model.link.add(lr, b3)
+    expected = model.link.df.copy()
+
+    with pytest.warns(UserWarning, match="Replacing node #2"):
+        lr = model.linear_resistance.add(
+            Node(2, sg.Point(2, 0)), [linear_resistance.Static(resistance=[1.0])]
+        )
+    with pytest.warns(UserWarning, match="Replacing link"):
+        model.link.add(b1, lr)
+        model.link.add(lr, b3)
+
+    pd.testing.assert_frame_equal(model.link.df.sort_index(), expected)
+
+
+def test_failed_link_add_leaves_table_unchanged():
+    model, b1, lr, b3 = _basin_resistance_basin()
+    model.link.add(b1, lr)
+    expected = model.link.df.copy()
+    with pytest.raises(ValueError, match="at most 1 flow link inneighbor"):
+        model.link.add(b3, lr)
+    pd.testing.assert_frame_equal(model.link.df, expected)
+    assert model.link._used_link_ids.node_ids == {1}
 
 
 def test_listen_link_allows_reverse_control(discrete_control_of_pid_control):
