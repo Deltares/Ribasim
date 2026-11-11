@@ -1,3 +1,5 @@
+import warnings
+
 import geopandas as gpd
 import pandas as pd
 import pytest
@@ -236,6 +238,18 @@ def test_failed_link_add_leaves_table_unchanged():
     expected = model.link.df.copy()
     with pytest.raises(ValueError, match="at most 1 flow link inneighbor"):
         model.link.add(b3, lr)
+    pd.testing.assert_frame_equal(model.link.df, expected)
+    assert model.link._used_link_ids.node_ids == {1}
+
+
+def test_replace_warning_as_error_leaves_table_unchanged():
+    model, b1, lr, _ = _basin_resistance_basin()
+    model.link.add(b1, lr)
+    expected = model.link.df.copy()
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        with pytest.raises(UserWarning, match="Replacing link #1"):
+            model.link.add(b1, lr, link_id=5)
     pd.testing.assert_frame_equal(model.link.df, expected)
     assert model.link._used_link_ids.node_ids == {1}
 

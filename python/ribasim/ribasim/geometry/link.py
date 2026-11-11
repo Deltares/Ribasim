@@ -205,6 +205,10 @@ class LinkTable(SpatialTableModel[LinkSchema]):
             index=pd.Index([link_id], name="link_id"),
         )
 
+        # Warn before modifying the table, such that it is unchanged if the warning is raised as an error.
+        for replaced_id in replaced_ids:
+            warnings.warn(f"Replacing link #{replaced_id}", UserWarning, stacklevel=2)
+
         if kwargs:
             # User-provided extra columns go through validation (checks meta_ prefix).
             self.df = _concat([df, table_to_append])
@@ -212,8 +216,6 @@ class LinkTable(SpatialTableModel[LinkSchema]):
             with self._no_validate():
                 self.df = _concat([df, table_to_append])
 
-        for replaced_id in replaced_ids:
-            warnings.warn(f"Replacing link #{replaced_id}", UserWarning, stacklevel=2)
         self._used_link_ids.node_ids.difference_update(replaced_ids)
         self._used_link_ids.add(link_id)
 
