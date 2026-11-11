@@ -628,7 +628,7 @@ The interaction with MODFLOW 6 boundary conditions is explained in greater detai
 # Behavior in allocation
 
 [Allocation](/concept/allocation.qmd) decides how the water in the network is best distributed over the demands, starting from the current Basin storages.
-The water stored in a Basin can be used to supply demands: those of UserDemand nodes abstracting from the Basin, and those further downstream.
+The water stored in a Basin can be used to supply demands: those of UserDemand nodes abstracting from the Basin directly, and those further downstream.
 Allocation does not plan to take more water out of a Basin than it contains: when a Basin would run dry, its outflows are reduced.
 
 Without a [LevelDemand](/reference/node/level-demand.qmd), allocation has no preference for the level of a Basin, so it can draw down a Basin to meet demands.

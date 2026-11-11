@@ -4,7 +4,7 @@ title: "![](/assets/node-icons/Junction.svg){height=20} Junction"
 
 A Junction node allows explicitly representing confluences and bifurcations in the network. It has no storage, so the sum of its inflows is always equal to the sum of its outflows, and it does not need any profile information.
 
-A Junction can supply a UserDemand, as long as the return flow of the UserDemand enters the network downstream of the Junction, and the Junction has at least one other outflow link to pass on the remainder of its inflow. Such a Junction must be in the [Static](#static) table.
+A Junction can supply a UserDemand, as long as (i) the return flow of the UserDemand does not create a cycle of Junctions with the UserDemand, and (ii) the Junction has at least one other outflow link to pass on the remainder of its inflow.
 
 Except for the UserDemand abstraction, a Junction that is not in the [Static](#static) table does not introduce new behavior, it makes the network layout recognizable: the flow goes where the links go, as if the nodes around the Junction were connected directly. See [Junctions not in the Static table](#junctions-not-in-the-static-table) for examples.
 
@@ -249,7 +249,7 @@ Both rules give the same value as long as the water flows along the links, for i
 
 # Behavior in allocation
 
-In [allocation](/concept/allocation.qmd), a Junction that is not in the Static table has no effect, like in the simulation.
+[Allocation](/concept/allocation.qmd) can give it less water than the inflows into the Junction, to leave water for demands downstream with an higher priority.
 
 A Junction that is in the Static table divides the flow over its outflow links by the same fractions as in the simulation.
 Allocation cannot change these fractions; it can only change how much water flows into the Junction, for instance by steering an allocation-controlled Pump or Outlet upstream.
