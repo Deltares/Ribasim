@@ -38,7 +38,7 @@ The RHS function `water_balance!` in `core/src/solve.jl` has the in-place signat
 2. **Zero `du`** — every entry is reset before any flow contributions are accumulated into it
 3. **Basin properties** — compute current storage, level, area, and the [low storage factor](/reference/node/basin.qmd#sec-reduction-factor) from the cumulative flows in `u`
 4. **Vertical fluxes** — precipitation and drainage are state-independent and added directly, while evaporation and infiltration are state dependent; this asymmetry is what makes the outgoing fluxes contribute to the Jacobian while the incoming ones do not
-5. **Uncontrolled flows** — `formulate_uncontrolled_flows!` computes the flows that are not set by [PID control](/reference/node/pid-control.qmd) or [continuous control](/reference/node/continuous-control.qmd) for each node type ([Pump](/reference/node/pump.qmd), [Outlet](/reference/node/outlet.qmd), [LinearResistance](/reference/node/linear-resistance.qmd), [ManningResistance](/reference/node/manning-resistance.qmd), [TabulatedRatingCurve](/reference/node/tabulated-rating-curve.qmd), [UserDemand](/reference/node/user-demand.qmd), …) and the PID errors. These only depend on the storages.
+5. **Uncontrolled flows** — `formulate_uncontrolled_flows!` computes, in one set of parallel tasks (see [Threading](#threading)), the flows that are not set by [PID control](/reference/node/pid-control.qmd) or [continuous control](/reference/node/continuous-control.qmd) for each node type ([Pump](/reference/node/pump.qmd), [Outlet](/reference/node/outlet.qmd), [LinearResistance](/reference/node/linear-resistance.qmd), [ManningResistance](/reference/node/manning-resistance.qmd), [TabulatedRatingCurve](/reference/node/tabulated-rating-curve.qmd), [UserDemand](/reference/node/user-demand.qmd), …) and the PID errors. These only depend on the storages.
 6. **Controlled flows** — `formulate_controlled_flows!` computes the continuous control compound variables, the flows set by PID control and continuous control, and the UserDemand flows in [Junction](/reference/node/junction.qmd) subgraphs that these depend on, in the order determined at initialization (see [below](#dependencies-between-controlled-flows))
 7. **Junction flows** — `formulate_junction_flow!` computes the UserDemand flows in the Junction subgraphs
 
@@ -52,11 +52,19 @@ The controlled flows can depend on other flows, which then have to be computed f
 
 At initialization `set_control_order!` determines these dependencies and stores the order in `control_order`, a list of levels (`ControlOrderLevel`) where everything in a level only depends on the uncontrolled flows and on earlier levels. The flows that the compound variables depend on are found by tracing `compute_continuous_control_compound_variables!` with SparseConnectivityTracer, so the order is always consistent with what the compound variables read. The UserDemand flows in the Junction subgraphs are only computed in this order if something depends on them; computing them again at the end of `water_balance!` gives the same values, since their inputs are final by then. A circular dependency, for instance two continuous control nodes that listen to the flows the other one sets, is an error at initialization, since then there is no order to compute the flows in.
 
-This does not make the right hand side more expensive: each controlled flow and compound variable is computed once, as before, and only the UserDemand flows in Junction subgraphs that something depends on are computed twice. The Jacobian needs the same number of evaluations, since the closure of `∂flow_∂flow_input` uses the same order.
+This does not make the right hand side more expensive: each controlled flow and compound variable is computed once, and only the UserDemand flows in Junction subgraphs that something depends on are computed twice. The Jacobian needs the same number of evaluations, since the closure of `∂flow_∂flow_input` uses the same order.
 
 ::: {.callout-note}
 The state vector $\mathbf{u}$ contains cumulative flows, not instantaneous flows or storages. See [why this formulation](/concept/equations.qmd#why-this-formulation) for the rationale.
 :::
+
+## Threading
+
+With multiple threads, the loops of the right-hand side over the nodes run in parallel tasks (`core/src/threading.jl`). `parallel_chunks` divides the work into chunks, a few per thread (`CHUNKS_PER_THREAD`), and each task takes the next chunk when it finishes the previous one. This balances the work when the threads are not equally fast, such as on processors with performance and efficiency cores, or when some nodes are more expensive than others. A model that is too small for two chunks of `min_chunk_size` runs the loop without tasks.
+
+Starting tasks costs time and allocates, so loops that only depend on the storages share one set of tasks: `formulate_uncontrolled_flows!` gives each chunk its part of the Basin forcings and of the flows of every node type (`formulate_uncontrolled_flows_chunk!`, `chunk_range`). The `@threaded` macro is for a single loop. The loop bodies may only write the data of their own index.
+
+The right-hand side does not allocate apart from these tasks, which matters since it is called thousands of times; `@allocated water_balance!(du, u, p, t)` is a quick check.
 
 ## Parameter structure
 
@@ -190,7 +198,7 @@ OrdinaryDiffEq calls `update_coefficients!` on the operator whenever the Jacobia
 
 At each Newton iteration the solver must solve a linear system involving the Jacobian. Ribasim provides a custom `RibasimLinearSolve` wrapper (in `core/src/config.jl`) around the actual factorization algorithm: `KLUFactorization` when `sparse = true` and `LHLFactorization` when `sparse = false`. With `reduced_implicit_solve = false` it falls back to the wrapped algorithm.
 
-Otherwise `SciMLBase.init` sets up a `RibasimLinearSolveCache`, which contains an inner linear solve cache for the $n_\text{basin} \times n_\text{basin}$ system in storage space, with an inner `WOperator` built from `J_inner`. The sparsity pattern of `J_inner` is determined once at initialization (with all contributions set to 1.0, so that entries where contributions cancel are kept) and kept constant, so the symbolic KLU factorization can be reused.
+Otherwise `SciMLBase.init` sets up a `RibasimLinearSolveCache`, which contains an inner linear solve cache for the $n_\text{basin} \times n_\text{basin}$ system in storage space, with an inner `WOperator` built from `J_inner`. The sparsity pattern of `J_inner` is determined once at initialization (with all contributions set to 1.0, so that entries where contributions cancel are kept) and kept constant, so the symbolic KLU factorization can be reused. The same holds for `J_inner_local`, so after initialization both are updated in place: `add_to_entry!` finds a stored entry by scanning its column, which is short, and `add_sparse!` adds `J_inner_local` to `J_inner` by walking their sorted columns side by side. This is much faster than `J[i, j] += x`, which searches the column twice and could insert an entry.
 
 The linear solve itself is done in `dolinsolve`, following the [concept documentation](/concept/numerics.qmd#the-linear-solve):
 

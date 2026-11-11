@@ -672,7 +672,7 @@ If `structural`, all contributions are set to 1.0 to initialize the sparsity pat
 """
 function update_J_inner_local!(J::RibasimJacobian; structural::Bool = false)
     (; p_independent, J_inner_local) = J
-    J_inner_local .= 0.0
+    zero_entries!(J_inner_local)
     foreach_∂flow_∂storage(J) do flow_idx, basin_idx, ∂q_np_∂storage
         foreach_∂flow_∂flow_np(J, flow_idx) do flow_idx_all, ∂q_all_∂q_np
             add_flow_contribution!(
@@ -680,10 +680,86 @@ function update_J_inner_local!(J::RibasimJacobian; structural::Bool = false)
                 p_independent,
                 flow_idx_all,
                 basin_idx,
-                structural ? 1.0 : ∂q_all_∂q_np * ∂q_np_∂storage,
+                structural ? 1.0 : ∂q_all_∂q_np * ∂q_np_∂storage;
+                structural,
             )
         end
     end
+    return nothing
+end
+
+"Set all stored entries of A to zero, keeping the sparsity pattern of a sparse matrix."
+zero_entries!(A::SparseMatrixCSC) = fill!(nonzeros(A), 0.0)
+zero_entries!(A::AbstractMatrix) = fill!(A, 0.0)
+
+"""
+Add `value` to the entry (row, col) of A. The entry is found by scanning the column: the columns
+of the inner Jacobian are short, so this is faster than `A[row, col] += value`, which searches the
+column twice. If the entry is not stored, or `structural`, it is added to the sparsity pattern.
+
+With sparse Jacobians (`solver.sparse = true`) the entries are in the sparsity pattern set up at
+initialization, which must stay the same for the sparse factorization of J_inner. With dense
+Jacobians there is no sparsity pattern to set it up from, but then J_inner is dense, and the
+pattern of the sparse J_inner_local can grow.
+"""
+@inline function add_to_entry!(
+        A::SparseMatrixCSC{Float64},
+        row::Int,
+        col::Int,
+        value::Float64,
+        structural::Bool,
+    )::Nothing
+    if !structural
+        rows = rowvals(A)
+        for k in nzrange(A, col)
+            if rows[k] == row
+                nonzeros(A)[k] += value
+                return nothing
+            end
+        end
+    end
+    A[row, col] += value
+    return nothing
+end
+
+@inline function add_to_entry!(
+        A::AbstractMatrix{Float64}, row::Int, col::Int, value::Float64, ::Bool
+    )::Nothing
+    A[row, col] += value
+    return nothing
+end
+
+"""
+Add the sparse matrix B to A, where the sparsity pattern of B is part of that of A. Both patterns
+are sorted per column, so the columns are walked side by side.
+"""
+function add_sparse!(A::SparseMatrixCSC{Float64}, B::SparseMatrixCSC{Float64}; structural::Bool = false)::Nothing
+    A_rows, A_vals = rowvals(A), nonzeros(A)
+    B_rows, B_vals = rowvals(B), nonzeros(B)
+    if structural
+        # Contributions to B can cancel, but the entry is still structurally nonzero
+        for col in axes(B, 2), k_B in nzrange(B, col)
+            A[B_rows[k_B], col] += 1.0
+        end
+        return nothing
+    end
+    for col in axes(B, 2)
+        k_A, k_A_last = first(nzrange(A, col)), last(nzrange(A, col))
+        for k_B in nzrange(B, col)
+            row = B_rows[k_B]
+            while k_A <= k_A_last && A_rows[k_A] != row
+                k_A += 1
+            end
+            k_A <= k_A_last ||
+                error("Entry ($row, $col) is not in the sparsity pattern of the inner Jacobian.")
+            A_vals[k_A] += B_vals[k_B]
+        end
+    end
+    return nothing
+end
+
+function add_sparse!(A::AbstractMatrix{Float64}, B::AbstractMatrix{Float64}; structural::Bool = false)::Nothing
+    A .+= structural ? (B .!= 0) : B
     return nothing
 end
 
@@ -738,13 +814,8 @@ function build_J_inner!(
 
     # Add J_inner_local into J_inner rather than copying it, which would reset the sparsity
     # pattern of J_inner and drop the entries that are only structurally nonzero
-    J_inner .= 0.0
-    J_local_rows = rowvals(J_inner_local)
-    J_local_vals = nonzeros(J_inner_local)
-    for col in axes(J_inner_local, 2), k in nzrange(J_inner_local, col)
-        # Contributions to J_inner_local can cancel, but the entry is still structurally nonzero
-        J_inner[J_local_rows[k], col] += structural ? 1.0 : J_local_vals[k]
-    end
+    zero_entries!(J_inner)
+    add_sparse!(J_inner, J_inner_local; structural)
 
     foreach_∂flow_∂pid_integral(J) do flow_idx, pid_idx, ∂q_np_∂pid_integral
         listen_node_id = pid_control.listen_node_id[pid_idx]
@@ -757,7 +828,8 @@ function build_J_inner!(
                 p_independent,
                 flow_idx_all,
                 listen_node_id.idx,
-                contribution,
+                contribution;
+                structural,
             )
         end
     end
@@ -766,21 +838,23 @@ end
 
 """
 Add `∂q_∂storage` times the column of the incidence matrix M of a flow state to a column of J_inner,
-including the Basins the flow reaches via Junction nodes.
+including the Basins the flow reaches via Junction nodes. Unless `structural`, the entries must be
+in the sparsity pattern of J_inner, see `add_to_entry!`.
 """
 function add_flow_contribution!(
         J_inner::AbstractMatrix{Float64},
         p_independent::ParametersIndependent,
         flow_idx::Int,
         basin_idx::Int,
-        ∂q_∂storage::Float64,
+        ∂q_∂storage::Float64;
+        structural::Bool = false,
     )
     id_in = p_independent.inflow_id[flow_idx]
     id_out = p_independent.outflow_id[flow_idx]
-    id_in.is_basin && (J_inner[id_in.idx, basin_idx] -= ∂q_∂storage)
-    id_out.is_basin && (J_inner[id_out.idx, basin_idx] += ∂q_∂storage)
+    id_in.is_basin && add_to_entry!(J_inner, id_in.idx, basin_idx, -∂q_∂storage, structural)
+    id_out.is_basin && add_to_entry!(J_inner, id_out.idx, basin_idx, ∂q_∂storage, structural)
     for (routed_basin_idx, weight) in p_independent.routed_basins[flow_idx]
-        J_inner[routed_basin_idx, basin_idx] += weight * ∂q_∂storage
+        add_to_entry!(J_inner, routed_basin_idx, basin_idx, weight * ∂q_∂storage, structural)
     end
     return nothing
 end
@@ -970,10 +1044,11 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
     linu_flow .-= b.flow
     linu_flow .*= gamma
 
+    # The solution is linu itself: with Vector{Float64} as its type, it would be copied
     return LinearSolution{
         Float64,
         1,
-        Vector{Float64},
+        typeof(linu),
         typeof(linres.resid),
         typeof(linres.alg),
         typeof(linsolve),
