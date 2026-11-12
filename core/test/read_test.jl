@@ -253,6 +253,52 @@ end
     )
 end
 
+@testitem "Interpolation type per node" begin
+    using Dates: DateTime
+    using Logging
+    using StructArrays: StructVector
+    using Ribasim: NodeID, InterpolationType, get_interpolation_types
+
+    node_id = [NodeID(:FlowBoundary, i, i) for i in 1:4]
+    time = [DateTime(2020), DateTime(2021)]
+    table = StructVector{Ribasim.Schema.FlowBoundary.Time}(;
+        node_id = Int32[1, 1, 2, 2, 3, 3],
+        time = repeat(time, 3),
+        flow_rate = ones(6),
+        interpolation = [missing, missing, "linear", "linear", "block", "block"],
+    )
+
+    # Nodes without a value or without rows get the default
+    interpolation_types, valid = get_interpolation_types(table, node_id, InterpolationType.block)
+    @test valid
+    @test interpolation_types == [
+        InterpolationType.block,
+        InterpolationType.linear,
+        InterpolationType.block,
+        InterpolationType.block,
+    ]
+    interpolation_types, valid = get_interpolation_types(table, node_id, InterpolationType.linear)
+    @test valid
+    @test interpolation_types == [
+        InterpolationType.linear,
+        InterpolationType.linear,
+        InterpolationType.block,
+        InterpolationType.linear,
+    ]
+
+    table.interpolation .= ["linear", missing, "linear", "block", "cubic", "cubic"]
+    logger = TestLogger()
+    _, valid = with_logger(logger) do
+        get_interpolation_types(table, node_id, InterpolationType.block)
+    end
+    @test !valid
+    @test [log.message for log in logger.logs] == [
+        "FlowBoundary #1 has multiple different values over time for 'interpolation', which does not support time-varying values.",
+        "FlowBoundary #2 has multiple different values over time for 'interpolation', which does not support time-varying values.",
+        "FlowBoundary #3 has an invalid interpolation type 'cubic', the options are: block, linear.",
+    ]
+end
+
 @testitem "pregroup_by_node_id: empty input" begin
     using Dates: DateTime
     using Ribasim: pregroup_by_node_id

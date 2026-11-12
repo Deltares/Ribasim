@@ -20,6 +20,7 @@ function set_simulation_data!(
         pump,
         outlet,
         user_demand,
+        junction,
         tabulated_rating_curve,
     ) = p.p_independent
 
@@ -35,7 +36,7 @@ function set_simulation_data!(
     set_simulation_data!(allocation_model, tabulated_rating_curve, p, t_level)
     set_simulation_data!(allocation_model, pump, p, u, du, t_level)
     set_simulation_data!(allocation_model, outlet, p, u, du, t_level)
-    set_simulation_data!(allocation_model, user_demand, t)
+    set_simulation_data!(allocation_model, user_demand, junction, t)
 
     if errors
         error(
@@ -146,10 +147,11 @@ function set_simulation_data!(
     flow = problem[:flow]
 
     for node_id in flow_boundary_ids_subnetwork
+        flow_rate = boundary_flow_rate(flow_boundary, node_id.idx, t) / scaling.flow
         link = flow_boundary.outflow_link[node_id.idx].link
         JuMP.fix(
             flow[link],
-            boundary_flow_rate(flow_boundary, link[1].idx, t) / scaling.flow;
+            flow_rate;
             force = true,
         )
     end
@@ -185,7 +187,7 @@ function linearize_connector_node!(
         t_level::Float64,
     )
     (; problem, scaling) = allocation_model
-    (; inflow_link, outflow_link) = connector_node
+    (; inflow_link, downstream_level_id) = connector_node
     (; current_storage, current_area) = p.current_basin_properties
 
     # Mathematical formulation: Taylor series linearization around current state
@@ -200,11 +202,11 @@ function linearize_connector_node!(
     # Without ad_active, get_level ignores the storage argument, giving zero derivatives
     @ad_active p for node_id in only(flow_constraint.axes)
         inflow_id = inflow_link[node_id.idx].link[1]
-        outflow_id = outflow_link[node_id.idx].link[2]
+        downstream_id = downstream_level_id[node_id.idx]
 
         # Flow functions expect storage values (not levels) and internally convert to levels
         s_a = inflow_id.is_basin ? current_storage[inflow_id.idx] : 0.0
-        s_b = outflow_id.is_basin ? current_storage[outflow_id.idx] : 0.0
+        s_b = downstream_id.is_basin ? current_storage[downstream_id.idx] : 0.0
 
         constraint = flow_constraint[node_id]
 
@@ -223,12 +225,12 @@ function linearize_connector_node!(
 
         # The basin whose low_storage_factor governs this flow, matching the
         # upstream/downstream selection in low_storage_factor_resistance_node.
-        relevant_id = q0_raw > 0 ? inflow_id : outflow_id
+        relevant_id = q0_raw > 0 ? inflow_id : downstream_id
         lsf = get_low_storage_factor(problem, relevant_id)
 
         # Reset both candidate coefficients every call: flow direction (and hence
         # which basin's low_storage_factor applies) can flip between allocation steps.
-        for basin_id in (inflow_id, outflow_id)
+        for basin_id in (inflow_id, downstream_id)
             basin_id.is_basin || continue
             JuMP.set_normalized_coefficient(
                 constraint,
@@ -262,17 +264,17 @@ function linearize_connector_node!(
             )
         end
 
-        if outflow_id.is_basin
+        if downstream_id.is_basin
             # partial derivative with respect to downstream storage, converted to ∂q/∂h
             ∂q∂s_b = forward_diff(
                 storage_b ->
                 flow_function(connector_node, node_id, s_a, storage_b, p, t_level),
                 s_b,
             )
-            ∂q∂h_b = ∂q∂s_b * current_area[outflow_id.idx]
+            ∂q∂h_b = ∂q∂s_b * current_area[downstream_id.idx]
             set_partial_derivative_wrt_level!(
                 allocation_model,
-                outflow_id,
+                downstream_id,
                 ∂q∂h_b,
                 p,
                 constraint,
@@ -422,16 +424,29 @@ end
 function set_simulation_data!(
         allocation_model::AllocationModel,
         user_demand::UserDemand,
+        junction::Junction,
         t::Float64,
     )::Nothing
     (; problem) = allocation_model
     constraints = problem[:user_demand_return_flow]
+    constraints_junction = problem[:user_demand_return_flow_junction]
     flow = problem[:flow]
 
     # Set the return factor, a rate, at the start of the time step.
     # The return-flow constraint is: return_flow  = return_factor * Σ inflow
     for node_id in only(constraints.axes)
         constraint = constraints[node_id]
+        return_factor = user_demand.return_factor[node_id.idx](t)
+        for inflow_link_metadata in user_demand.inflow_links[node_id.idx]
+            inflow = flow[inflow_link_metadata.link]
+            JuMP.set_normalized_coefficient(constraint, inflow, -return_factor)
+        end
+    end
+
+    # The return flow into a Junction node is the total return flow
+    for link in only(constraints_junction.axes)
+        constraint = constraints_junction[link]
+        node_id = link[1]
         return_factor = user_demand.return_factor[node_id.idx](t)
         for inflow_link_metadata in user_demand.inflow_links[node_id.idx]
             inflow = flow[inflow_link_metadata.link]
@@ -916,6 +931,7 @@ function optimize_multi_objective!(
     latest_optimized_expression = JuMP.AffExpr()
     latest_bound = 0.0
     latest_expression_is_constrained = false
+    optimized = false
 
     for objective in objectives
         (; expressions, type, demand_priority_idx) = objective
@@ -930,6 +946,7 @@ function optimize_multi_objective!(
             end
             JuMP.@objective(problem, Min, expression)
             optimize_cold!(problem)
+            optimized = true
             if JuMP.termination_status(problem) != JuMP.OPTIMAL && !isempty(temporary_constraints)
                 # The constraints on the previous objectives hold at their optimum only up to
                 # the solver tolerance, which can make this problem infeasible, so relax them
@@ -969,6 +986,16 @@ function optimize_multi_objective!(
                 model.secondary_network_demand[link][demand_priority_idx] = demand
             end
         end
+    end
+
+    if !optimized
+        # All objective expressions are zero, for instance when all demands are zero in a
+        # subnetwork without Basins. Solve for a feasible point so there are results to read.
+        JuMP.@objective(problem, Min, 0)
+        optimize_cold!(problem)
+        parse_termination_status(
+            model, last(objectives), JuMP.AffExpr(), nothing, config, t; can_retry
+        )
     end
 
     return nothing
@@ -1266,13 +1293,18 @@ function save_flows!(
         flow_value = JuMP.value(flow_variable) * scaling.flow
         hit_lower_bound, hit_upper_bound = get_bounds_hit(flow_variable)
 
-        for external_flow_link_idx in rowvals(flow_link_map)[nzrange(flow_link_map, internal_flow_link_idx)]
-            external_flow_link = external_flow_links[external_flow_link_idx]
+        for nz_idx in nzrange(flow_link_map, internal_flow_link_idx)
+            external_flow_link = external_flow_links[rowvals(flow_link_map)[nz_idx]]
+            # A flow against the direction of the external link swaps its bounds
+            sign = nonzeros(flow_link_map)[nz_idx]
+            external_flow_value = sign * flow_value
+            external_hit_lower_bound = sign > 0 ? hit_lower_bound : hit_upper_bound
+            external_hit_upper_bound = sign > 0 ? hit_upper_bound : hit_lower_bound
             if haskey(horizontal_flow_record, external_flow_link.link)
                 datum = horizontal_flow_record[external_flow_link.link]
-                datum.flow_rate += flow_value
-                datum.lower_bound_hit |= hit_lower_bound
-                datum.upper_bound_hit |= hit_upper_bound
+                datum.flow_rate += external_flow_value
+                datum.lower_bound_hit |= external_hit_lower_bound
+                datum.upper_bound_hit |= external_hit_upper_bound
             else
                 horizontal_flow_record[external_flow_link.link] = FlowRecordDatum(
                     t,
@@ -1282,9 +1314,9 @@ function save_flows!(
                     string(external_flow_link.link[2].type),
                     Int32(external_flow_link.link[2]),
                     subnetwork_id,
-                    flow_value,
-                    hit_lower_bound,
-                    hit_upper_bound,
+                    external_flow_value,
+                    external_hit_lower_bound,
+                    external_hit_upper_bound,
                 )
             end
         end
@@ -1378,6 +1410,42 @@ function delete_control_constraints!(
 end
 
 """
+Store the current allocation_controlled flags of the Pumps, Outlets and TabulatedRatingCurves
+in the subnetwork in the allocation model, and return whether any of them changed.
+"""
+function update_allocation_controlled!(
+        allocation_model::AllocationModel,
+        p_independent::ParametersIndependent,
+    )::Bool
+    (; pump, outlet, tabulated_rating_curve) = p_independent
+    (; allocation_controlled, node_ids_in_subnetwork) = allocation_model
+    (; pump_ids_subnetwork, outlet_ids_subnetwork, tabulated_rating_curve_ids_subnetwork) =
+        node_ids_in_subnetwork
+
+    n_flag =
+        length(pump_ids_subnetwork) + length(outlet_ids_subnetwork) +
+        length(tabulated_rating_curve_ids_subnetwork)
+    # The flags are still empty when the allocation model is initialized
+    changed = length(allocation_controlled) != n_flag
+    resize!(allocation_controlled, n_flag)
+
+    i = 0
+    for (flags, node_ids) in (
+            (pump.allocation_controlled, pump_ids_subnetwork),
+            (outlet.allocation_controlled, outlet_ids_subnetwork),
+            (tabulated_rating_curve.allocation_controlled, tabulated_rating_curve_ids_subnetwork),
+        )
+        for node_id in node_ids
+            i += 1
+            flag = flags[node_id.idx]
+            changed |= allocation_controlled[i] != flag
+            allocation_controlled[i] = flag
+        end
+    end
+    return changed
+end
+
+"""
 Flow capacity imposed on a link by one of the nodes it connects.
 Flows set by a linearized flow-level relation get no bounds, since these would only
 follow from the same linearization.
@@ -1410,6 +1478,10 @@ function connector_flow_capacity_bounds(
         return (0.0, Inf)
     elseif node_id.type == NodeType.UserDemand
         # The actual upper bound follows from the demands, see update_user_demand_flow_bounds!
+        return (0.0, Inf)
+    elseif node_id.is_routed
+        # The flows into and out of a Junction that divides the flow are never negative,
+        # so a UserDemand abstracting from it cannot get more than its inflow
         return (0.0, Inf)
     end
 
@@ -1461,8 +1533,9 @@ function update_user_demand_flow_bounds!(
             JuMP.set_lower_bound(flow[link_metadata.link], 0.0)
             JuMP.set_upper_bound(flow[link_metadata.link], total_demand)
         end
-        JuMP.set_lower_bound(flow[user_demand.outflow_link[node_id.idx].link], 0.0)
-        JuMP.set_upper_bound(flow[user_demand.outflow_link[node_id.idx].link], total_demand)
+        outflow_link = user_demand.outflow_link[node_id.idx].link
+        JuMP.set_lower_bound(flow[outflow_link], 0.0)
+        JuMP.set_upper_bound(flow[outflow_link], total_demand)
     end
     return nothing
 end
@@ -1514,6 +1587,21 @@ function update_control_states!(
         allocation_model::AllocationModel,
         p_independent::ParametersIndependent,
     )::Nothing
+    # Control states can switch nodes between allocation control and their linearized
+    # flow-level relation. Rebuilding the constraints is expensive for large subnetworks,
+    # so only do so if that changed. The coefficients are updated in set_simulation_data!.
+    update_allocation_controlled!(allocation_model, p_independent) || return nothing
+    rebuild_control_constraints!(allocation_model, p_independent)
+    return nothing
+end
+
+"""
+Delete the control constraints and add them again for the current allocation_controlled flags.
+"""
+function rebuild_control_constraints!(
+        allocation_model::AllocationModel,
+        p_independent::ParametersIndependent,
+    )::Nothing
     delete_control_constraints!(allocation_model, :pump_constraint)
     delete_control_constraints!(allocation_model, :outlet_constraint)
     delete_control_constraints!(allocation_model, :tabulated_rating_curve_constraint)
@@ -1557,7 +1645,7 @@ function update_allocation!(
     # Don't run the allocation algorithm if allocation is not active
     !is_active(allocation) && return nothing
 
-    update_scaling!(p, Δt)
+    update_scaling!(p, t, Δt, t_known)
 
     for secondary_network in get_secondary_networks(allocation_models)
         update_control_states!(secondary_network, p_independent)

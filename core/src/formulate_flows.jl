@@ -18,6 +18,7 @@ function water_balance!(
 
     # Compute cumulative boundary flows up to the current t
     formulate_cumulative_boundary_flow!(p_independent.flow_boundary, p, t)
+    set_current_boundary_flow_rate!(p_independent.flow_boundary, p, t)
 
     # Compute and cache Basin level, area, low_storage_factor
     set_current_basin_properties!(u.flow, p, t)
@@ -54,6 +55,10 @@ function water_balance!(
     # Formulate intermediate flows (non continuously controlled)
     formulate_flows!(formulate_flows_args...)
 
+    # Provisional Junction flows, so that the derivative term of PID control sees the
+    # flow into the listened Basin via Junction nodes
+    formulate_provisional_junction_flow!(du.flow, p, t, ContinuousControlType.PID)
+
     # Formulate the PID control integral term rate
     formulate_PID_control!(
         du.pid_integral,
@@ -69,6 +74,9 @@ function water_balance!(
         control_type = ContinuousControlType.PID
     )
 
+    # Provisional Junction flows, so that ContinuousControl sees the flows in the Junction subgraphs
+    formulate_provisional_junction_flow!(du.flow, p, t, ContinuousControlType.Continuous)
+
     # Compute ContinuousControl compound variables
     compute_continuous_control_compound_variables!(
         compound_variables,
@@ -83,6 +91,9 @@ function water_balance!(
         formulate_flows_args...;
         control_type = ContinuousControlType.Continuous,
     )
+
+    # Formulate Junction flows and the UserDemand flows in the Junction subgraphs
+    formulate_junction_flow!(du.flow, p, t)
     return nothing
 end
 
@@ -167,8 +178,15 @@ function set_current_storage!(
             time_dependent_cache.basin.surface_runoff
 
         for idx in eachindex(flow_boundary.node_id)
-            outflow_id = flow_boundary.outflow_link[idx].link[2]
-            storage[outflow_id.idx] += time_dependent_cache.flow_boundary.current_cumulative_boundary_flow[idx]
+            downstream_id = flow_boundary.outflow_link[idx].link[2]
+            cumulative_flow = time_dependent_cache.flow_boundary.current_cumulative_boundary_flow[idx]
+            if downstream_id.is_routed
+                for (basin_idx, weight) in p_independent.routed_basins_boundary[idx]
+                    storage[basin_idx] += weight * cumulative_flow
+                end
+            elseif downstream_id.is_basin
+                storage[downstream_id.idx] += cumulative_flow
+            end
         end
     else
         aggregate_flows!(
@@ -378,6 +396,12 @@ function formulate_dstorage_single_basin(
                 result += flow_boundary.flow_rate[inflow_id.idx](t)
             end
         end
+        # FlowBoundary flows that reach the Basin via Junction nodes
+        for (boundary_idx, routed) in enumerate(p_independent.routed_basins_boundary)
+            for (basin_idx, weight) in routed
+                basin_idx == node_id.idx && (result += weight * flow_boundary.flow_rate[boundary_idx](t))
+            end
+        end
     end
 
     return result
@@ -393,27 +417,18 @@ function formulate_flow!(
     )::Nothing
     (; p_independent, time_dependent_cache) = p
     (; current_return_factor) = time_dependent_cache.user_demand
-    (; allocation, level_difference_threshold) = p_independent
+    (; level_difference_threshold) = p_independent
 
     for node_idx in eachindex(user_demand.node_id)
+        # UserDemands fed by Junction nodes are handled separately
+        user_demand.in_routed_subgraph[node_idx] && continue
+
         id = user_demand.node_id[node_idx]
         inflow_links = user_demand.inflow_links[node_idx]
         link_offset = user_demand.inflow_link_offsets[node_idx]
-        has_demand_priority = view(user_demand.has_demand_priority, node_idx, :)
-        allocated = view(user_demand.allocated, node_idx, :)
         return_factor = user_demand.return_factor[node_idx]
         min_level = user_demand.min_level[node_idx]
-
-        # Total effective demand = min(allocated, demand) summed over priorities.
-        # When allocation is not running, allocated = Inf and this becomes the demand.
-        q_total_demand = 0.0
-        for demand_priority_idx in eachindex(allocation.demand_priorities_all)
-            !has_demand_priority[demand_priority_idx] && continue
-            q_total_demand += min(
-                allocated[demand_priority_idx],
-                get_demand(user_demand, id, demand_priority_idx, t),
-            )
-        end
+        q_total_demand = get_effective_user_demand(p_independent, node_idx, t)
 
         # With allocation disabled, fall back to an equal split of the total demand.
         # Each link then applies its own source basin reduction factors.
@@ -483,18 +498,17 @@ function linear_resistance_flow(
     )::Number
     (; resistance, max_flow_rate) = linear_resistance
     inflow_link = linear_resistance.inflow_link[node_id.idx]
-    outflow_link = linear_resistance.outflow_link[node_id.idx]
 
     inflow_id = inflow_link.link[1]
-    outflow_id = outflow_link.link[2]
+    downstream_id = linear_resistance.downstream_level_id[node_id.idx]
 
     h_a = get_level(s_a, p, inflow_id, t)
-    h_b = get_level(s_b, p, outflow_id, t)
+    h_b = get_level(s_b, p, downstream_id, t)
     Δh = h_a - h_b
     q_unlimited = Δh / resistance[node_id.idx]
     q = clamp(q_unlimited, -max_flow_rate[node_id.idx], max_flow_rate[node_id.idx])
     apply_low_storage_factor || return q
-    return q * low_storage_factor_resistance_node(s_a, s_b, p, q_unlimited, inflow_id, outflow_id)
+    return q * low_storage_factor_resistance_node(s_a, s_b, p, q_unlimited, inflow_id, downstream_id)
 end
 
 function tabulated_rating_curve_flow(
@@ -509,12 +523,11 @@ function tabulated_rating_curve_flow(
     (; current_interpolation_index, interpolations) = tabulated_rating_curve
     (; level_difference_threshold) = p.p_independent
     inflow_link = tabulated_rating_curve.inflow_link[node_id.idx]
-    outflow_link = tabulated_rating_curve.outflow_link[node_id.idx]
+    downstream_id = tabulated_rating_curve.downstream_level_id[node_id.idx]
     inflow_id = inflow_link.link[1]
-    outflow_id = outflow_link.link[2]
 
     h_a = get_level(s_a, p, inflow_id, t)
-    h_b = get_level(s_b, p, outflow_id, t)
+    h_b = get_level(s_b, p, downstream_id, t)
     Δh = h_a - h_b
 
     factor = apply_low_storage_factor ? get_low_storage_factor(s_a, p, inflow_id) : 1.0
@@ -537,12 +550,12 @@ function allocated_rating_curve_flow(
     )::Number
     (; level_difference_threshold) = p.p_independent
     inflow_link = tabulated_rating_curve.inflow_link[node_id.idx]
-    outflow_link = tabulated_rating_curve.outflow_link[node_id.idx]
+    downstream_id = tabulated_rating_curve.downstream_level_id[node_id.idx]
+
     inflow_id = inflow_link.link[1]
-    outflow_id = outflow_link.link[2]
 
     h_a = get_level(s_a, p, inflow_id, t)
-    h_b = get_level(s_b, p, outflow_id, t)
+    h_b = get_level(s_b, p, downstream_id, t)
     Δh = h_a - h_b
 
     factor = get_low_storage_factor(s_a, p, inflow_id)
@@ -716,14 +729,14 @@ function manning_resistance_flow(
         apply_low_storage_factor::Bool = true,
     )::Number
     inflow_id = manning_resistance.inflow_link[node_id.idx].link[1]
-    outflow_id = manning_resistance.outflow_link[node_id.idx].link[2]
+    downstream_id = manning_resistance.downstream_level_id[node_id.idx]
 
     h_a = get_level(s_a, p, inflow_id, t)
-    h_b = get_level(s_b, p, outflow_id, t)
+    h_b = get_level(s_b, p, downstream_id, t)
     q = manning_flow(manning_resistance, node_id, h_a, h_b)
 
     apply_low_storage_factor || return q
-    return q * low_storage_factor_resistance_node(s_a, s_b, p, q, inflow_id, outflow_id)
+    return q * low_storage_factor_resistance_node(s_a, s_b, p, q, inflow_id, downstream_id)
 end
 
 """
@@ -887,14 +900,14 @@ function pump_or_outlet_flow(
 
     node_idx = node_id.idx
     inflow_id = node.inflow_link[node_idx].link[1]
-    outflow_id = node.outflow_link[node_idx].link[2]
+    downstream_id = node.downstream_level_id[node_idx]
     min_flow_rate = node.min_flow_rate[node_idx]
     max_flow_rate = node.max_flow_rate[node_idx]
     min_upstream_level = node.min_upstream_level[node_idx]
     max_downstream_level = node.max_downstream_level[node_idx]
 
     src_level = get_level(s_a, p, inflow_id, t)
-    dst_level = get_level(s_b, p, outflow_id, t)
+    dst_level = get_level(s_b, p, downstream_id, t)
 
     q = flow_rate
     apply_low_storage_factor && (q *= get_low_storage_factor(s_a, p, inflow_id))
@@ -1097,4 +1110,110 @@ function formulate_flows!(
         formulate_flow!(du.flow, tabulated_rating_curve, common_args...)
         formulate_flow!(du.flow, user_demand, common_args...)
     end
+end
+
+"""
+Cache the current FlowBoundary flow rates for the Junction subgraphs, like the other time
+series in the right hand side: a flow rate set via BMI takes precedence, and a block series
+is evaluated left-continuously within the timestep.
+"""
+function set_current_boundary_flow_rate!(flow_boundary::FlowBoundary, p::Parameters, t::Number)::Nothing
+    (; p_independent, p_mutable, time_dependent_cache) = p
+    isempty(p_independent.junction.routed_ids) && return nothing
+    (; current_flow_rate) = time_dependent_cache.flow_boundary
+    if p_mutable.new_time_dependent_cache
+        for idx in eachindex(flow_boundary.node_id)
+            flow_rate_bmi = flow_boundary.flow_rate_bmi[idx]
+            current_flow_rate[idx] = if isnan(flow_rate_bmi)
+                itp = flow_boundary.flow_rate[idx]
+                itp(interpolation_time(itp, p, t))
+            else
+                flow_rate_bmi
+            end
+        end
+    end
+    return nothing
+end
+
+"""
+The flows in the Junction subgraphs are computed at the end of the right hand side, after the
+controlled flows. Control that depends on them therefore computes them provisionally first,
+from the flows known at that point:
+
+- The PID derivative term uses the storage rate of the listened Basin, which includes the
+  flows into it via Junction nodes. The flows of PID and ContinuousControl controlled nodes
+  are still zero then, so a controlled flow that reaches the listened Basin via Junction
+  nodes is not part of the derivative term.
+- ContinuousControl can listen to the flow rate of a Junction node, or of a UserDemand node
+  that abstracts from one. The flows of ContinuousControl controlled nodes are still zero
+  then, like for any other flow that ContinuousControl listens to.
+
+`control_type` is the type of control that is formulated next.
+"""
+function formulate_provisional_junction_flow!(
+        flow::FlowCVector,
+        p::Parameters,
+        t::Number,
+        control_type::ContinuousControlType.T,
+    )::Nothing
+    (; junction, pid_control, continuous_control) = p.p_independent
+    control_node_id = control_type == ContinuousControlType.PID ?
+        pid_control.node_id : continuous_control.node_id
+    if !isempty(junction.routed_ids) && !isempty(control_node_id)
+        formulate_junction_flow!(flow, p, t)
+    end
+    return nothing
+end
+
+"""
+Compute the flows of the UserDemand nodes in the Junction subgraphs. The flows over the links
+in the subgraphs are weighted sums of the flows that enter the subgraphs and these UserDemand
+flows, see `set_routing!`, so they need no computation of their own: the Basins behind the
+subgraphs receive them through the incidence matrix.
+
+- The total inflow of a Junction node is the weighted sum of the flows that enter the
+  subgraph upstream of it, minus the abstractions of the UserDemand nodes upstream.
+- The UserDemand node downstream of the Junction node, if present, takes precedence: it
+  abstracts the minimum of the total inflow of the Junction node and its demand.
+- The remainder is divided over the outflow links by their fractions, which is in the weights.
+"""
+function formulate_junction_flow!(
+        flow::FlowCVector{T},
+        p::Parameters,
+        t::Number;
+        flow_in::FlowCVector{T} = flow,
+    )::Nothing where {T}
+    (; p_independent, time_dependent_cache) = p
+    (; junction, user_demand) = p_independent
+    (; inflow_weights, routed_subgraphs) = junction
+    (; current_return_factor) = time_dependent_cache.user_demand
+    boundary_flow = time_dependent_cache.flow_boundary.current_flow_rate
+
+    isempty(routed_subgraphs) && return nothing
+
+    # Needed for AD, where the output is a different vector than the input
+    if flow !== flow_in
+        flow.horizontal .= flow_in.horizontal
+        flow.vertical .= flow_in.vertical
+    end
+
+    # Different Junction subgraphs are independent from eachother, and the nodes in a subgraph
+    # are in topological order, so the flows of the UserDemand nodes upstream are known
+    @threaded for subgraph in routed_subgraphs
+        for id in subgraph
+            id.type == NodeType.UserDemand || continue
+            junction_id = only(user_demand.inflow_links[id.idx]).link[1]
+            inflow = routed_flow(inflow_weights[junction_id.idx], flow, boundary_flow)
+
+            # Flow is minimum of Junction flow and effective demand
+            q_total_demand = get_effective_user_demand(p_independent, id.idx, t)
+            abstraction = min(q_total_demand, inflow)
+            inflow_idx = user_demand.inflow_link_offsets[id.idx] + 1
+            flow.horizontal.user_demand_inflow[inflow_idx] = abstraction
+            flow.horizontal.user_demand_outflow[id.idx] = abstraction * eval_time_interpolation(
+                user_demand.return_factor[id.idx], current_return_factor, id.idx, p, t
+            )
+        end
+    end
+    return nothing
 end

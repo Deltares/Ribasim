@@ -539,10 +539,9 @@ is_discrete_controlled(graph::MetaGraph, node_id::NodeID)::Bool =
 )
 
 function set_inoutflow_links!(node::AbstractParameterNode, graph::MetaGraph; inflow = true)
-    if inflow
-        map!(node_id -> inflow_link(graph, node_id), node.inflow_link, node.node_id)
-    end
-    return map!(node_id -> outflow_link(graph, node_id), node.outflow_link, node.node_id)
+    inflow && map!(node_id -> inflow_link(graph, node_id), node.inflow_link, node.node_id)
+    map!(node_id -> outflow_link(graph, node_id), node.outflow_link, node.node_id)
+    return nothing
 end
 
 function LinearResistance(db, config, graph)
@@ -756,15 +755,18 @@ function FlowBoundary(db::DB, config::Config, graph::MetaGraph)
         config,
     )
 
-    # The interpolation type from the config, validated in `validate_config`
-    interpolation_type =
+    # The interpolation type from the config, validated in `validate_config`, applies to
+    # nodes that don't specify one
+    default_interpolation_type =
         parse_interpolation_type(config.interpolation.flow_boundary)::InterpolationType.T
-    interpolation_types = fill(interpolation_type, length(node_id))
+    interpolation_types, valid =
+        get_interpolation_types(time, node_id, default_interpolation_type)
+    errors = !valid
 
     flow_boundary = FlowBoundary(; node_id, concentration_itp)
 
     set_inoutflow_links!(flow_boundary, graph; inflow = false)
-    errors = parse_parameter!(
+    errors |= parse_parameter!(
         flow_boundary,
         config,
         Val(:flow_rate);
@@ -869,11 +871,6 @@ end
 function Terminal(db::DB)::Terminal
     node_id = get_node_ids(db, NodeType.Terminal)
     return Terminal(node_id)
-end
-
-function Junction(db::DB)::Junction
-    node_id = get_node_ids(db, NodeType.Junction)
-    return Junction(; node_id)
 end
 
 # Constant interpolation that is always 0, used
@@ -995,8 +992,6 @@ function ConcentrationData(
         error("Errors encountered when parsing Basin concentration data.")
     end
 
-    cumulative_in = zeros(n_basin)
-
     return ConcentrationData(;
         config.solver.evaporate_mass,
         concentration_state,
@@ -1007,7 +1002,6 @@ function ConcentrationData(
         mass,
         concentration_external,
         substances,
-        cumulative_in,
     )
 end
 
@@ -1132,8 +1126,8 @@ function CompoundVariable(
     # Each row defines a subvariable
     for row in variables_compound_variable
         listen_node_id = NodeID(row.listen_node_id, node_ids_all)
-        if listen_node_id.type == NodeType.Junction
-            @error "Cannot listen to Junction node" listen_node_id node_id
+        if listen_node_id.type == NodeType.Junction && row.variable != "flow_rate"
+            @error "Can only listen to the flow_rate of a Junction node" listen_node_id node_id row.variable
             error("Invalid `listen_node_id`.")
         end
         # Placeholder until actual ref is known
@@ -1164,7 +1158,7 @@ function parse_variables_and_conditions(ids::Vector{Int32}, db::DB, config::Conf
     cyclic_times = get_cyclic_time(db, "DiscreteControl")
     errors = false
 
-    node_ids_all = get_node_ids(db)
+    node_ids_all = get_node_ids(db, config)
 
     id_index_lookup = Dict(id => i for (i, id) in pairs(ids))
     cyclic_time_lookup = Dict(id => cyclic_time for (id, cyclic_time) in zip(ids, cyclic_times))
@@ -1309,7 +1303,7 @@ function continuous_control_functions(db, config, ids)
 end
 
 function continuous_control_compound_variables(db::DB, config::Config, ids)
-    node_ids_all = get_node_ids(db)
+    node_ids_all = get_node_ids(db, config)
 
     data = load_structvector(db, config, Schema.ContinuousControl.Variable)
     compound_variables = CompoundVariable[]
@@ -1346,7 +1340,7 @@ function PidControl(db::DB, config::Config, graph::MetaGraph)
     static = load_structvector(db, config, Schema.PidControl.Static)
     time = load_structvector(db, config, Schema.PidControl.Time)
     node_id = get_node_ids(db, NodeType.PidControl)
-    node_ids_all = get_node_ids(db)
+    node_ids_all = get_node_ids(db, config)
 
     pid_control = PidControl(; node_id)
 
@@ -1426,6 +1420,16 @@ function parse_demand!(
     return errors
 end
 
+"""
+Replace missing demand priorities by the default, since `demand_priority` is optional in all
+demand node tables. This happens right after loading, so that the parsing can rely on it.
+"""
+function fill_demand_priority!(table::StructVector)::StructVector
+    default = schema_default(Schema.UserDemand.Static, Val(:demand_priority))
+    table.demand_priority .= coalesce.(table.demand_priority, default)
+    return table
+end
+
 function parse_static_demand_data!(
         node::Union{UserDemand, FlowDemand},
         id::NodeID,
@@ -1477,26 +1481,19 @@ function parse_time_demand_data!(
 end
 
 function UserDemand(db::DB, config::Config, graph::MetaGraph)
-    static = load_structvector(db, config, Schema.UserDemand.Static)
-    time = load_structvector(db, config, Schema.UserDemand.Time)
-    concentration_time = load_structvector(db, config, Schema.UserDemand.Concentration)
+    static = fill_demand_priority!(load_structvector(db, config, Schema.UserDemand.Static))
+    time = fill_demand_priority!(load_structvector(db, config, Schema.UserDemand.Time))
     node_id = get_node_ids(db, NodeType.UserDemand)
     cyclic_times = get_cyclic_time(db, "UserDemand")
     demand_priorities = get_all_demand_priorities(db, config)
 
     substances = get_substances(db, config)
-    substances = get_substances(db, config)
-    concentration_itp = get_concentration_itp(
-        concentration_time,
-        node_id,
-        substances,
-        Substance.UserDemand,
-        cyclic_times,
-        config;
-        continuity_tracer = false,
-    )
 
-    user_demand = UserDemand(; node_id, concentration_itp, demand_priorities)
+    user_demand = UserDemand(;
+        node_id,
+        demand_priorities,
+        return_mass = zeros(length(substances), length(node_id)),
+    )
 
 
     for (i, id) in enumerate(user_demand.node_id)
@@ -1507,7 +1504,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)
             user_demand.inflow_link_offsets[i] + n_links
         user_demand.inflow_link_allocated[i] = fill(Inf, n_links)
     end
-    map!(id -> outflow_link(graph, id), user_demand.outflow_link, user_demand.node_id)
+    set_inoutflow_links!(user_demand, graph; inflow = false)
     errors = !valid_user_demand_parameters(static)
     errors |= !valid_user_demand_parameters(time)
     errors |= parse_parameter!(
@@ -1520,6 +1517,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)
         take_first = Val((:demand_priority,)),
     )
     errors |= parse_parameter!(user_demand, config, Val(:min_level); static, time)
+    errors |= !valid_user_demand_min_level(user_demand)
     errors |= parse_demand!(user_demand, static, time, cyclic_times, demand_priorities, config)
     errors |=
         !valid_demand(
@@ -1589,8 +1587,8 @@ function parse_time_demand_data!(
 end
 
 function LevelDemand(db::DB, config::Config, graph::MetaGraph)
-    static = load_structvector(db, config, Schema.LevelDemand.Static)
-    time = load_structvector(db, config, Schema.LevelDemand.Time)
+    static = fill_demand_priority!(load_structvector(db, config, Schema.LevelDemand.Static))
+    time = fill_demand_priority!(load_structvector(db, config, Schema.LevelDemand.Time))
     node_id = get_node_ids(db, NodeType.LevelDemand)
     cyclic_times = get_cyclic_time(db, "LevelDemand")
     demand_priorities = get_all_demand_priorities(db, config)
@@ -1628,8 +1626,8 @@ function LevelDemand(db::DB, config::Config, graph::MetaGraph)
 end
 
 function FlowDemand(db::DB, config::Config, graph::MetaGraph)
-    static = load_structvector(db, config, Schema.FlowDemand.Static)
-    time = load_structvector(db, config, Schema.FlowDemand.Time)
+    static = fill_demand_priority!(load_structvector(db, config, Schema.FlowDemand.Static))
+    time = fill_demand_priority!(load_structvector(db, config, Schema.FlowDemand.Time))
     node_id = get_node_ids(db, NodeType.FlowDemand)
     cyclic_times = get_cyclic_time(db, "FlowDemand")
     demand_priorities = get_all_demand_priorities(db, config)
@@ -1646,6 +1644,233 @@ function FlowDemand(db::DB, config::Config, graph::MetaGraph)
     errors && error("Errors encountered when parsing FlowDemand data.")
 
     return flow_demand
+end
+
+"""
+Find the connected components of Junction and UserDemand nodes connected by flow links.
+UserDemand nodes without a Junction inneighbor (i.e. at the start of a tree) are excluded.
+"""
+function get_routed_subgraphs(
+        graph::ModelGraph,
+        routed_ids::Vector{NodeID},
+    )::Vector{Vector{NodeID}}
+    in_subgraph(id::NodeID) =
+        id.is_routed || (
+        id.type == NodeType.UserDemand && any(
+            inneighbor_id -> inneighbor_id.is_routed,
+            inneighbor_labels_type(graph, id, LinkType.flow),
+        )
+    )
+
+    visited = Set{NodeID}()
+    subgraphs = Vector{NodeID}[]
+    # Every subgraph contains a Junction node, so starting from those finds all subgraphs
+    for start_id in routed_ids
+        start_id in visited && continue
+        subgraph = NodeID[]
+        stack = [start_id]
+        push!(visited, start_id)
+        while !isempty(stack)
+            id = pop!(stack)
+            push!(subgraph, id)
+            for neighbor_id in Iterators.flatten(
+                    (
+                        inneighbor_labels_type(graph, id, LinkType.flow),
+                        outneighbor_labels_type(graph, id, LinkType.flow),
+                    )
+                )
+                if neighbor_id ∉ visited && in_subgraph(neighbor_id)
+                    push!(visited, neighbor_id)
+                    push!(stack, neighbor_id)
+                end
+            end
+        end
+        push!(subgraphs, topological_sort_subgraph(graph, subgraph))
+    end
+    return subgraphs
+end
+
+"""
+Sort the nodes of a subgraph (Kahn's algorithm) such that every node comes after all nodes
+its flow depends on:
+- the upstream nodes in the subgraph;
+- for a Junction node, the UserDemand nodes downstream of its upstream Junction nodes,
+  since those UserDemand nodes take precedence and the Junction nodes divide the remaining flow.
+Ties are broken by NodeID for a deterministic order.
+"""
+function topological_sort_subgraph(graph::ModelGraph, subgraph::Vector{NodeID})::Vector{NodeID}
+    node_set = Set(subgraph)
+    dependencies = Dict(id => Set{NodeID}() for id in subgraph)
+    for id in subgraph, upstream_id in inflow_ids(graph, id)
+        upstream_id in node_set || continue
+        push!(dependencies[id], upstream_id)
+        if id.is_routed && upstream_id.is_routed
+            for sibling_id in outflow_ids(graph, upstream_id)
+                sibling_id.type == NodeType.UserDemand && push!(dependencies[id], sibling_id)
+            end
+        end
+    end
+    dependents = Dict(id => NodeID[] for id in subgraph)
+    for (id, deps) in dependencies, dep_id in deps
+        push!(dependents[dep_id], id)
+    end
+
+    n_dependencies = Dict(id => length(deps) for (id, deps) in dependencies)
+    ready = sort!(filter(id -> n_dependencies[id] == 0, subgraph); rev = true)
+    sorted = NodeID[]
+    while !isempty(ready)
+        id = pop!(ready)
+        push!(sorted, id)
+        for dependent_id in dependents[id]
+            n_dependencies[dependent_id] -= 1
+            if n_dependencies[dependent_id] == 0
+                push!(ready, dependent_id)
+                sort!(ready; rev = true)
+            end
+        end
+    end
+    if length(sorted) != length(subgraph)
+        error("Cyclic flow dependency detected in Junction subgraph containing nodes $(sort(subgraph)).")
+    end
+    return sorted
+end
+
+function Junction(db::DB, config::Config, graph::ModelGraph)::Junction
+    static = load_structvector(db, config, Schema.Junction.Static)
+    node_id = get_junction_ids(db, config)
+    # Only the routed Junction nodes are in the graph, the others were removed by `simplify_graph!`
+    routed_ids = filter(id -> id.is_routed, node_id)
+    inflow_links = [id.is_routed ? get_inflow_links(graph, id) : LinkMetadata[] for id in node_id]
+    outflow_links = [id.is_routed ? get_outflow_links(graph, id) : LinkMetadata[] for id in node_id]
+
+    # The links out of Junction nodes are routed: their flow is a weighted sum of the flows
+    # into the subgraph, see `set_routing!`. The flow towards a UserDemand node is the UserDemand
+    # inflow state.
+    routed_links = sort!(
+        [link for link in Iterators.flatten(outflow_links) if link.link[2].type != NodeType.UserDemand]
+    )
+
+    n_substance = length(get_substances(db, config))
+    junction = Junction(;
+        node_id,
+        inflow_links,
+        outflow_links,
+        routed_subgraphs = get_routed_subgraphs(graph, routed_ids),
+        routed_links,
+        inflow_link_idx = [[routed_link_index(routed_links, link) for link in links] for links in inflow_links],
+        outflow_link_idx = [[routed_link_index(routed_links, link) for link in links] for links in outflow_links],
+        link_mass = zeros(n_substance, length(routed_links)),
+        source_mass = zeros(n_substance),
+        concentration = zeros(n_substance, length(node_id)),
+    )
+    (; fraction) = junction
+    has_fraction = [falses(length(links)) for links in outflow_links]
+
+    errors = false
+    invalid_fraction_rows = NamedTuple{(:node_id, :to_node_id), Tuple{Int32, Int32}}[]
+    unknown_link_rows = NamedTuple{(:node_id, :to_node_id), Tuple{Int32, Int32}}[]
+    duplicate_rows = NamedTuple{(:node_id, :to_node_id), Tuple{Int32, Int32}}[]
+    divided_rows = NamedTuple{(:node_id, :to_node_id), Tuple{Int32, Int32}}[]
+    divided_ids = Set{NodeID}()
+    for row in static
+        row_ids = (; node_id = row.node_id, to_node_id = row.to_node_id)
+        id = NodeID(NodeType.Junction, row.node_id, node_id)
+        # The fractions divide the flow over the outflow links, except the link to a UserDemand node
+        link_idx = findfirst(
+            link -> link.link[2].value == row.to_node_id && link.link[2].type != NodeType.UserDemand,
+            outflow_links[id.idx],
+        )
+        if isnothing(link_idx)
+            # The row may name a Junction without rows, which `simplify_graph!` replaced by links
+            # from this node to the nodes behind it. The row is for that link, if there is one.
+            targets = replaced_link_targets(graph, id, row.to_node_id)
+            if length(targets) == 1
+                link_idx = findfirst(link -> link.link[2] == only(targets), outflow_links[id.idx])
+            elseif length(targets) > 1
+                push!(divided_rows, row_ids)
+                push!(divided_ids, id)
+                continue
+            end
+        end
+        if isnothing(link_idx)
+            push!(unknown_link_rows, row_ids)
+        elseif has_fraction[id.idx][link_idx]
+            push!(duplicate_rows, row_ids)
+        elseif ismissing(row.fraction)
+            continue
+        elseif !(0 <= row.fraction <= 1)
+            push!(invalid_fraction_rows, row_ids)
+        else
+            fraction[id.idx][link_idx] = row.fraction
+            has_fraction[id.idx][link_idx] = true
+        end
+    end
+    if !isempty(unknown_link_rows)
+        @error "Junction fractions can only be given for flow links out of the Junction node, except the link to a UserDemand node." unknown_link_rows
+        errors = true
+    end
+    if !isempty(divided_rows)
+        @error "These rows name a Junction without rows in Junction / static that divides the flow over several nodes. Give that Junction rows with fractions as well, or name those nodes in these rows." divided_rows
+        errors = true
+    end
+    if !isempty(duplicate_rows)
+        @error "Duplicate Junction fractions for the same link." duplicate_rows
+        errors = true
+    end
+    if !isempty(invalid_fraction_rows)
+        @error "Junction fractions must be between 0 and 1 (inclusive)." invalid_fraction_rows
+        errors = true
+    end
+
+    for id in node_id
+        # The fractions of this node are already wrong, so do not report follow-up errors
+        id in divided_ids && continue
+        divided_idxs =
+            findall(link -> link.link[2].type != NodeType.UserDemand, outflow_links[id.idx])
+        isempty(divided_idxs) && continue
+
+        specified = has_fraction[id.idx][divided_idxs]
+        fraction_sum = sum(fraction[id.idx][divided_idxs][specified]; init = 0.0)
+        missing_idxs = divided_idxs[.!specified]
+
+        if isempty(missing_idxs)
+            if !isapprox(fraction_sum, 1.0)
+                @error "The fractions of the outflow links of $id must sum to 1 (got $fraction_sum)."
+                errors = true
+            end
+        elseif length(missing_idxs) > 1
+            @error "$id can have at most one outflow link with an unspecified fraction."
+            errors = true
+        elseif fraction_sum > 1
+            @error "The fractions of the outflow links of $id must sum to at most 1 when one fraction is unspecified (got $fraction_sum)."
+            errors = true
+        else
+            fraction[id.idx][only(missing_idxs)] = 1.0 - fraction_sum
+        end
+    end
+
+    # A UserDemand downstream of a Junction node takes precedence over the other outneighbors,
+    # which receive the flow that is not abstracted
+    for id in routed_ids
+        user_demand_ids = filter(id -> id.type == NodeType.UserDemand, outflow_ids(graph, id) |> collect)
+        if isone(length(user_demand_ids))
+            junction.user_demand_id[id.idx] = only(user_demand_ids)
+        end
+    end
+    errors && error("Errors encountered when parsing Junction data.")
+
+    # The level seen by structures upstream: the single node behind a chain of Junction nodes that do
+    # not divide the flow. The subgraphs are in topological order, so go through them backwards.
+    for subgraph in junction.routed_subgraphs, id in Iterators.reverse(subgraph)
+        id.is_routed || continue
+        targets = [link.link[2] for link in outflow_links[id.idx] if link.link[2].type != NodeType.UserDemand]
+        if isone(length(targets))
+            target = only(targets)
+            junction.level_node_id[id.idx] = target.is_routed ? junction.level_node_id[target.idx] : target
+        end
+    end
+
+    return junction
 end
 
 "Create and push a ConstantInterpolation to the constant_interpolations."
@@ -1850,7 +2075,7 @@ function Parameters(db::DB, config::Config)::Parameters
         pump = Pump(db, config, graph),
         outlet = Outlet(db, config, graph),
         terminal = Terminal(db),
-        junction = Junction(db),
+        junction = Junction(db, config, graph),
         discrete_control = DiscreteControl(db, config, graph),
         continuous_control = ContinuousControl(db, config),
         pid_control = PidControl(db, config, graph),
@@ -1859,12 +2084,17 @@ function Parameters(db::DB, config::Config)::Parameters
         flow_demand = FlowDemand(db, config, graph),
     )
 
+    set_in_routed_subgraph!(nodes.user_demand, nodes.junction)
+    set_downstream_level_ids!(nodes)
+
     subgrid = Subgrid(db, config, basin)
     flow_ranges = count_flow_ranges(nodes)
     state_ranges = count_state_ranges(nodes)
 
     inflow_id, outflow_id, state_id = get_flow_ids(nodes, flow_ranges)
-    incidence_matrix = get_incidence_matrix(inflow_id, outflow_id)
+    downlink_level_id = get_downlink_level_ids(nodes, outflow_id)
+    routed_basins, routed_flow_idxs, routed_basins_boundary = set_routing!(nodes, flow_ranges)
+    incidence_matrix = get_incidence_matrix(inflow_id, outflow_id, routed_basins)
 
     p_independent = ParametersIndependent(;
         config.starttime,
@@ -1875,7 +2105,11 @@ function Parameters(db::DB, config::Config)::Parameters
         subgrid,
         inflow_id,
         outflow_id,
+        downlink_level_id,
         state_id,
+        routed_basins,
+        routed_flow_idxs,
+        routed_basins_boundary,
         config.solver.water_balance_abstol,
         config.solver.water_balance_reltol,
         flow_ranges,
@@ -1916,36 +2150,72 @@ function get_node_ids_types(
     return (; table.node_id, node_type)
 end
 
-function get_node_ids(db::DB)::Vector{NodeID}
+"""
+The nodes behind a Junction without rows in `Junction / static` that `node_id` flows into:
+`simplify_graph!` removed that Junction, and replaced the flow link from `node_id` to it by
+links from `node_id` to these nodes. Empty if there is no such flow link.
+"""
+function replaced_link_targets(graph::ModelGraph, node_id::NodeID, to_node_id::Int32)::Vector{NodeID}
+    (; external_flow_links, internal_flow_links, flow_link_map) = graph[]
+    external_idx = findfirst(
+        link -> link.link[1] == node_id && is_plain_junction(link.link[2]) && link.link[2].value == to_node_id,
+        external_flow_links,
+    )
+    isnothing(external_idx) && return NodeID[]
+    return [
+        internal_flow_links[internal_idx].link[2] for
+            internal_idx in findall(!iszero, flow_link_map[external_idx, :]) if
+            internal_flow_links[internal_idx].link[1] == node_id
+    ]
+end
+
+"""
+The IDs of the Junction nodes that divide the flow or supply a UserDemand: those with rows in
+`Junction / static`. They stay in the simulation as nodes, see `NodeID.is_routed`.
+"""
+function routed_junction_ids(db::DB, config::Config)::Set{Int32}
+    static = load_data(db, config, Schema.Junction.Static)
+    return isnothing(static) ? Set{Int32}() : Set{Int32}(static.node_id)
+end
+
+function get_node_ids(db::DB, config::Config)::Vector{NodeID}
     nt = get_node_ids_types(db)
+    routed = routed_junction_ids(db, config)
     node_ids = Vector{NodeID}(undef, length(nt.node_id))
     count = counter(NodeType.T)
     for (i, (; node_id, node_type)) in enumerate(Tables.rows(nt))
         index = inc!(count, node_type)
-        node_ids[i] = NodeID(node_type, node_id, index)
+        node_ids[i] = NodeID(node_type, node_id, index, node_type == NodeType.Junction && node_id in routed)
     end
     return node_ids
 end
 
 # Convenience method for tests
 function get_node_ids(toml_path::String)::Vector{NodeID}
-    cfg = Config(toml_path)
-    db_path = database_path(cfg)
+    config = Config(toml_path)
+    db_path = database_path(config)
     db = SQLite.DB(db_path)
-    node_ids = get_node_ids(db)
+    node_ids = get_node_ids(db, config)
     close(db)
     return node_ids
 end
 
-function get_node_ids(db::DB, node_type)::Vector{NodeID}
+"""
+The IDs of the nodes of a type. Whether a Junction node has rows in `Junction / static` is part
+of its ID, and that table can be outside the database, so the Junction IDs need the config.
+"""
+function get_node_ids(db::DB, node_type, routed::Set{Int32} = Set{Int32}())::Vector{NodeID}
     node_type = NodeType.T(node_type)
     node_ints = get_node_ids_int32(db, node_type)
     node_ids = Vector{NodeID}(undef, length(node_ints))
     for (index, node_int) in enumerate(node_ints)
-        node_ids[index] = NodeID(node_type, node_int, index)
+        node_ids[index] = NodeID(node_type, node_int, index, node_int in routed)
     end
     return node_ids
 end
+
+get_junction_ids(db::DB, config::Config)::Vector{NodeID} =
+    get_node_ids(db, NodeType.Junction, routed_junction_ids(db, config))
 
 function get_cyclic_time(db::DB, node_type::String)::Vector{Bool}
     sql = "SELECT cyclic_time FROM Node WHERE node_type = $(esc_id(node_type)) ORDER BY node_id"
@@ -2034,7 +2304,16 @@ function load_netcdf(
             table[:time] = repeat(repeat(time; inner = n_priority); inner = n_node_id)
         end
 
+        n = n_node_id * n_time * n_priority
         for data_varname in data_varnames
+            column_type = fieldtype(table_type, data_varname)
+            if !haskey(ds, String(data_varname))
+                # Optional columns can be left out, such as columns added in a newer version
+                Missing <: column_type ||
+                    error("Variable $data_varname not found in NetCDF file $table_path.")
+                table[data_varname] = Vector{column_type}(missing, n)
+                continue
+            end
             var = ds[data_varname]
             # For most tables, each data variable has all dimensions of the table.
             # For "UserDemand / time", variables are either:
@@ -2058,11 +2337,17 @@ function load_netcdf(
             else
                 data = Array(var)
             end
+            if column_type == Union{Missing, String}
+                # NetCDF has no missing strings. Python writes them as empty strings, or as
+                # NaN values if they are all missing.
+                data = Union{Missing, String}[
+                    x isa AbstractString && !isempty(x) ? String(x) : missing for x in data
+                ]
+            end
             table[data_varname] = vec(data)
         end
 
         # Drop rows where all data variables are missing (happens with NetCDF dense grids)
-        n = n_node_id * n_time * n_priority
         mask = trues(n)
         for i in 1:n
             if all(name -> ismissing(table[name][i]), data_varnames)
@@ -2307,7 +2592,6 @@ function get_substances(db::DB, config::Config)::OrderedSet{Symbol}
             Schema.Basin.MassLoad,
             Schema.FlowBoundary.Concentration,
             Schema.LevelBoundary.Concentration,
-            Schema.UserDemand.Concentration,
         ]
         data = load_structvector(db, config, table)
         for row in data

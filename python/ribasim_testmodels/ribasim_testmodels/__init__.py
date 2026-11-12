@@ -1,4 +1,4 @@
-__version__ = "2026.1.2"
+__version__ = "2026.2.0-rc1"
 
 from collections.abc import Callable
 
@@ -12,6 +12,7 @@ from ribasim_testmodels.allocation import (
     allocation_training_model,
     basin_overflow_model,
     cyclic_demand_model,
+    demand_priority_default_model,
     drain_surplus_model,
     fair_distribution_model,
     flow_demand_discrete_control_model,
@@ -19,6 +20,7 @@ from ribasim_testmodels.allocation import (
     level_demand_model,
     level_demand_with_rating_curve_model,
     linear_resistance_demand_model,
+    linear_resistance_demand_negative_flow_model,
     medium_primary_secondary_network_model,
     medium_primary_secondary_network_verification_model,
     minimal_subnetwork_model,
@@ -43,6 +45,7 @@ from ribasim_testmodels.basic import (
     cyclic_time_model,
     drought_model,
     flow_boundary_interpolation_model,
+    flow_boundary_terminal_model,
     outlet_model,
     tabulated_rating_curve_model,
 )
@@ -65,6 +68,7 @@ from ribasim_testmodels.discrete_control import (
 )
 from ribasim_testmodels.doc_example import local_pidcontrolled_cascade_model
 from ribasim_testmodels.equations import (
+    junction_equation_model,
     linear_resistance_model,
     manning_resistance_deep_basin_model,
     manning_resistance_model,
@@ -76,15 +80,37 @@ from ribasim_testmodels.equations import (
 from ribasim_testmodels.invalid import (
     invalid_control_states_model,
     invalid_discrete_control_model,
+    invalid_junction_connector_split_model,
+    invalid_junction_divides_without_rows_model,
+    invalid_junction_fraction_sum_model,
+    invalid_junction_missing_fractions_model,
+    invalid_junction_multiple_user_demands_model,
+    invalid_junction_only_user_demand_model,
+    invalid_junction_subnetwork_boundary_model,
     invalid_link_types_model,
     invalid_no_basin_model,
-    invalid_priorities_model,
     invalid_qh_model,
+    invalid_subnetwork_to_primary_model,
     invalid_unstable_model,
+    invalid_user_demand_missing_min_level_model,
 )
 from ribasim_testmodels.junction import (
+    junction_allocation_model,
+    junction_allocation_shortage_model,
+    junction_bidirectional,
     junction_chained,
     junction_combined,
+    junction_continuous_control_model,
+    junction_control,
+    junction_flow_boundary_model,
+    junction_fraction_model,
+    junction_into_junction_model,
+    junction_level_model,
+    junction_no_basin_allocation_model,
+    junction_no_basin_model,
+    junction_pid_model,
+    junction_shortage_tracer_model,
+    junction_tracer_model,
 )
 from ribasim_testmodels.observation import observation_model
 from ribasim_testmodels.pid_control import (
@@ -95,11 +121,17 @@ from ribasim_testmodels.precompile_workload import (
     precompile_workload_allocation_model,
     precompile_workload_model,
 )
+from ribasim_testmodels.solver import pump_pit_model
 from ribasim_testmodels.time import (
     flow_boundary_time_model,
     transient_pump_outlet_model,
 )
-from ribasim_testmodels.tracer import tracer_user_demand_model
+from ribasim_testmodels.tracer import (
+    tracer_boundary_pulse_model,
+    tracer_chain_model,
+    tracer_evaporation_model,
+    tracer_user_demand_model,
+)
 from ribasim_testmodels.trivial import trivial_model
 from ribasim_testmodels.two_basin import two_basin_model
 
@@ -123,30 +155,56 @@ __all__ = [
     "continuous_concentration_condition_model",
     "cyclic_demand_model",
     "cyclic_time_model",
+    "demand_priority_default_model",
     "discrete_control_of_pid_control_model",
     "drain_surplus_model",
     "drought_model",
     "fair_distribution_model",
     "flow_boundary_interpolation_model",
+    "flow_boundary_terminal_model",
     "flow_boundary_time_model",
     "flow_condition_model",
     "flow_demand_discrete_control_model",
     "flow_demand_model",
     "invalid_control_states_model",
     "invalid_discrete_control_model",
+    "invalid_junction_connector_split_model",
+    "invalid_junction_divides_without_rows_model",
+    "invalid_junction_fraction_sum_model",
+    "invalid_junction_missing_fractions_model",
+    "invalid_junction_multiple_user_demands_model",
+    "invalid_junction_only_user_demand_model",
+    "invalid_junction_subnetwork_boundary_model",
     "invalid_link_types_model",
     "invalid_no_basin_model",
-    "invalid_priorities_model",
     "invalid_qh_model",
+    "invalid_subnetwork_to_primary_model",
     "invalid_unstable_model",
+    "invalid_user_demand_missing_min_level_model",
+    "junction_allocation_model",
+    "junction_allocation_shortage_model",
+    "junction_bidirectional",
     "junction_chained",
     "junction_combined",
+    "junction_continuous_control_model",
+    "junction_control",
+    "junction_equation_model",
+    "junction_flow_boundary_model",
+    "junction_fraction_model",
+    "junction_into_junction_model",
+    "junction_level_model",
+    "junction_no_basin_allocation_model",
+    "junction_no_basin_model",
+    "junction_pid_model",
+    "junction_shortage_tracer_model",
+    "junction_tracer_model",
     "leaky_bucket_model",
     "level_boundary_condition_model",
     "level_demand_model",
     "level_demand_with_rating_curve_model",
     "level_range_model",
     "linear_resistance_demand_model",
+    "linear_resistance_demand_negative_flow_model",
     "linear_resistance_model",
     "local_pidcontrolled_cascade_model",
     "manning_resistance_control_model",
@@ -169,6 +227,7 @@ __all__ = [
     "precompile_workload_allocation_model",
     "precompile_workload_model",
     "pump_discrete_control_model",
+    "pump_pit_model",
     "rating_curve_between_basins_model",
     "rating_curve_model",
     "small_primary_secondary_network_model",
@@ -177,6 +236,9 @@ __all__ = [
     "switch_allocation_control_model",
     "tabulated_rating_curve_control_model",
     "tabulated_rating_curve_model",
+    "tracer_boundary_pulse_model",
+    "tracer_chain_model",
+    "tracer_evaporation_model",
     "tracer_user_demand_model",
     "transient_condition_model",
     "transient_pump_outlet_model",

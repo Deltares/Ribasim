@@ -234,6 +234,7 @@ module Schema
             node_id::Int32
             time::DateTime
             flow_rate::Float64
+            interpolation::Union{Missing, String}
         end
 
         struct Concentration <: Table
@@ -381,24 +382,17 @@ module Schema
             node_id::Int32
             demand::Union{Missing, Float64} = 0.0
             return_factor::Float64
-            min_level::Float64
-            demand_priority::Union{Missing, Int32}
+            min_level::Union{Float64, Missing} = NaN
+            demand_priority::Union{Missing, Int32} = 1
         end
 
-        struct Time <: Table
+        @schema struct Time <: Table
             node_id::Int32
             time::DateTime
             demand::Float64
             return_factor::Float64
-            min_level::Float64
-            demand_priority::Union{Missing, Int32}
-        end
-
-        struct Concentration <: Table
-            node_id::Int32
-            time::DateTime
-            substance::String
-            concentration::Float64
+            min_level::Union{Float64, Missing} = NaN
+            demand_priority::Union{Missing, Int32} = 1
         end
 
     end
@@ -411,7 +405,7 @@ module Schema
             node_id::Int32
             min_level::Union{Missing, Float64} = -Inf
             max_level::Union{Missing, Float64} = Inf
-            demand_priority::Union{Missing, Int32}
+            demand_priority::Union{Missing, Int32} = 1
         end
 
         @schema struct Time <: Table
@@ -419,26 +413,26 @@ module Schema
             time::DateTime
             min_level::Union{Missing, Float64} = -Inf
             max_level::Union{Missing, Float64} = Inf
-            demand_priority::Union{Missing, Int32}
+            demand_priority::Union{Missing, Int32} = 1
         end
 
     end
 
     module FlowDemand
 
-        using ...Ribasim: DateTime, Table
+        using ...Ribasim: DateTime, Table, @schema
 
-        struct Static <: Table
+        @schema struct Static <: Table
             node_id::Int32
             demand::Float64
-            demand_priority::Union{Missing, Int32}
+            demand_priority::Union{Missing, Int32} = 1
         end
 
-        struct Time <: Table
+        @schema struct Time <: Table
             node_id::Int32
             time::DateTime
             demand::Float64
-            demand_priority::Union{Missing, Int32}
+            demand_priority::Union{Missing, Int32} = 1
         end
 
     end
@@ -457,7 +451,14 @@ module Schema
     end
 
     # these node types have no tables
-    module Junction end
+    module Junction
+        using ...Ribasim: Table
+        struct Static <: Table
+            node_id::Int32
+            to_node_id::Int32
+            fraction::Union{Missing, Float64}
+        end
+    end
     module Terminal end
 
 end

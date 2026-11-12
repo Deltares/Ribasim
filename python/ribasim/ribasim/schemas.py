@@ -201,6 +201,7 @@ class FlowBoundaryTimeSchema(_BaseSchema):
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     time: pd.Timestamp = pa.Field(nullable=False)
     flow_rate: float = pa.Field(nullable=False)
+    interpolation: pd.StringDtype = pa.Field(nullable=True)
 
 
 class FlowDemandStaticSchema(_BaseSchema):
@@ -218,6 +219,14 @@ class FlowDemandTimeSchema(_BaseSchema):
     time: pd.Timestamp = pa.Field(nullable=False)
     demand: float = pa.Field(nullable=False)
     demand_priority: pd.Int32Dtype = pa.Field(nullable=True)
+
+
+class JunctionStaticSchema(_BaseSchema):
+    _node_id_relation: str = "subset"
+    fid: Index[np.int32] = pa.Field(default=1, check_name=True, coerce=True)
+    node_id: np.int32 = pa.Field(nullable=False, default=0)
+    to_node_id: np.int32 = pa.Field(nullable=False)
+    fraction: float = pa.Field(nullable=True)
 
 
 class LevelBoundaryConcentrationSchema(_BaseSchema):
@@ -387,22 +396,13 @@ class TabulatedRatingCurveTimeSchema(_BaseSchema):
     max_downstream_level: float = pa.Field(nullable=True)
 
 
-class UserDemandConcentrationSchema(_BaseSchema):
-    _node_id_relation: str = "subset"
-    fid: Index[np.int32] = pa.Field(default=1, check_name=True, coerce=True)
-    node_id: np.int32 = pa.Field(nullable=False, default=0)
-    time: pd.Timestamp = pa.Field(nullable=False)
-    substance: pd.StringDtype = pa.Field(nullable=False)
-    concentration: float = pa.Field(nullable=False)
-
-
 class UserDemandStaticSchema(_BaseSchema):
     _node_id_relation: str = "partition"
     fid: Index[np.int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     demand: float = pa.Field(nullable=True)
     return_factor: float = pa.Field(nullable=False)
-    min_level: float = pa.Field(nullable=False)
+    min_level: float = pa.Field(nullable=True)
     demand_priority: pd.Int32Dtype = pa.Field(nullable=True)
 
 
@@ -413,5 +413,5 @@ class UserDemandTimeSchema(_BaseSchema):
     time: pd.Timestamp = pa.Field(nullable=False)
     demand: float = pa.Field(nullable=False)
     return_factor: float = pa.Field(nullable=False)
-    min_level: float = pa.Field(nullable=False)
+    min_level: float = pa.Field(nullable=True)
     demand_priority: pd.Int32Dtype = pa.Field(nullable=True)

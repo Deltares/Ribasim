@@ -31,3 +31,16 @@ nearest time value. The allocation algorithm evaluates the interpolation at the 
 # | code-fold: true
 table_from_schema(Ribasim.Schema.FlowDemand.Time; restrictions = FLOW_DEMAND_RESTRICTIONS)
 ```
+
+# Behavior in allocation
+
+With [allocation](/concept/allocation.qmd), a FlowDemand is a demand for a minimum flow through the node it is connected to.
+The water is not consumed, so it remains available downstream, and the flow through the node can be larger than the demand.
+Like other demands, it is met in the order of its demand priority.
+
+How well the demand can be met depends on the node.
+For an allocation-controlled Pump, Outlet or TabulatedRatingCurve, allocation can set the flow through the node directly.
+For other nodes, the flow follows from the water levels around the node, so allocation can only meet the demand by changing these levels, for instance by steering an allocation-controlled node upstream.
+
+The demand, allocated and realized flow rates are in [`allocation.nc`](/reference/usage.qmd#sec-results).
+Flow demands and level demands cannot have the same demand priority within a subnetwork.

@@ -693,6 +693,63 @@ def level_demand_model() -> Model:
     return model
 
 
+def demand_priority_default_model() -> Model:
+    """Model with allocation where the UserDemand and FlowDemand omit the demand priority.
+
+    The demand priority is optional and defaults to 1. The LevelDemand gets priority 2, since
+    flow and storage demands cannot share a priority.
+    """
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 2, 1),
+        crs="EPSG:28992",
+        allocation=Allocation(),
+        experimental=Experimental(allocation=True),
+    )
+
+    lb = model.level_boundary.add(
+        Node(1, Point(0, 0), subnetwork_id=2),
+        [level_boundary.Static(level=[1.0])],
+    )
+    trc = model.tabulated_rating_curve.add(
+        Node(2, Point(1, 0), subnetwork_id=2),
+        [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 2e-3])],
+    )
+    bsn = model.basin.add(
+        Node(3, Point(2, 0), subnetwork_id=2),
+        [basin.Profile(area=1e3, level=[0.0, 1.0]), basin.State(level=[1.0])],
+    )
+    ud = model.user_demand.add(
+        Node(4, Point(3, 0), subnetwork_id=2),
+        [
+            user_demand.Time(
+                time=pd.date_range("2020-01-01", periods=2, freq="MS"),
+                demand=[1e-3, 2e-3],
+                return_factor=1.0,
+                min_level=0.2,
+            )
+        ],
+    )
+    fd = model.flow_demand.add(
+        Node(5, Point(1, -1), subnetwork_id=2),
+        [flow_demand.Static(demand=[2e-3])],
+    )
+    ld = model.level_demand.add(
+        Node(6, Point(2, -1), subnetwork_id=2),
+        [level_demand.Static(min_level=[0.5], max_level=1.5, demand_priority=2)],
+    )
+    trm = model.terminal.add(Node(7, Point(4, 0), subnetwork_id=2))
+
+    model.link.add(lb, trc)
+    model.link.add(trc, bsn)
+    model.link.add(bsn, ud)
+    model.link.add(ud, trm)
+    model.link.add(ld, bsn)
+    model.link.add(fd, trc)
+
+    return model
+
+
 def flow_demand_model() -> Model:
     """Small model with a FlowDemand."""
     model = Model(
@@ -794,6 +851,42 @@ def linear_resistance_demand_model():
     model.flow_demand.add(
         Node(4, Point(1, 1), subnetwork_id=2, route_priority=1),
         [flow_demand.Static(demand_priority=[1], demand=2.0)],
+    )
+
+    model.link.add(model.basin[1], model.linear_resistance[2])
+    model.link.add(model.linear_resistance[2], model.basin[3])
+    model.link.add(model.flow_demand[4], model.linear_resistance[2])
+
+    return model
+
+
+def linear_resistance_demand_negative_flow_model():
+    """Small model with a FlowDemand for a node that has a negative physical flow."""
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 1, 2),
+        crs="EPSG:28992",
+        experimental=Experimental(concentration=True, allocation=True),
+    )
+
+    # The flow through the LinearResistance is from basin 3 to basin 1, against its direction
+    model.basin.add(
+        Node(1, Point(0, 0), subnetwork_id=2),
+        [basin.Profile(area=1e3, level=[0.0, 1.0]), basin.State(level=[0.5])],
+    )
+    model.basin.add(
+        Node(3, Point(2, 0), subnetwork_id=2),
+        [basin.Profile(area=1e3, level=[0.0, 1.0]), basin.State(level=[1.0])],
+    )
+
+    model.linear_resistance.add(
+        Node(2, Point(0, 1), subnetwork_id=2),
+        [linear_resistance.Static(resistance=[1e3])],
+    )
+
+    model.flow_demand.add(
+        Node(4, Point(1, 1), subnetwork_id=2, route_priority=1),
+        [flow_demand.Static(demand_priority=[1], demand=1e-4)],
     )
 
     model.link.add(model.basin[1], model.linear_resistance[2])

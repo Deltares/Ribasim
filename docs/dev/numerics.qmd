@@ -108,10 +108,11 @@ Which of these the solver actually uses depends on the algorithm:
 
 The Jacobian is prepared in one of two forms, set by `reduced_implicit_solve`. This is `true` by default for the implicit algorithms with a Newton solver, and always `false` for Rosenbrock and explicit algorithms.
 
-With `reduced_implicit_solve = true`, `RibasimJacobianEvaluationCache` prepares two Jacobians:
+With `reduced_implicit_solve = true`, `RibasimJacobianEvaluationCache` prepares three Jacobians:
 
 - `∂flow_∂flow_input`: the Jacobian of the flow formulation (`formulate_flows_closure!`) with respect to the input vector `flow_input = (storage_uplink, storage_downlink, pid_integral, continuous_control_compound)`. Its output is the flow rates and the PID errors. This is $\partial\mathbf{q}/\partial\mathbf{v}$ from the [concept documentation](/concept/numerics.qmd#structure-of-the-right-hand-side);
-- `∂continuous_control_compound_∂continuous_control_input`: the Jacobian of the ContinuousControl compound variables with respect to `(storage, flow)`.
+- `∂continuous_control_compound_∂continuous_control_input`: the Jacobian of the ContinuousControl compound variables with respect to `(storage, flow)`;
+- `∂junction_flow_∂flow`: the Jacobian $K$ of `formulate_junction_flow!`, the last step of `water_balance!`, which computes the flows of the UserDemand nodes that abstract from Junction nodes from the other flows. It is a square matrix over all flows, with an identity part for all other flows.
 
 With `reduced_implicit_solve = false`, the Jacobian of `water_balance!` with respect to the full state $\mathbf{u}$ is prepared, and the result is a regular (sparse) matrix that OrdinaryDiffEq uses as is.
 The time derivative `tgrad` is prepared in the same way, for the Rosenbrock algorithms.
@@ -157,10 +158,11 @@ For `tgrad` the `TimeDependentCache` is also passed as `Cache()`, since the time
 With `reduced_implicit_solve = true`, the Jacobian is never materialized. Instead the Jacobian prototype passed to the `ODEFunction` is a `RibasimJacobian`, a custom `AbstractSciMLOperator` which stores:
 
 - `cache` — the `RibasimJacobianEvaluationCache` with the AD preparation and the Jacobians described above;
-- `J_inner_local` — the $n_\text{basin} \times n_\text{basin}$ matrix $M Q_S$, the dependence of the Basin storage rates on the Basin storages via the flows (including via ContinuousControl);
-- `area_pid_controlled` — the area of the Basin listened to by each PidControl node.
+- `J_inner_local` — the $n_\text{basin} \times n_\text{basin}$ matrix $M K Q_S$, the dependence of the Basin storage rates on the Basin storages via the flows (including via ContinuousControl and the routing through Junction subgraphs, which is in $M$);
+- `area_pid_controlled` — the area of the Basin listened to by each PidControl node;
+- `flow_buffer` — a work vector for the linear solve.
 
-The entries of $Q_S$ (`∂q_∂storage`) are never stored, but iterated over by `foreach_∂flow_∂storage`, and similarly the dependence of the flows on the PID integrals by `foreach_∂flow_∂pid_integral`. These are used both to build the inner linear system and to expand its solution, which keeps the two consistent.
+The entries of $Q_S$ (`∂q_∂storage`) are never stored, but iterated over by `foreach_∂flow_∂storage`, and similarly the dependence of the flows on the PID integrals by `foreach_∂flow_∂pid_integral`. The contributions of the flow in these entries to the Basin storages are added for every flow that depends on it via $K$, see `foreach_∂flow_∂flow_np`. Without Junction nodes that stay in the simulation $K$ is the identity and this is skipped (`has_routed_junctions`). These are used both to build the inner linear system and to expand its solution, which keeps the two consistent.
 
 OrdinaryDiffEq calls `update_coefficients!` on the operator whenever the Jacobian may need updating. Whether the Jacobian should actually be re-evaluated is not passed to `update_coefficients!`, so Ribasim captures it from `do_newJW` in the `p_mutable.refresh_jac` flag. When refreshing, `update_coefficients!`:
 
@@ -168,7 +170,8 @@ OrdinaryDiffEq calls `update_coefficients!` on the operator whenever the Jacobia
 2. Evaluates `∂flow_∂flow_input`, which also caches the flows that ContinuousControl listens to;
 3. Computes `area_pid_controlled`;
 4. Evaluates `∂continuous_control_compound_∂continuous_control_input`;
-5. Computes `J_inner_local` (`update_J_inner_local!`).
+5. Evaluates `∂junction_flow_∂flow` at the flows cached in step 2, if the model has Junction nodes that stay in the simulation;
+6. Computes `J_inner_local` (`update_J_inner_local!`).
 
 # Custom linear solver
 
@@ -178,14 +181,28 @@ Otherwise `SciMLBase.init` sets up a `RibasimLinearSolveCache`, which contains a
 
 The linear solve itself is done in `dolinsolve`, following the [concept documentation](/concept/numerics.qmd#the-linear-solve):
 
-1. **Reduce** the right-hand side to storage space with `aggregate_flows!` ($M\mathbf{b}^\text{flow}$) plus the PID contribution;
+1. **Reduce** the right-hand side to storage space with `aggregate_flows!` ($M\mathbf{b}^\text{flow}$) plus the PID contribution, which is passed through $K$ if the model has Junction nodes that stay in the simulation;
 2. **Build** `J_inner` with `build_J_inner!`: `J_inner_local` plus the PidControl contributions, which depend on $\gamma$;
 3. **Solve** the inner system $(J_\text{inner} - \gamma^{-1}I)\mathbf{s} = \mathbf{b}_\text{inner}$;
-4. **Expand** the solution back to the full state space: the PID integral components follow from the change of the listened Basin storage, and the flow components from `∂flow_∂storage_mul!` ($Q_S\mathbf{s}$).
+4. **Expand** the solution back to the full state space: the PID integral components follow from the change of the listened Basin storage, and the flow components from `∂flow_∂storage_mul!` ($Q_S\mathbf{s}$), where the flows in Junction subgraphs follow by applying $K$ (`∂flow_∂flow_np_mul!`).
 
 This is significantly cheaper than solving in the full state space, since the inner system only has dimension equal to the number of Basins.
 
 `OrdinaryDiffEqCore.instability_jacobian` returns `J_inner` for diagnostics when a simulation becomes unstable.
+
+# Junction nodes that stay in the simulation
+
+A Junction with rows in `Junction / static` is "routed" in the code (`NodeID.is_routed`, `Junction.routed_ids`): it divides the flow or supplies a UserDemand, and stays in the graph, while the other Junctions are removed by `simplify_graph!`. Whether a Junction is routed is decided when the node ids are read (`routed_junction_ids`), so the node types and validation can tell the two apart before the graph is simplified. A routed Junction may flow into a plain Junction: `replaced_link_targets` follows `flow_link_map` to the link that replaced the drawn link, so the row applies to the node behind the plain Junction. If the plain Junction divides the flow over several nodes, the row is an error.
+
+The links in the subgraphs of routed Junctions have no states. `set_routing!` computes at initialization, per link out of a routed Junction and per routed Junction, the weights of the flows that enter the subgraph (the states of connector nodes and UserDemand outflows, and the FlowBoundary flows) and of the inflows of the UserDemand nodes in the subgraph (`RoutingWeights`), and per flow state and per FlowBoundary the Basins they reach through the subgraphs with their weights (`routed_basins`, `routed_basins_boundary`). These weights enter the incidence matrix, `aggregate_flows!`, the storage reconstruction and the Jacobian (`add_flow_contribution!`), and `routed_flow` evaluates the flow over a routed link for the results, the water balance check and the tracers. Only the UserDemand flows in the subgraphs are computed by `formulate_junction_flow!`, the last step of `water_balance!`, see the [concept documentation](/concept/numerics.qmd#sec-numerics-junction). Two consequences are worth knowing.
+
+**The downstream level is looked up per flow.** `downlink_level_id` holds per flow state the node whose level the structure sees downstream (`set_downstream_level_ids!`): the node downstream, or behind a chain of routed Junctions that do not divide the flow the single Basin or LevelBoundary at its end (`Junction.level_node_id`). It fills `storage_downlink` and places the downlink derivatives in `foreach_∂flow_∂storage`, while `outflow_id` and the incidence matrix keep the Junction, since the volume reaches the Basins through the routing weights.
+
+**Boundary flows stay exact.** The flow of a FlowBoundary into a Basin is never a state: its cumulative volume is integrated exactly and added to the storage via the time dependent cache, so the solver never sees the time series. With the routing this also holds for a FlowBoundary into a routed Junction: the Basins behind the subgraph get their share of the exact cumulative flow. The UserDemand nodes in the subgraph do see the current rate, which `set_current_boundary_flow_rate!` caches like the other time series in the right hand side: a flow rate set via BMI takes precedence, and a block series is evaluated left-continuously within the timestep. A daily on/off FlowBoundary over a month takes 37 steps through a routed Junction, the same as straight into a Basin. When the links in the subgraphs were states, it took about 130 accepted and 90 rejected steps, and thousands when the series was evaluated at `t` directly.
+
+**PID control.** The derivative term of PID control uses the storage rate of the listened Basin, which includes the flows into it via routed Junctions. Since those are computed after the controlled flows, `formulate_provisional_junction_flow!` computes them once before PID control from the flows known at that point, in `water_balance!` and in the Jacobian closure alike. The flows of PID and ContinuousControl controlled nodes are still zero then, so a controlled flow that reaches the listened Basin via routed Junctions is not part of the derivative term, in the same way that a controlled flow is only accounted for in the derivative term when it flows into the listened Basin directly.
+
+**ContinuousControl.** ContinuousControl can listen to the flow rate of a routed Junction or of a UserDemand that abstracts from one, which depend on the UserDemand flows in the subgraph. `formulate_provisional_junction_flow!` therefore computes those once more before the compound variables, after the PID controlled flows. The flows of ContinuousControl controlled nodes are still zero then, as for any flow ContinuousControl listens to. In the Jacobian the closure of the compound variables computes the flows in the subgraphs from its input flows first, so the compound variables are differentiated with respect to the flows that enter the subgraphs, which is where `foreach_∂flow_∂storage` picks up their dependence on the storages.
 
 # Callbacks
 
