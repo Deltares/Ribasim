@@ -49,6 +49,7 @@ export algorithm,
     table_types,
     showexperimental,
     use_reduced_implicit_solve,
+    show_progress,
     reduced_implicit_solve_algorithms
 
 "Schema.Basin.State -> :Basin"
@@ -218,6 +219,7 @@ end
 
 @option struct Logging <: TableOption
     verbosity::LogLevel = Info
+    progress::Union{Bool, Nothing} = nothing
 end
 
 @option struct RoutePriority <: TableOption
@@ -469,6 +471,22 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
     end
 
     return algotype(; kwargs...)
+end
+
+"""
+Whether to show the progress bar. The `[logging] progress` setting takes precedence,
+if it is not set the `RIBASIM_SHOW_PROGRESS` environment variable is used, defaulting to true.
+"""
+function show_progress(logging::Logging)::Bool
+    isnothing(logging.progress) || return logging.progress
+    value = lowercase(strip(get(ENV, "RIBASIM_SHOW_PROGRESS", "true")))
+    value in ("true", "1") && return true
+    value in ("false", "0") && return false
+    throw(
+        ArgumentError(
+            "RIBASIM_SHOW_PROGRESS=$value not supported, choose one of: true false 1 0.",
+        ),
+    )
 end
 
 """

@@ -197,7 +197,7 @@ function Model(
     integrator = init(
         prob,
         alg;
-        progress = true,
+        progress = show_progress(config.logging),
         progress_name = "Simulating",
         progress_steps = 100,
         save_everystep = false,
