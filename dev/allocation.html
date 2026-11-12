@@ -355,7 +355,8 @@ window.Quarto = {
   <li><a href="#secondary-objective-minimize-fairness-error" id="toc-secondary-objective-minimize-fairness-error" class="nav-link" data-scroll-target="#secondary-objective-minimize-fairness-error"><span class="header-section-number">3.3.2</span> Secondary Objective: Minimize Fairness Error</a></li>
   <li><a href="#leveldemand-fairness-normalization" id="toc-leveldemand-fairness-normalization" class="nav-link" data-scroll-target="#leveldemand-fairness-normalization"><span class="header-section-number">3.3.3</span> LevelDemand Fairness Normalization</a></li>
   <li><a href="#route-priority-objective" id="toc-route-priority-objective" class="nav-link" data-scroll-target="#route-priority-objective"><span class="header-section-number">3.3.4</span> Route Priority Objective</a></li>
-  <li><a href="#low-storage-factor-objective" id="toc-low-storage-factor-objective" class="nav-link" data-scroll-target="#low-storage-factor-objective"><span class="header-section-number">3.3.5</span> Low Storage Factor Objective</a></li>
+  <li><a href="#flow-change-objective" id="toc-flow-change-objective" class="nav-link" data-scroll-target="#flow-change-objective"><span class="header-section-number">3.3.5</span> Flow Change Objective</a></li>
+  <li><a href="#low-storage-factor-objective" id="toc-low-storage-factor-objective" class="nav-link" data-scroll-target="#low-storage-factor-objective"><span class="header-section-number">3.3.6</span> Low Storage Factor Objective</a></li>
   </ul></li>
   </ul></li>
   <li><a href="#updating-constraints-before-optimization" id="toc-updating-constraints-before-optimization" class="nav-link" data-scroll-target="#updating-constraints-before-optimization"><span class="header-section-number">4</span> Updating Constraints Before Optimization</a>
@@ -396,7 +397,7 @@ window.Quarto = {
   <li><a href="#stage-2-allocation" id="toc-stage-2-allocation" class="nav-link" data-scroll-target="#stage-2-allocation"><span class="header-section-number">8.3.2</span> Stage 2: Allocation</a></li>
   </ul></li>
   </ul></li>
-  <li><a href="#warm-start" id="toc-warm-start" class="nav-link" data-scroll-target="#warm-start"><span class="header-section-number">9</span> Warm Start</a></li>
+  <li><a href="#solving-from-scratch" id="toc-solving-from-scratch" class="nav-link" data-scroll-target="#solving-from-scratch"><span class="header-section-number">9</span> Solving from scratch</a></li>
   <li><a href="#output-and-communication-with-physical-layer" id="toc-output-and-communication-with-physical-layer" class="nav-link" data-scroll-target="#output-and-communication-with-physical-layer"><span class="header-section-number">10</span> Output and Communication with Physical Layer</a>
   <ul class="collapse">
   <li><a href="#parsing-results" id="toc-parsing-results" class="nav-link" data-scroll-target="#parsing-results"><span class="header-section-number">10.1</span> Parsing Results</a></li>
@@ -850,25 +851,42 @@ G^p = \sum_{v \in V_p} w_v^p E_v^p.
 <span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p><strong>Key points:</strong> - Optimized after all demand objectives are satisfied - Only affects routing, not how much is allocated - Higher weight = less preferred route (higher cost)</p>
 </section>
-<section id="low-storage-factor-objective" class="level3" data-number="3.3.5">
-<h3 data-number="3.3.5" class="anchored" data-anchor-id="low-storage-factor-objective"><span class="header-section-number">3.3.5</span> Low Storage Factor Objective</h3>
+<section id="flow-change-objective" class="level3" data-number="3.3.5">
+<h3 data-number="3.3.5" class="anchored" data-anchor-id="flow-change-objective"><span class="header-section-number">3.3.5</span> Flow Change Objective</h3>
+<p><strong>Mathematical formulation:</strong> <span class="math display">\[\min \sum_{i=1}^n w_i \left| Q_i - Q_i^\text{prev} \right|, \quad w_i = 1 + 0.01 \frac{i - 1}{n - 1}\]</span></p>
+<p>over the allocation controlled nodes <span class="math inline">\(i\)</span>, ordered by node type and node ID.</p>
+<p><strong>Code implementation:</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co"># From add_flow_change!, which update_control_states! calls every allocation timestep</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>flow_change <span class="op">=</span> JuMP.<span class="pp">@variable</span>(problem, [node_ids], lower_bound <span class="op">=</span> <span class="fl">0.0</span>)</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>JuMP.<span class="pp">@constraint</span>(</span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>    problem,</span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>    [node_id <span class="op">=</span> node_ids, sign <span class="op">=</span> (<span class="op">-</span><span class="fl">1</span>, <span class="fl">1</span>)],</span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>    flow_change[node_id] <span class="op">≥</span> sign <span class="op">*</span> allocation_controlled_flows[node_id],</span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a><span class="co"># From set_flow_change_rhs!, called in set_simulation_data!:</span></span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a><span class="co"># flow_change - sign * flow ≥ -sign * previous_flow</span></span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>JuMP.<span class="fu">set_normalized_rhs</span>(constraints[node_id, sign], <span class="op">-</span>sign <span class="op">*</span> previous_flow)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Key points:</strong> - Optimized last, so it only chooses between solutions that are equally good for all other objectives - The previous flow is <code>flow_rate</code> of the node, which is where allocation writes its result - The slightly increasing weights make the objective itself generically have a unique optimum - The structure only depends on which nodes are allocation controlled; the previous flows are right hand sides</p>
+</section>
+<section id="low-storage-factor-objective" class="level3" data-number="3.3.6">
+<h3 data-number="3.3.6" class="anchored" data-anchor-id="low-storage-factor-objective"><span class="header-section-number">3.3.6</span> Low Storage Factor Objective</h3>
 <p><strong>Mathematical formulation:</strong> <span class="math display">\[\max \sum_{b \in \text{basins}} \alpha_b\]</span></p>
 <p>where <span class="math inline">\(\alpha_b\)</span> is the low storage factor for basin <span class="math inline">\(b\)</span>.</p>
 <p><strong>Code implementation:</strong></p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co"># From add_low_storage_factor_objective!</span></span>
-<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Note: Maximizing low_storage_factor is equivalent to minimizing its negative</span></span>
-<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>expression <span class="op">=</span> <span class="fu">-sum</span>(</span>
-<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>    low_storage_factor[node_id]</span>
-<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> node_id <span class="kw">in</span> basin_ids_subnetwork</span>
-<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a><span class="fu">push!</span>(</span>
-<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>    objectives,</span>
-<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">AllocationObjective</span>(</span>
-<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>        <span class="kw">type</span> <span class="op">=</span> AllocationObjectiveType.low_storage_factor,</span>
-<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>        expressions <span class="op">=</span> [expression],</span>
-<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a>    ),</span>
-<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="co"># From add_low_storage_factor_objective!</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Note: Maximizing low_storage_factor is equivalent to minimizing its negative</span></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>expression <span class="op">=</span> <span class="fu">-sum</span>(</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>    low_storage_factor[node_id]</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> node_id <span class="kw">in</span> basin_ids_subnetwork</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a><span class="fu">push!</span>(</span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>    objectives,</span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">AllocationObjective</span>(</span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a>        <span class="kw">type</span> <span class="op">=</span> AllocationObjectiveType.low_storage_factor,</span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a>        expressions <span class="op">=</span> [expression],</span>
+<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p><strong>Key points:</strong> - Maximizes the low storage factor, so outflows from Basins are only reduced to prevent negative storage - Optimized first, before the demand objectives. Otherwise the demand objectives can lower the low storage factors to hold back water, for instance to meet a LevelDemand by throttling a weir, which the physical layer cannot do</p>
 </section>
 </section>
@@ -878,133 +896,133 @@ G^p = \sum_{v \in V_p} w_v^p E_v^p.
 <p>Before each optimization run, constraints must be updated with current values from the physical layer. This is done through a series of <code>set_simulation_data!</code> functions.</p>
 <section id="basin-updates" class="level2" data-number="4.1">
 <h2 data-number="4.1" class="anchored" data-anchor-id="basin-updates"><span class="header-section-number">4.1</span> Basin Updates</h2>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">set_simulation_data!</span>(</span>
-<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>    allocation_model<span class="op">::</span><span class="dt">AllocationModel</span>,</span>
-<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>    basin<span class="op">::</span><span class="dt">Basin</span>,</span>
-<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>    p<span class="op">::</span><span class="dt">Parameters</span>,</span>
-<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>    Δt_allocation<span class="op">::</span><span class="dt">Float64</span>,</span>
-<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>)<span class="op">::</span><span class="dt">Bool</span></span>
-<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>    <span class="co"># ... setup code ...</span></span>
-<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> basin_id <span class="kw">in</span> basin_ids_subnetwork</span>
-<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a>        idx <span class="op">=</span> basin_id.idx</span>
-<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a>        storage_now <span class="op">=</span> current_storage[idx]</span>
-<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Storage may never become negative. No upper bound: Basin profiles extrapolate</span></span>
-<span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a>        <span class="co"># above their top</span></span>
-<span id="cb21-15"><a href="#cb21-15" aria-hidden="true" tabindex="-1"></a>        JuMP.<span class="fu">set_lower_bound</span>(storage_change[basin_id], <span class="op">-</span>storage_now <span class="op">/</span> scaling.storage)</span>
-<span id="cb21-16"><a href="#cb21-16" aria-hidden="true" tabindex="-1"></a>        <span class="co"># ... rest of constraint updates ...</span></span>
-<span id="cb21-17"><a href="#cb21-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
-<span id="cb21-18"><a href="#cb21-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> errors</span>
-<span id="cb21-19"><a href="#cb21-19" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">set_simulation_data!</span>(</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>    allocation_model<span class="op">::</span><span class="dt">AllocationModel</span>,</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>    basin<span class="op">::</span><span class="dt">Basin</span>,</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>    p<span class="op">::</span><span class="dt">Parameters</span>,</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>    Δt_allocation<span class="op">::</span><span class="dt">Float64</span>,</span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>)<span class="op">::</span><span class="dt">Bool</span></span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>    <span class="co"># ... setup code ...</span></span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> basin_id <span class="kw">in</span> basin_ids_subnetwork</span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a>        idx <span class="op">=</span> basin_id.idx</span>
+<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a>        storage_now <span class="op">=</span> current_storage[idx]</span>
+<span id="cb22-12"><a href="#cb22-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-13"><a href="#cb22-13" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Storage may never become negative. No upper bound: Basin profiles extrapolate</span></span>
+<span id="cb22-14"><a href="#cb22-14" aria-hidden="true" tabindex="-1"></a>        <span class="co"># above their top</span></span>
+<span id="cb22-15"><a href="#cb22-15" aria-hidden="true" tabindex="-1"></a>        JuMP.<span class="fu">set_lower_bound</span>(storage_change[basin_id], <span class="op">-</span>storage_now <span class="op">/</span> scaling.storage)</span>
+<span id="cb22-16"><a href="#cb22-16" aria-hidden="true" tabindex="-1"></a>        <span class="co"># ... rest of constraint updates ...</span></span>
+<span id="cb22-17"><a href="#cb22-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
+<span id="cb22-18"><a href="#cb22-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> errors</span>
+<span id="cb22-19"><a href="#cb22-19" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p><strong>Key concepts:</strong> - Variable bounds are updated each timestep based on the current Basin storage - Only the lower bound is set, so the storage cannot become negative. There is no upper bound, since Basin profiles extrapolate above their top - Forcing terms (precipitation, evaporation) are computed and added to constraints - Errors are detected (e.g.&nbsp;storage outside the valid range) and reported</p>
 </section>
 <section id="connector-node-updates-linearization" class="level2" data-number="4.2">
 <h2 data-number="4.2" class="anchored" data-anchor-id="connector-node-updates-linearization"><span class="header-section-number">4.2</span> Connector Node Updates (Linearization)</h2>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">linearize_connector_node!</span>(</span>
-<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>    allocation_model<span class="op">::</span><span class="dt">AllocationModel</span>,</span>
-<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>    connector_node<span class="op">::</span><span class="dt">AbstractParameterNode</span>,</span>
-<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>    flow_constraint,</span>
-<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>    flow_function<span class="op">::</span><span class="dt">Function</span>,</span>
-<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>    p<span class="op">::</span><span class="dt">Parameters</span>,</span>
-<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>    t_level<span class="op">::</span><span class="dt">Float64</span>,</span>
-<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>    (; problem, scaling) <span class="op">=</span> allocation_model</span>
-<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a>    (; inflow_link, outflow_link) <span class="op">=</span> connector_node</span>
-<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-12"><a href="#cb22-12" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Evaluate at t_level = t + Δt_allocation, the end of the allocation timestep. This is</span></span>
-<span id="cb22-13"><a href="#cb22-13" aria-hidden="true" tabindex="-1"></a>    <span class="co"># semi-implicit, not a fully implicit Euler step: the partial derivatives below are</span></span>
-<span id="cb22-14"><a href="#cb22-14" aria-hidden="true" tabindex="-1"></a>    <span class="co"># frozen at the start of the timestep, only the level unknowns being solved for are the</span></span>
-<span id="cb22-15"><a href="#cb22-15" aria-hidden="true" tabindex="-1"></a>    <span class="co"># end-of-step values.</span></span>
-<span id="cb22-16"><a href="#cb22-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-17"><a href="#cb22-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> node_id <span class="kw">in</span> <span class="fu">only</span>(flow_constraint.axes)</span>
-<span id="cb22-18"><a href="#cb22-18" aria-hidden="true" tabindex="-1"></a>        inflow_id <span class="op">=</span> inflow_link[node_id.idx].link[<span class="fl">1</span>]</span>
-<span id="cb22-19"><a href="#cb22-19" aria-hidden="true" tabindex="-1"></a>        outflow_id <span class="op">=</span> outflow_link[node_id.idx].link[<span class="fl">2</span>]</span>
-<span id="cb22-20"><a href="#cb22-20" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-21"><a href="#cb22-21" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Levels at the linearization point</span></span>
-<span id="cb22-22"><a href="#cb22-22" aria-hidden="true" tabindex="-1"></a>        h_a <span class="op">=</span> <span class="fu">get_level</span>(p, inflow_id, t_level)</span>
-<span id="cb22-23"><a href="#cb22-23" aria-hidden="true" tabindex="-1"></a>        h_b <span class="op">=</span> <span class="fu">get_level</span>(p, outflow_id, t_level)</span>
-<span id="cb22-24"><a href="#cb22-24" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-25"><a href="#cb22-25" aria-hidden="true" tabindex="-1"></a>        constraint <span class="op">=</span> flow_constraint[node_id]</span>
-<span id="cb22-26"><a href="#cb22-26" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-27"><a href="#cb22-27" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Raw (unreduced) flow: the physical low-storage scalar must not be baked in here,</span></span>
-<span id="cb22-28"><a href="#cb22-28" aria-hidden="true" tabindex="-1"></a>        <span class="co"># otherwise it would be double-applied on top of the `low_storage_factor` variable</span></span>
-<span id="cb22-29"><a href="#cb22-29" aria-hidden="true" tabindex="-1"></a>        <span class="co"># set below. This raw value becomes the coefficient of that variable (or, when</span></span>
-<span id="cb22-30"><a href="#cb22-30" aria-hidden="true" tabindex="-1"></a>        <span class="co"># neither side of the connector is a Basin, the plain constraint right-hand side).</span></span>
-<span id="cb22-31"><a href="#cb22-31" aria-hidden="true" tabindex="-1"></a>        q0_raw <span class="op">=</span> <span class="fu">flow_function</span>(</span>
-<span id="cb22-32"><a href="#cb22-32" aria-hidden="true" tabindex="-1"></a>            connector_node, node_id, h_a, h_b, p, t_level;</span>
-<span id="cb22-33"><a href="#cb22-33" aria-hidden="true" tabindex="-1"></a>            apply_low_storage_factor <span class="op">=</span> <span class="cn">false</span>,</span>
-<span id="cb22-34"><a href="#cb22-34" aria-hidden="true" tabindex="-1"></a>        )</span>
-<span id="cb22-35"><a href="#cb22-35" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-36"><a href="#cb22-36" aria-hidden="true" tabindex="-1"></a>        <span class="co"># The basin whose low_storage_factor governs this flow, matching the</span></span>
-<span id="cb22-37"><a href="#cb22-37" aria-hidden="true" tabindex="-1"></a>        <span class="co"># upstream/downstream selection used in the physical layer's</span></span>
-<span id="cb22-38"><a href="#cb22-38" aria-hidden="true" tabindex="-1"></a>        <span class="co"># low_storage_factor_resistance_node.</span></span>
-<span id="cb22-39"><a href="#cb22-39" aria-hidden="true" tabindex="-1"></a>        relevant_id <span class="op">=</span> q0_raw <span class="op">&gt;</span> <span class="fl">0</span> ? inflow_id <span class="op">:</span> outflow_id</span>
-<span id="cb22-40"><a href="#cb22-40" aria-hidden="true" tabindex="-1"></a>        lsf <span class="op">=</span> <span class="fu">get_low_storage_factor</span>(problem, relevant_id)</span>
-<span id="cb22-41"><a href="#cb22-41" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-42"><a href="#cb22-42" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Reset both candidate coefficients every call: flow direction (and hence which</span></span>
-<span id="cb22-43"><a href="#cb22-43" aria-hidden="true" tabindex="-1"></a>        <span class="co"># basin's low_storage_factor applies) can flip between allocation steps.</span></span>
-<span id="cb22-44"><a href="#cb22-44" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> basin_id <span class="kw">in</span> (inflow_id, outflow_id)</span>
-<span id="cb22-45"><a href="#cb22-45" aria-hidden="true" tabindex="-1"></a>            basin_id.<span class="kw">type</span> <span class="op">==</span> NodeType.Basin <span class="op">||</span> <span class="cf">continue</span></span>
-<span id="cb22-46"><a href="#cb22-46" aria-hidden="true" tabindex="-1"></a>            JuMP.<span class="fu">set_normalized_coefficient</span>(constraint, <span class="fu">get_low_storage_factor</span>(problem, basin_id), <span class="fl">0.0</span>)</span>
-<span id="cb22-47"><a href="#cb22-47" aria-hidden="true" tabindex="-1"></a>        <span class="cf">end</span></span>
-<span id="cb22-48"><a href="#cb22-48" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-49"><a href="#cb22-49" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> lsf isa JuMP.VariableRef</span>
-<span id="cb22-50"><a href="#cb22-50" aria-hidden="true" tabindex="-1"></a>            JuMP.<span class="fu">set_normalized_coefficient</span>(constraint, lsf, <span class="op">-</span>q0_raw <span class="op">/</span> scaling.flow)</span>
-<span id="cb22-51"><a href="#cb22-51" aria-hidden="true" tabindex="-1"></a>            JuMP.<span class="fu">set_normalized_rhs</span>(constraint, <span class="fl">0.0</span>)</span>
-<span id="cb22-52"><a href="#cb22-52" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span></span>
-<span id="cb22-53"><a href="#cb22-53" aria-hidden="true" tabindex="-1"></a>            JuMP.<span class="fu">set_normalized_rhs</span>(constraint, q0_raw <span class="op">/</span> scaling.flow)</span>
-<span id="cb22-54"><a href="#cb22-54" aria-hidden="true" tabindex="-1"></a>        <span class="cf">end</span></span>
-<span id="cb22-55"><a href="#cb22-55" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-56"><a href="#cb22-56" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Only linearize if the level comes from a Basin, since only then it is a</span></span>
-<span id="cb22-57"><a href="#cb22-57" aria-hidden="true" tabindex="-1"></a>        <span class="co"># decision variable of the problem. The derivatives keep using the</span></span>
-<span id="cb22-58"><a href="#cb22-58" aria-hidden="true" tabindex="-1"></a>        <span class="co"># factor-included flow function (default `apply_low_storage_factor = true`):</span></span>
-<span id="cb22-59"><a href="#cb22-59" aria-hidden="true" tabindex="-1"></a>        <span class="co"># since the physical low-storage scalar is a constant w.r.t. level at the</span></span>
-<span id="cb22-60"><a href="#cb22-60" aria-hidden="true" tabindex="-1"></a>        <span class="co"># linearization point, this yields the correctly-scaled ∂q/∂h for free.</span></span>
-<span id="cb22-61"><a href="#cb22-61" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> inflow_id.<span class="kw">type</span> <span class="op">==</span> NodeType.Basin</span>
-<span id="cb22-62"><a href="#cb22-62" aria-hidden="true" tabindex="-1"></a>            ∂q∂h_a <span class="op">=</span> <span class="fu">forward_diff</span>(</span>
-<span id="cb22-63"><a href="#cb22-63" aria-hidden="true" tabindex="-1"></a>                level_a <span class="op">-&gt;</span> <span class="fu">flow_function</span>(connector_node, node_id, level_a, h_b, p, t_level),</span>
-<span id="cb22-64"><a href="#cb22-64" aria-hidden="true" tabindex="-1"></a>                h_a,</span>
-<span id="cb22-65"><a href="#cb22-65" aria-hidden="true" tabindex="-1"></a>            )</span>
-<span id="cb22-66"><a href="#cb22-66" aria-hidden="true" tabindex="-1"></a>            <span class="fu">set_partial_derivative_wrt_level!</span>(</span>
-<span id="cb22-67"><a href="#cb22-67" aria-hidden="true" tabindex="-1"></a>                allocation_model, inflow_id, ∂q∂h_a, p, constraint,</span>
-<span id="cb22-68"><a href="#cb22-68" aria-hidden="true" tabindex="-1"></a>            )</span>
-<span id="cb22-69"><a href="#cb22-69" aria-hidden="true" tabindex="-1"></a>        <span class="cf">end</span></span>
-<span id="cb22-70"><a href="#cb22-70" aria-hidden="true" tabindex="-1"></a>        <span class="co"># ... same for outflow_id ...</span></span>
-<span id="cb22-71"><a href="#cb22-71" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
-<span id="cb22-72"><a href="#cb22-72" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">linearize_connector_node!</span>(</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>    allocation_model<span class="op">::</span><span class="dt">AllocationModel</span>,</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>    connector_node<span class="op">::</span><span class="dt">AbstractParameterNode</span>,</span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>    flow_constraint,</span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>    flow_function<span class="op">::</span><span class="dt">Function</span>,</span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>    p<span class="op">::</span><span class="dt">Parameters</span>,</span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>    t_level<span class="op">::</span><span class="dt">Float64</span>,</span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a>    (; problem, scaling) <span class="op">=</span> allocation_model</span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a>    (; inflow_link, outflow_link) <span class="op">=</span> connector_node</span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-12"><a href="#cb23-12" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Evaluate at t_level = t + Δt_allocation, the end of the allocation timestep. This is</span></span>
+<span id="cb23-13"><a href="#cb23-13" aria-hidden="true" tabindex="-1"></a>    <span class="co"># semi-implicit, not a fully implicit Euler step: the partial derivatives below are</span></span>
+<span id="cb23-14"><a href="#cb23-14" aria-hidden="true" tabindex="-1"></a>    <span class="co"># frozen at the start of the timestep, only the level unknowns being solved for are the</span></span>
+<span id="cb23-15"><a href="#cb23-15" aria-hidden="true" tabindex="-1"></a>    <span class="co"># end-of-step values.</span></span>
+<span id="cb23-16"><a href="#cb23-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-17"><a href="#cb23-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> node_id <span class="kw">in</span> <span class="fu">only</span>(flow_constraint.axes)</span>
+<span id="cb23-18"><a href="#cb23-18" aria-hidden="true" tabindex="-1"></a>        inflow_id <span class="op">=</span> inflow_link[node_id.idx].link[<span class="fl">1</span>]</span>
+<span id="cb23-19"><a href="#cb23-19" aria-hidden="true" tabindex="-1"></a>        outflow_id <span class="op">=</span> outflow_link[node_id.idx].link[<span class="fl">2</span>]</span>
+<span id="cb23-20"><a href="#cb23-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-21"><a href="#cb23-21" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Levels at the linearization point</span></span>
+<span id="cb23-22"><a href="#cb23-22" aria-hidden="true" tabindex="-1"></a>        h_a <span class="op">=</span> <span class="fu">get_level</span>(p, inflow_id, t_level)</span>
+<span id="cb23-23"><a href="#cb23-23" aria-hidden="true" tabindex="-1"></a>        h_b <span class="op">=</span> <span class="fu">get_level</span>(p, outflow_id, t_level)</span>
+<span id="cb23-24"><a href="#cb23-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-25"><a href="#cb23-25" aria-hidden="true" tabindex="-1"></a>        constraint <span class="op">=</span> flow_constraint[node_id]</span>
+<span id="cb23-26"><a href="#cb23-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-27"><a href="#cb23-27" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Raw (unreduced) flow: the physical low-storage scalar must not be baked in here,</span></span>
+<span id="cb23-28"><a href="#cb23-28" aria-hidden="true" tabindex="-1"></a>        <span class="co"># otherwise it would be double-applied on top of the `low_storage_factor` variable</span></span>
+<span id="cb23-29"><a href="#cb23-29" aria-hidden="true" tabindex="-1"></a>        <span class="co"># set below. This raw value becomes the coefficient of that variable (or, when</span></span>
+<span id="cb23-30"><a href="#cb23-30" aria-hidden="true" tabindex="-1"></a>        <span class="co"># neither side of the connector is a Basin, the plain constraint right-hand side).</span></span>
+<span id="cb23-31"><a href="#cb23-31" aria-hidden="true" tabindex="-1"></a>        q0_raw <span class="op">=</span> <span class="fu">flow_function</span>(</span>
+<span id="cb23-32"><a href="#cb23-32" aria-hidden="true" tabindex="-1"></a>            connector_node, node_id, h_a, h_b, p, t_level;</span>
+<span id="cb23-33"><a href="#cb23-33" aria-hidden="true" tabindex="-1"></a>            apply_low_storage_factor <span class="op">=</span> <span class="cn">false</span>,</span>
+<span id="cb23-34"><a href="#cb23-34" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb23-35"><a href="#cb23-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-36"><a href="#cb23-36" aria-hidden="true" tabindex="-1"></a>        <span class="co"># The basin whose low_storage_factor governs this flow, matching the</span></span>
+<span id="cb23-37"><a href="#cb23-37" aria-hidden="true" tabindex="-1"></a>        <span class="co"># upstream/downstream selection used in the physical layer's</span></span>
+<span id="cb23-38"><a href="#cb23-38" aria-hidden="true" tabindex="-1"></a>        <span class="co"># low_storage_factor_resistance_node.</span></span>
+<span id="cb23-39"><a href="#cb23-39" aria-hidden="true" tabindex="-1"></a>        relevant_id <span class="op">=</span> q0_raw <span class="op">&gt;</span> <span class="fl">0</span> ? inflow_id <span class="op">:</span> outflow_id</span>
+<span id="cb23-40"><a href="#cb23-40" aria-hidden="true" tabindex="-1"></a>        lsf <span class="op">=</span> <span class="fu">get_low_storage_factor</span>(problem, relevant_id)</span>
+<span id="cb23-41"><a href="#cb23-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-42"><a href="#cb23-42" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Reset both candidate coefficients every call: flow direction (and hence which</span></span>
+<span id="cb23-43"><a href="#cb23-43" aria-hidden="true" tabindex="-1"></a>        <span class="co"># basin's low_storage_factor applies) can flip between allocation steps.</span></span>
+<span id="cb23-44"><a href="#cb23-44" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> basin_id <span class="kw">in</span> (inflow_id, outflow_id)</span>
+<span id="cb23-45"><a href="#cb23-45" aria-hidden="true" tabindex="-1"></a>            basin_id.<span class="kw">type</span> <span class="op">==</span> NodeType.Basin <span class="op">||</span> <span class="cf">continue</span></span>
+<span id="cb23-46"><a href="#cb23-46" aria-hidden="true" tabindex="-1"></a>            JuMP.<span class="fu">set_normalized_coefficient</span>(constraint, <span class="fu">get_low_storage_factor</span>(problem, basin_id), <span class="fl">0.0</span>)</span>
+<span id="cb23-47"><a href="#cb23-47" aria-hidden="true" tabindex="-1"></a>        <span class="cf">end</span></span>
+<span id="cb23-48"><a href="#cb23-48" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-49"><a href="#cb23-49" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> lsf isa JuMP.VariableRef</span>
+<span id="cb23-50"><a href="#cb23-50" aria-hidden="true" tabindex="-1"></a>            JuMP.<span class="fu">set_normalized_coefficient</span>(constraint, lsf, <span class="op">-</span>q0_raw <span class="op">/</span> scaling.flow)</span>
+<span id="cb23-51"><a href="#cb23-51" aria-hidden="true" tabindex="-1"></a>            JuMP.<span class="fu">set_normalized_rhs</span>(constraint, <span class="fl">0.0</span>)</span>
+<span id="cb23-52"><a href="#cb23-52" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span></span>
+<span id="cb23-53"><a href="#cb23-53" aria-hidden="true" tabindex="-1"></a>            JuMP.<span class="fu">set_normalized_rhs</span>(constraint, q0_raw <span class="op">/</span> scaling.flow)</span>
+<span id="cb23-54"><a href="#cb23-54" aria-hidden="true" tabindex="-1"></a>        <span class="cf">end</span></span>
+<span id="cb23-55"><a href="#cb23-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-56"><a href="#cb23-56" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Only linearize if the level comes from a Basin, since only then it is a</span></span>
+<span id="cb23-57"><a href="#cb23-57" aria-hidden="true" tabindex="-1"></a>        <span class="co"># decision variable of the problem. The derivatives keep using the</span></span>
+<span id="cb23-58"><a href="#cb23-58" aria-hidden="true" tabindex="-1"></a>        <span class="co"># factor-included flow function (default `apply_low_storage_factor = true`):</span></span>
+<span id="cb23-59"><a href="#cb23-59" aria-hidden="true" tabindex="-1"></a>        <span class="co"># since the physical low-storage scalar is a constant w.r.t. level at the</span></span>
+<span id="cb23-60"><a href="#cb23-60" aria-hidden="true" tabindex="-1"></a>        <span class="co"># linearization point, this yields the correctly-scaled ∂q/∂h for free.</span></span>
+<span id="cb23-61"><a href="#cb23-61" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> inflow_id.<span class="kw">type</span> <span class="op">==</span> NodeType.Basin</span>
+<span id="cb23-62"><a href="#cb23-62" aria-hidden="true" tabindex="-1"></a>            ∂q∂h_a <span class="op">=</span> <span class="fu">forward_diff</span>(</span>
+<span id="cb23-63"><a href="#cb23-63" aria-hidden="true" tabindex="-1"></a>                level_a <span class="op">-&gt;</span> <span class="fu">flow_function</span>(connector_node, node_id, level_a, h_b, p, t_level),</span>
+<span id="cb23-64"><a href="#cb23-64" aria-hidden="true" tabindex="-1"></a>                h_a,</span>
+<span id="cb23-65"><a href="#cb23-65" aria-hidden="true" tabindex="-1"></a>            )</span>
+<span id="cb23-66"><a href="#cb23-66" aria-hidden="true" tabindex="-1"></a>            <span class="fu">set_partial_derivative_wrt_level!</span>(</span>
+<span id="cb23-67"><a href="#cb23-67" aria-hidden="true" tabindex="-1"></a>                allocation_model, inflow_id, ∂q∂h_a, p, constraint,</span>
+<span id="cb23-68"><a href="#cb23-68" aria-hidden="true" tabindex="-1"></a>            )</span>
+<span id="cb23-69"><a href="#cb23-69" aria-hidden="true" tabindex="-1"></a>        <span class="cf">end</span></span>
+<span id="cb23-70"><a href="#cb23-70" aria-hidden="true" tabindex="-1"></a>        <span class="co"># ... same for outflow_id ...</span></span>
+<span id="cb23-71"><a href="#cb23-71" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
+<span id="cb23-72"><a href="#cb23-72" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p><strong>Key concepts:</strong> - Derivatives are computed with automatic differentiation (<code>forward_diff</code>) of the same flow functions the physical layer uses, so the allocation layer cannot drift from the physics - Only Basin levels are decision variables; LevelBoundary and Terminal levels enter through the <code>low_storage_factor</code> coefficient or the constant right-hand side - Semi-implicit, not fully implicit: Basin levels and LevelBoundary levels are evaluated at the end of the timestep (<span class="math inline">\(t + \Delta t\)</span>), but the linearization coefficients (∂q/∂h, and the <code>q0_raw</code> used for the <code>low_storage_factor</code> coefficient) are all computed from state known at the start of the timestep — no nonlinear solve is performed. Other inputs have their own evaluation times: schedule rates (UserDemand, FlowDemand, return factor) are read at the start of the timestep, FlowBoundary flow rates are read at the intervention time <code>t_known</code>, and LevelDemand levels at the end of the timestep. For Basins <code>get_level</code> returns the level at the start of the timestep, which is exactly the point we want to linearize around - This same mechanism is used for LinearResistance, ManningResistance, TabulatedRatingCurve, Pump and Outlet, so the <code>low_storage_factor</code> variable uniformly governs the low-storage reduction of every connector node type instead of being baked into a stale physical-layer scalar</p>
 </section>
 <section id="demand-updates" class="level2" data-number="4.3">
 <h2 data-number="4.3" class="anchored" data-anchor-id="demand-updates"><span class="header-section-number">4.3</span> Demand Updates</h2>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">set_demands!</span>(</span>
-<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>    allocation_model<span class="op">::</span><span class="dt">AllocationModel</span>,</span>
-<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>    node<span class="op">::</span><span class="dt">Union{UserDemand, FlowDemand}</span>,</span>
-<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>    <span class="co"># ... other parameters</span></span>
-<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>)<span class="op">::</span><span class="dt">Nothing</span></span>
-<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> node_id <span class="kw">in</span> demand_node_ids_subnetwork</span>
-<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> demand_priority <span class="kw">in</span> <span class="fu">DemandPriorityIterator</span>(node_id, p_independent)</span>
-<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a>            <span class="co"># Get current demand from the physical layer, in scaled units</span></span>
-<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a>            demand <span class="op">=</span> <span class="fu">get_demand</span>(node, node_id, demand_priority, t) <span class="op">/</span> scaling.flow</span>
-<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a>            <span class="co"># Update error constraints with the current demand</span></span>
-<span id="cb23-12"><a href="#cb23-12" aria-hidden="true" tabindex="-1"></a>            <span class="cf">for</span> objective_ord <span class="kw">in</span> (<span class="op">:</span>first, <span class="op">:</span>second)</span>
-<span id="cb23-13"><a href="#cb23-13" aria-hidden="true" tabindex="-1"></a>                error_constraint <span class="op">=</span></span>
-<span id="cb23-14"><a href="#cb23-14" aria-hidden="true" tabindex="-1"></a>                    node_relative_error_constraint[node_id, demand_priority, objective_ord]</span>
-<span id="cb23-15"><a href="#cb23-15" aria-hidden="true" tabindex="-1"></a>                JuMP.<span class="fu">set_normalized_coefficient</span>(</span>
-<span id="cb23-16"><a href="#cb23-16" aria-hidden="true" tabindex="-1"></a>                    error_constraint,</span>
-<span id="cb23-17"><a href="#cb23-17" aria-hidden="true" tabindex="-1"></a>                    node_error[node_id, demand_priority, objective_ord],</span>
-<span id="cb23-18"><a href="#cb23-18" aria-hidden="true" tabindex="-1"></a>                    demand,</span>
-<span id="cb23-19"><a href="#cb23-19" aria-hidden="true" tabindex="-1"></a>                )</span>
-<span id="cb23-20"><a href="#cb23-20" aria-hidden="true" tabindex="-1"></a>                JuMP.<span class="fu">set_normalized_rhs</span>(error_constraint, demand)</span>
-<span id="cb23-21"><a href="#cb23-21" aria-hidden="true" tabindex="-1"></a>            <span class="cf">end</span></span>
-<span id="cb23-22"><a href="#cb23-22" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-23"><a href="#cb23-23" aria-hidden="true" tabindex="-1"></a>            <span class="co"># Update upper bound on allocated variable</span></span>
-<span id="cb23-24"><a href="#cb23-24" aria-hidden="true" tabindex="-1"></a>            JuMP.<span class="fu">set_upper_bound</span>(node_allocated[node_id, demand_priority], demand)</span>
-<span id="cb23-25"><a href="#cb23-25" aria-hidden="true" tabindex="-1"></a>        <span class="cf">end</span></span>
-<span id="cb23-26"><a href="#cb23-26" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
-<span id="cb23-27"><a href="#cb23-27" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="cn">nothing</span></span>
-<span id="cb23-28"><a href="#cb23-28" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb24"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">set_demands!</span>(</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>    allocation_model<span class="op">::</span><span class="dt">AllocationModel</span>,</span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>    node<span class="op">::</span><span class="dt">Union{UserDemand, FlowDemand}</span>,</span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>    <span class="co"># ... other parameters</span></span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>)<span class="op">::</span><span class="dt">Nothing</span></span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> node_id <span class="kw">in</span> demand_node_ids_subnetwork</span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> demand_priority <span class="kw">in</span> <span class="fu">DemandPriorityIterator</span>(node_id, p_independent)</span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a>            <span class="co"># Get current demand from the physical layer, in scaled units</span></span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a>            demand <span class="op">=</span> <span class="fu">get_demand</span>(node, node_id, demand_priority, t) <span class="op">/</span> scaling.flow</span>
+<span id="cb24-10"><a href="#cb24-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-11"><a href="#cb24-11" aria-hidden="true" tabindex="-1"></a>            <span class="co"># Update error constraints with the current demand</span></span>
+<span id="cb24-12"><a href="#cb24-12" aria-hidden="true" tabindex="-1"></a>            <span class="cf">for</span> objective_ord <span class="kw">in</span> (<span class="op">:</span>first, <span class="op">:</span>second)</span>
+<span id="cb24-13"><a href="#cb24-13" aria-hidden="true" tabindex="-1"></a>                error_constraint <span class="op">=</span></span>
+<span id="cb24-14"><a href="#cb24-14" aria-hidden="true" tabindex="-1"></a>                    node_relative_error_constraint[node_id, demand_priority, objective_ord]</span>
+<span id="cb24-15"><a href="#cb24-15" aria-hidden="true" tabindex="-1"></a>                JuMP.<span class="fu">set_normalized_coefficient</span>(</span>
+<span id="cb24-16"><a href="#cb24-16" aria-hidden="true" tabindex="-1"></a>                    error_constraint,</span>
+<span id="cb24-17"><a href="#cb24-17" aria-hidden="true" tabindex="-1"></a>                    node_error[node_id, demand_priority, objective_ord],</span>
+<span id="cb24-18"><a href="#cb24-18" aria-hidden="true" tabindex="-1"></a>                    demand,</span>
+<span id="cb24-19"><a href="#cb24-19" aria-hidden="true" tabindex="-1"></a>                )</span>
+<span id="cb24-20"><a href="#cb24-20" aria-hidden="true" tabindex="-1"></a>                JuMP.<span class="fu">set_normalized_rhs</span>(error_constraint, demand)</span>
+<span id="cb24-21"><a href="#cb24-21" aria-hidden="true" tabindex="-1"></a>            <span class="cf">end</span></span>
+<span id="cb24-22"><a href="#cb24-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-23"><a href="#cb24-23" aria-hidden="true" tabindex="-1"></a>            <span class="co"># Update upper bound on allocated variable</span></span>
+<span id="cb24-24"><a href="#cb24-24" aria-hidden="true" tabindex="-1"></a>            JuMP.<span class="fu">set_upper_bound</span>(node_allocated[node_id, demand_priority], demand)</span>
+<span id="cb24-25"><a href="#cb24-25" aria-hidden="true" tabindex="-1"></a>        <span class="cf">end</span></span>
+<span id="cb24-26"><a href="#cb24-26" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
+<span id="cb24-27"><a href="#cb24-27" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="cn">nothing</span></span>
+<span id="cb24-28"><a href="#cb24-28" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p><strong>Key concepts:</strong> - Demands are time-varying and interpolated from input tables - Constraint coefficients are updated to reflect current demands - The demands are stored in the problem already divided by <code>scaling.flow</code>, so the bounds of the allocated variables are directly usable as scaled flow bounds elsewhere (see <a href="#flow-capacity-bounds">Flow capacity bounds</a>) - Upper bounds on allocation variables ensure allocated ≤ demanded</p>
 </section>
 <section id="flow-capacity-bounds" class="level2" data-number="4.4">
@@ -1016,48 +1034,48 @@ G^p = \sum_{v \in V_p} w_v^p E_v^p.
 <li><code>update_flow_demand_variable_bounds!</code> derives the bounds of the FlowDemand helper variables from the now finalized flow bounds.</li>
 </ol>
 <p>All of these use the helper <code>set_variable_bounds!</code>, where an infinite bound means that no JuMP bound is set at all:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb24"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">set_variable_bounds!</span>(</span>
-<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>    variable<span class="op">::</span><span class="dt">JuMP.VariableRef</span>,</span>
-<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>    lower<span class="op">::</span><span class="dt">Float64</span>,</span>
-<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>    upper<span class="op">::</span><span class="dt">Float64</span>,</span>
-<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>)<span class="op">::</span><span class="dt">Nothing</span></span>
-<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>    JuMP.<span class="fu">has_lower_bound</span>(variable) <span class="op">&amp;&amp;</span> JuMP.<span class="fu">delete_lower_bound</span>(variable)</span>
-<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a>    JuMP.<span class="fu">has_upper_bound</span>(variable) <span class="op">&amp;&amp;</span> JuMP.<span class="fu">delete_upper_bound</span>(variable)</span>
-<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">isfinite</span>(lower) <span class="op">&amp;&amp;</span> JuMP.<span class="fu">set_lower_bound</span>(variable, lower)</span>
-<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">isfinite</span>(upper) <span class="op">&amp;&amp;</span> JuMP.<span class="fu">set_upper_bound</span>(variable, upper)</span>
-<span id="cb24-10"><a href="#cb24-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="cn">nothing</span></span>
-<span id="cb24-11"><a href="#cb24-11" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">set_variable_bounds!</span>(</span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>    variable<span class="op">::</span><span class="dt">JuMP.VariableRef</span>,</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>    lower<span class="op">::</span><span class="dt">Float64</span>,</span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>    upper<span class="op">::</span><span class="dt">Float64</span>,</span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>)<span class="op">::</span><span class="dt">Nothing</span></span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>    JuMP.<span class="fu">has_lower_bound</span>(variable) <span class="op">&amp;&amp;</span> JuMP.<span class="fu">delete_lower_bound</span>(variable)</span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>    JuMP.<span class="fu">has_upper_bound</span>(variable) <span class="op">&amp;&amp;</span> JuMP.<span class="fu">delete_upper_bound</span>(variable)</span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">isfinite</span>(lower) <span class="op">&amp;&amp;</span> JuMP.<span class="fu">set_lower_bound</span>(variable, lower)</span>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">isfinite</span>(upper) <span class="op">&amp;&amp;</span> JuMP.<span class="fu">set_upper_bound</span>(variable, upper)</span>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="cn">nothing</span></span>
+<span id="cb25-11"><a href="#cb25-11" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section id="physical-capacities" class="level3" data-number="4.4.1">
 <h3 data-number="4.4.1" class="anchored" data-anchor-id="physical-capacities"><span class="header-section-number">4.4.1</span> Physical capacities</h3>
 <p>Each flow link is bounded by both of the nodes it connects, so the bounds are the intersection of the intervals returned by <code>connector_flow_capacity_bounds</code> for either node:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">update_flow_variable_bounds!</span>(</span>
-<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>    allocation_model<span class="op">::</span><span class="dt">AllocationModel</span>,</span>
-<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>    integrator<span class="op">::</span><span class="dt">DEIntegrator</span>,</span>
-<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>    Δt_allocation<span class="op">::</span><span class="dt">Float64</span>,</span>
-<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>)<span class="op">::</span><span class="dt">Nothing</span></span>
-<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>    (; p, t) <span class="op">=</span> integrator</span>
-<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>    (; problem, scaling, flow_links_subnetwork) <span class="op">=</span> allocation_model</span>
-<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>    flow <span class="op">=</span> problem[<span class="op">:</span>flow]</span>
-<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> flow_link <span class="kw">in</span> flow_links_subnetwork</span>
-<span id="cb25-11"><a href="#cb25-11" aria-hidden="true" tabindex="-1"></a>        flow_var <span class="op">=</span> flow[flow_link]</span>
-<span id="cb25-12"><a href="#cb25-12" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Flows out of FlowBoundary nodes are fixed to the boundary flow</span></span>
-<span id="cb25-13"><a href="#cb25-13" aria-hidden="true" tabindex="-1"></a>        JuMP.<span class="fu">is_fixed</span>(flow_var) <span class="op">&amp;&amp;</span> <span class="cf">continue</span></span>
-<span id="cb25-14"><a href="#cb25-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-15"><a href="#cb25-15" aria-hidden="true" tabindex="-1"></a>        lower, upper <span class="op">=</span> <span class="op">-</span><span class="cn">Inf</span>, <span class="cn">Inf</span></span>
-<span id="cb25-16"><a href="#cb25-16" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> node_id <span class="kw">in</span> flow_link</span>
-<span id="cb25-17"><a href="#cb25-17" aria-hidden="true" tabindex="-1"></a>            node_lower, node_upper <span class="op">=</span> <span class="fu">connector_flow_capacity_bounds</span>(</span>
-<span id="cb25-18"><a href="#cb25-18" aria-hidden="true" tabindex="-1"></a>                allocation_model, node_id, p, t, Δt_allocation,</span>
-<span id="cb25-19"><a href="#cb25-19" aria-hidden="true" tabindex="-1"></a>            )</span>
-<span id="cb25-20"><a href="#cb25-20" aria-hidden="true" tabindex="-1"></a>            lower <span class="op">=</span> <span class="fu">max</span>(lower, node_lower)</span>
-<span id="cb25-21"><a href="#cb25-21" aria-hidden="true" tabindex="-1"></a>            upper <span class="op">=</span> <span class="fu">min</span>(upper, node_upper)</span>
-<span id="cb25-22"><a href="#cb25-22" aria-hidden="true" tabindex="-1"></a>        <span class="cf">end</span></span>
-<span id="cb25-23"><a href="#cb25-23" aria-hidden="true" tabindex="-1"></a>        lower <span class="op">≤</span> upper <span class="op">||</span></span>
-<span id="cb25-24"><a href="#cb25-24" aria-hidden="true" tabindex="-1"></a>            <span class="fu">error</span>(<span class="st">"Empty flow capacity interval [</span><span class="sc">$</span>lower<span class="st">, </span><span class="sc">$</span>upper<span class="st">] for </span><span class="sc">$</span>flow_link<span class="st">."</span>)</span>
-<span id="cb25-25"><a href="#cb25-25" aria-hidden="true" tabindex="-1"></a>        <span class="fu">set_variable_bounds!</span>(flow_var, lower <span class="op">/</span> scaling.flow, upper <span class="op">/</span> scaling.flow)</span>
-<span id="cb25-26"><a href="#cb25-26" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
-<span id="cb25-27"><a href="#cb25-27" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="cn">nothing</span></span>
-<span id="cb25-28"><a href="#cb25-28" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb26"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">update_flow_variable_bounds!</span>(</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>    allocation_model<span class="op">::</span><span class="dt">AllocationModel</span>,</span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>    integrator<span class="op">::</span><span class="dt">DEIntegrator</span>,</span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>    Δt_allocation<span class="op">::</span><span class="dt">Float64</span>,</span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>)<span class="op">::</span><span class="dt">Nothing</span></span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>    (; p, t) <span class="op">=</span> integrator</span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a>    (; problem, scaling, flow_links_subnetwork) <span class="op">=</span> allocation_model</span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a>    flow <span class="op">=</span> problem[<span class="op">:</span>flow]</span>
+<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-10"><a href="#cb26-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> flow_link <span class="kw">in</span> flow_links_subnetwork</span>
+<span id="cb26-11"><a href="#cb26-11" aria-hidden="true" tabindex="-1"></a>        flow_var <span class="op">=</span> flow[flow_link]</span>
+<span id="cb26-12"><a href="#cb26-12" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Flows out of FlowBoundary nodes are fixed to the boundary flow</span></span>
+<span id="cb26-13"><a href="#cb26-13" aria-hidden="true" tabindex="-1"></a>        JuMP.<span class="fu">is_fixed</span>(flow_var) <span class="op">&amp;&amp;</span> <span class="cf">continue</span></span>
+<span id="cb26-14"><a href="#cb26-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-15"><a href="#cb26-15" aria-hidden="true" tabindex="-1"></a>        lower, upper <span class="op">=</span> <span class="op">-</span><span class="cn">Inf</span>, <span class="cn">Inf</span></span>
+<span id="cb26-16"><a href="#cb26-16" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> node_id <span class="kw">in</span> flow_link</span>
+<span id="cb26-17"><a href="#cb26-17" aria-hidden="true" tabindex="-1"></a>            node_lower, node_upper <span class="op">=</span> <span class="fu">connector_flow_capacity_bounds</span>(</span>
+<span id="cb26-18"><a href="#cb26-18" aria-hidden="true" tabindex="-1"></a>                allocation_model, node_id, p, t, Δt_allocation,</span>
+<span id="cb26-19"><a href="#cb26-19" aria-hidden="true" tabindex="-1"></a>            )</span>
+<span id="cb26-20"><a href="#cb26-20" aria-hidden="true" tabindex="-1"></a>            lower <span class="op">=</span> <span class="fu">max</span>(lower, node_lower)</span>
+<span id="cb26-21"><a href="#cb26-21" aria-hidden="true" tabindex="-1"></a>            upper <span class="op">=</span> <span class="fu">min</span>(upper, node_upper)</span>
+<span id="cb26-22"><a href="#cb26-22" aria-hidden="true" tabindex="-1"></a>        <span class="cf">end</span></span>
+<span id="cb26-23"><a href="#cb26-23" aria-hidden="true" tabindex="-1"></a>        lower <span class="op">≤</span> upper <span class="op">||</span></span>
+<span id="cb26-24"><a href="#cb26-24" aria-hidden="true" tabindex="-1"></a>            <span class="fu">error</span>(<span class="st">"Empty flow capacity interval [</span><span class="sc">$</span>lower<span class="st">, </span><span class="sc">$</span>upper<span class="st">] for </span><span class="sc">$</span>flow_link<span class="st">."</span>)</span>
+<span id="cb26-25"><a href="#cb26-25" aria-hidden="true" tabindex="-1"></a>        <span class="fu">set_variable_bounds!</span>(flow_var, lower <span class="op">/</span> scaling.flow, upper <span class="op">/</span> scaling.flow)</span>
+<span id="cb26-26"><a href="#cb26-26" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
+<span id="cb26-27"><a href="#cb26-27" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="cn">nothing</span></span>
+<span id="cb26-28"><a href="#cb26-28" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p><code>connector_flow_capacity_bounds</code> dispatches on the node type:</p>
 <ul>
 <li><strong>Pump and Outlet</strong>: the tightest <code>min_flow_rate</code> and <code>max_flow_rate</code> over <span class="math inline">\([t, t + \Delta t]\)</span>, since allocation assigns a single flow rate for the whole timestep;</li>
@@ -1070,54 +1088,54 @@ G^p = \sum_{v \in V_p} w_v^p E_v^p.
 <section id="bounds-from-the-linearized-flow-relation" class="level3" data-number="4.4.2">
 <h3 data-number="4.4.2" class="anchored" data-anchor-id="bounds-from-the-linearized-flow-relation"><span class="header-section-number">4.4.2</span> Bounds from the linearized flow relation</h3>
 <p>For nodes whose flow follows from a linearized flow-level relation, the tightest possible bounds follow from evaluating that same linearization over the reachable level changes:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb26"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">linearized_flow_bounds</span>(</span>
-<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>    allocation_model, connector_node, flow_function, node_id, p, t, Δt_allocation,</span>
-<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>)<span class="op">::</span><span class="dt">Tuple{Float64, Float64}</span></span>
-<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>    t_after <span class="op">=</span> t <span class="op">+</span> Δt_allocation</span>
-<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>    inflow_id <span class="op">=</span> connector_node.inflow_link[node_id.idx].link[<span class="fl">1</span>]</span>
-<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>    outflow_id <span class="op">=</span> connector_node.outflow_link[node_id.idx].link[<span class="fl">2</span>]</span>
-<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a>    h_a <span class="op">=</span> <span class="fu">get_level</span>(p, inflow_id, t_after)</span>
-<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a>    h_b <span class="op">=</span> <span class="fu">get_level</span>(p, outflow_id, t_after)</span>
-<span id="cb26-10"><a href="#cb26-10" aria-hidden="true" tabindex="-1"></a>    q0 <span class="op">=</span> <span class="fu">flow_function</span>(connector_node, node_id, h_a, h_b, p, t_after)</span>
-<span id="cb26-11"><a href="#cb26-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb26-12"><a href="#cb26-12" aria-hidden="true" tabindex="-1"></a>    lower, upper <span class="op">=</span> q0, q0</span>
-<span id="cb26-13"><a href="#cb26-13" aria-hidden="true" tabindex="-1"></a>    ∂q∂h_a <span class="op">=</span> <span class="fu">forward_diff</span>(</span>
-<span id="cb26-14"><a href="#cb26-14" aria-hidden="true" tabindex="-1"></a>        level_a <span class="op">-&gt;</span> <span class="fu">flow_function</span>(connector_node, node_id, level_a, h_b, p, t_after), h_a,</span>
-<span id="cb26-15"><a href="#cb26-15" aria-hidden="true" tabindex="-1"></a>    )</span>
-<span id="cb26-16"><a href="#cb26-16" aria-hidden="true" tabindex="-1"></a>    ∂q∂h_b <span class="op">=</span> <span class="fu">forward_diff</span>(</span>
-<span id="cb26-17"><a href="#cb26-17" aria-hidden="true" tabindex="-1"></a>        level_b <span class="op">-&gt;</span> <span class="fu">flow_function</span>(connector_node, node_id, h_a, level_b, p, t_after), h_b,</span>
-<span id="cb26-18"><a href="#cb26-18" aria-hidden="true" tabindex="-1"></a>    )</span>
-<span id="cb26-19"><a href="#cb26-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> (∂q∂h, level_id) <span class="kw">in</span> ((∂q∂h_a, inflow_id), (∂q∂h_b, outflow_id))</span>
-<span id="cb26-20"><a href="#cb26-20" aria-hidden="true" tabindex="-1"></a>        <span class="fu">iszero</span>(∂q∂h) <span class="op">&amp;&amp;</span> <span class="cf">continue</span></span>
-<span id="cb26-21"><a href="#cb26-21" aria-hidden="true" tabindex="-1"></a>        Δh_min, Δh_max <span class="op">=</span> <span class="fu">allocation_level_change_bounds</span>(allocation_model, p, level_id)</span>
-<span id="cb26-22"><a href="#cb26-22" aria-hidden="true" tabindex="-1"></a>        Δq_min, Δq_max <span class="op">=</span> <span class="fu">minmax</span>(∂q∂h <span class="op">*</span> Δh_min, ∂q∂h <span class="op">*</span> Δh_max)</span>
-<span id="cb26-23"><a href="#cb26-23" aria-hidden="true" tabindex="-1"></a>        lower <span class="op">+=</span> Δq_min</span>
-<span id="cb26-24"><a href="#cb26-24" aria-hidden="true" tabindex="-1"></a>        upper <span class="op">+=</span> Δq_max</span>
-<span id="cb26-25"><a href="#cb26-25" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
-<span id="cb26-26"><a href="#cb26-26" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> (lower, upper)</span>
-<span id="cb26-27"><a href="#cb26-27" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>The reachable level change follows from the bounds on the storage change decision variable, converted with the same linearized profile <span class="math inline">\(\Delta h = \Delta S / A^n\)</span> the constraints use:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">allocation_level_change_bounds</span>(</span>
-<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>    allocation_model<span class="op">::</span><span class="dt">AllocationModel</span>, p<span class="op">::</span><span class="dt">Parameters</span>, node_id<span class="op">::</span><span class="dt">NodeID</span>,</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">linearized_flow_bounds</span>(</span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>    allocation_model, connector_node, flow_function, node_id, p, t, Δt_allocation,</span>
 <span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>)<span class="op">::</span><span class="dt">Tuple{Float64, Float64}</span></span>
-<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>    (; problem, scaling, node_ids_in_subnetwork) <span class="op">=</span> allocation_model</span>
-<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Levels of all other node types are data rather than decision variables,</span></span>
-<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a>    <span class="co"># so they cannot change within one optimization</span></span>
-<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>    node_id.<span class="kw">type</span> <span class="op">==</span> NodeType.Basin <span class="op">||</span> <span class="cf">return</span> (<span class="fl">0.0</span>, <span class="fl">0.0</span>)</span>
-<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a>    <span class="co"># `flow_links_subnetwork` can contain links to Basins outside this subnetwork</span></span>
-<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a>    (node_id <span class="op">∈</span> node_ids_in_subnetwork.basin_ids_subnetwork) <span class="op">||</span> <span class="cf">return</span> (<span class="op">-</span><span class="cn">Inf</span>, <span class="cn">Inf</span>)</span>
-<span id="cb27-12"><a href="#cb27-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb27-13"><a href="#cb27-13" aria-hidden="true" tabindex="-1"></a>    storage_change <span class="op">=</span> problem[<span class="op">:</span>basin_storage_change][node_id]</span>
-<span id="cb27-14"><a href="#cb27-14" aria-hidden="true" tabindex="-1"></a>    level_per_storage <span class="op">=</span></span>
-<span id="cb27-15"><a href="#cb27-15" aria-hidden="true" tabindex="-1"></a>        scaling.storage <span class="op">/</span> p.current_basin_properties.current_area[node_id.idx]</span>
-<span id="cb27-16"><a href="#cb27-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> (</span>
-<span id="cb27-17"><a href="#cb27-17" aria-hidden="true" tabindex="-1"></a>        JuMP.<span class="fu">lower_bound</span>(storage_change) <span class="op">*</span> level_per_storage,</span>
-<span id="cb27-18"><a href="#cb27-18" aria-hidden="true" tabindex="-1"></a>        JuMP.<span class="fu">upper_bound</span>(storage_change) <span class="op">*</span> level_per_storage,</span>
-<span id="cb27-19"><a href="#cb27-19" aria-hidden="true" tabindex="-1"></a>    )</span>
-<span id="cb27-20"><a href="#cb27-20" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>    t_after <span class="op">=</span> t <span class="op">+</span> Δt_allocation</span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>    inflow_id <span class="op">=</span> connector_node.inflow_link[node_id.idx].link[<span class="fl">1</span>]</span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>    outflow_id <span class="op">=</span> connector_node.outflow_link[node_id.idx].link[<span class="fl">2</span>]</span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>    h_a <span class="op">=</span> <span class="fu">get_level</span>(p, inflow_id, t_after)</span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a>    h_b <span class="op">=</span> <span class="fu">get_level</span>(p, outflow_id, t_after)</span>
+<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a>    q0 <span class="op">=</span> <span class="fu">flow_function</span>(connector_node, node_id, h_a, h_b, p, t_after)</span>
+<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-12"><a href="#cb27-12" aria-hidden="true" tabindex="-1"></a>    lower, upper <span class="op">=</span> q0, q0</span>
+<span id="cb27-13"><a href="#cb27-13" aria-hidden="true" tabindex="-1"></a>    ∂q∂h_a <span class="op">=</span> <span class="fu">forward_diff</span>(</span>
+<span id="cb27-14"><a href="#cb27-14" aria-hidden="true" tabindex="-1"></a>        level_a <span class="op">-&gt;</span> <span class="fu">flow_function</span>(connector_node, node_id, level_a, h_b, p, t_after), h_a,</span>
+<span id="cb27-15"><a href="#cb27-15" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb27-16"><a href="#cb27-16" aria-hidden="true" tabindex="-1"></a>    ∂q∂h_b <span class="op">=</span> <span class="fu">forward_diff</span>(</span>
+<span id="cb27-17"><a href="#cb27-17" aria-hidden="true" tabindex="-1"></a>        level_b <span class="op">-&gt;</span> <span class="fu">flow_function</span>(connector_node, node_id, h_a, level_b, p, t_after), h_b,</span>
+<span id="cb27-18"><a href="#cb27-18" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb27-19"><a href="#cb27-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> (∂q∂h, level_id) <span class="kw">in</span> ((∂q∂h_a, inflow_id), (∂q∂h_b, outflow_id))</span>
+<span id="cb27-20"><a href="#cb27-20" aria-hidden="true" tabindex="-1"></a>        <span class="fu">iszero</span>(∂q∂h) <span class="op">&amp;&amp;</span> <span class="cf">continue</span></span>
+<span id="cb27-21"><a href="#cb27-21" aria-hidden="true" tabindex="-1"></a>        Δh_min, Δh_max <span class="op">=</span> <span class="fu">allocation_level_change_bounds</span>(allocation_model, p, level_id)</span>
+<span id="cb27-22"><a href="#cb27-22" aria-hidden="true" tabindex="-1"></a>        Δq_min, Δq_max <span class="op">=</span> <span class="fu">minmax</span>(∂q∂h <span class="op">*</span> Δh_min, ∂q∂h <span class="op">*</span> Δh_max)</span>
+<span id="cb27-23"><a href="#cb27-23" aria-hidden="true" tabindex="-1"></a>        lower <span class="op">+=</span> Δq_min</span>
+<span id="cb27-24"><a href="#cb27-24" aria-hidden="true" tabindex="-1"></a>        upper <span class="op">+=</span> Δq_max</span>
+<span id="cb27-25"><a href="#cb27-25" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
+<span id="cb27-26"><a href="#cb27-26" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> (lower, upper)</span>
+<span id="cb27-27"><a href="#cb27-27" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The reachable level change follows from the bounds on the storage change decision variable, converted with the same linearized profile <span class="math inline">\(\Delta h = \Delta S / A^n\)</span> the constraints use:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb28"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">allocation_level_change_bounds</span>(</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>    allocation_model<span class="op">::</span><span class="dt">AllocationModel</span>, p<span class="op">::</span><span class="dt">Parameters</span>, node_id<span class="op">::</span><span class="dt">NodeID</span>,</span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>)<span class="op">::</span><span class="dt">Tuple{Float64, Float64}</span></span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>    (; problem, scaling, node_ids_in_subnetwork) <span class="op">=</span> allocation_model</span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Levels of all other node types are data rather than decision variables,</span></span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a>    <span class="co"># so they cannot change within one optimization</span></span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a>    node_id.<span class="kw">type</span> <span class="op">==</span> NodeType.Basin <span class="op">||</span> <span class="cf">return</span> (<span class="fl">0.0</span>, <span class="fl">0.0</span>)</span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-10"><a href="#cb28-10" aria-hidden="true" tabindex="-1"></a>    <span class="co"># `flow_links_subnetwork` can contain links to Basins outside this subnetwork</span></span>
+<span id="cb28-11"><a href="#cb28-11" aria-hidden="true" tabindex="-1"></a>    (node_id <span class="op">∈</span> node_ids_in_subnetwork.basin_ids_subnetwork) <span class="op">||</span> <span class="cf">return</span> (<span class="op">-</span><span class="cn">Inf</span>, <span class="cn">Inf</span>)</span>
+<span id="cb28-12"><a href="#cb28-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-13"><a href="#cb28-13" aria-hidden="true" tabindex="-1"></a>    storage_change <span class="op">=</span> problem[<span class="op">:</span>basin_storage_change][node_id]</span>
+<span id="cb28-14"><a href="#cb28-14" aria-hidden="true" tabindex="-1"></a>    level_per_storage <span class="op">=</span></span>
+<span id="cb28-15"><a href="#cb28-15" aria-hidden="true" tabindex="-1"></a>        scaling.storage <span class="op">/</span> p.current_basin_properties.current_area[node_id.idx]</span>
+<span id="cb28-16"><a href="#cb28-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> (</span>
+<span id="cb28-17"><a href="#cb28-17" aria-hidden="true" tabindex="-1"></a>        JuMP.<span class="fu">lower_bound</span>(storage_change) <span class="op">*</span> level_per_storage,</span>
+<span id="cb28-18"><a href="#cb28-18" aria-hidden="true" tabindex="-1"></a>        JuMP.<span class="fu">upper_bound</span>(storage_change) <span class="op">*</span> level_per_storage,</span>
+<span id="cb28-19"><a href="#cb28-19" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb28-20"><a href="#cb28-20" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Because these bounds are derived from the same linearization that appears in the flow constraint, they can never conflict with the constraint and therefore never make the problem infeasible.</p>
 <div class="callout callout-style-default callout-important callout-titled">
 <div class="callout-header d-flex align-content-center">
@@ -1145,15 +1163,14 @@ Important
 <section id="orchestration-update_allocation" class="level2" data-number="5.1">
 <h2 data-number="5.1" class="anchored" data-anchor-id="orchestration-update_allocation"><span class="header-section-number">5.1</span> Orchestration: <code>update_allocation!</code></h2>
 <p><code>update_allocation!</code> is the entry point that is called every allocation timestep. It first refreshes the physical state (<code>water_balance!</code>) and the <a href="#scaling-for-numerical-stability">scaling factors</a>, and then per subnetwork performs the update sequence:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb28"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="fu">update_control_states!</span>(allocation_model, p_independent)</span>
-<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="fu">set_simulation_data!</span>(allocation_model, p, t, Δt, u, du, t_known)</span>
-<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a><span class="fu">reset_demand_coefficients</span>(allocation_model)</span>
-<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a><span class="fu">set_demands!</span>(allocation_model, p, t, Δt)</span>
-<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a><span class="fu">update_flow_variable_bounds!</span>(allocation_model, p, t, Δt)</span>
-<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a><span class="fu">update_user_demand_flow_bounds!</span>(allocation_model, p_independent)</span>
-<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a><span class="fu">update_flow_demand_variable_bounds!</span>(allocation_model, p_independent)</span>
-<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a><span class="fu">normalize_flow_demand_objectives!</span>(allocation_model)</span>
-<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a><span class="fu">warm_start!</span>(allocation_model, p, t, Δt, du)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb29"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="fu">update_control_states!</span>(allocation_model, p_independent)</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a><span class="fu">set_simulation_data!</span>(allocation_model, p, t, Δt, u, du, t_known)</span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a><span class="fu">reset_demand_coefficients</span>(allocation_model)</span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a><span class="fu">set_demands!</span>(allocation_model, p, t, Δt)</span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a><span class="fu">update_flow_variable_bounds!</span>(allocation_model, p, t, Δt)</span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a><span class="fu">update_user_demand_flow_bounds!</span>(allocation_model, p_independent)</span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a><span class="fu">update_flow_demand_variable_bounds!</span>(allocation_model, p_independent)</span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a><span class="fu">normalize_flow_demand_objectives!</span>(allocation_model)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The order matters: <code>set_demands!</code> must run before the flow bounds are set, because <code>update_user_demand_flow_bounds!</code> reads the demands from the bounds of the allocated variables, and <code>update_flow_demand_variable_bounds!</code> in turn reads the finalized flow variable bounds.</p>
 <p>Secondary networks are updated first. If a primary network is present, its update sequence is interrupted after <code>reset_demand_coefficients</code> to run the <a href="#stage-1-demand-collection">demand collection</a> for every secondary network.</p>
 <p>Afterwards, for every subnetwork in turn the problem is optimized (<code>optimize_multi_objective!</code>), the results are parsed and saved, the primary network allocation is distributed over the secondary networks (<code>allocate_flows_to_subnetwork</code>), and the results are applied to the physical layer with <code>apply_control_from_allocation!</code>.</p>
@@ -1161,80 +1178,80 @@ Important
 <section id="lexicographic-optimization" class="level2" data-number="5.2">
 <h2 data-number="5.2" class="anchored" data-anchor-id="lexicographic-optimization"><span class="header-section-number">5.2</span> Lexicographic optimization</h2>
 <p>The main optimization loop in <code>optimize_multi_objective!</code> solves objectives in sequence:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb29"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">optimize_multi_objective!</span>(</span>
-<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>    model<span class="op">::</span><span class="dt">AllocationModel</span>,</span>
-<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>    config<span class="op">::</span><span class="dt">Config</span>,</span>
-<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>    t<span class="op">::</span><span class="dt">Number</span>,</span>
-<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>    <span class="co"># ...</span></span>
-<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>)<span class="op">::</span><span class="dt">Nothing</span></span>
-<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>    (; problem, objectives, temporary_constraints) <span class="op">=</span> model</span>
-<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb29-9"><a href="#cb29-9" aria-hidden="true" tabindex="-1"></a>    latest_expression <span class="op">=</span> JuMP.<span class="fu">AffExpr</span>()</span>
-<span id="cb29-10"><a href="#cb29-10" aria-hidden="true" tabindex="-1"></a>    latest_bound <span class="op">=</span> <span class="fl">0.0</span></span>
-<span id="cb29-11"><a href="#cb29-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> objective <span class="kw">in</span> objectives</span>
-<span id="cb29-12"><a href="#cb29-12" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> (expression_idx, expression) <span class="kw">in</span> <span class="fu">enumerate</span>(objective.expressions)</span>
-<span id="cb29-13"><a href="#cb29-13" aria-hidden="true" tabindex="-1"></a>            <span class="fu">iszero</span>(expression) <span class="op">&amp;&amp;</span> <span class="cf">continue</span></span>
-<span id="cb29-14"><a href="#cb29-14" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> !<span class="fu">iszero</span>(latest_expression) <span class="op">&amp;&amp;</span> !latest_expression_is_constrained</span>
-<span id="cb29-15"><a href="#cb29-15" aria-hidden="true" tabindex="-1"></a>                <span class="fu">push!</span>(</span>
-<span id="cb29-16"><a href="#cb29-16" aria-hidden="true" tabindex="-1"></a>                    temporary_constraints,</span>
-<span id="cb29-17"><a href="#cb29-17" aria-hidden="true" tabindex="-1"></a>                    JuMP.<span class="pp">@constraint</span>(problem, latest_expression <span class="op">&lt;=</span> latest_bound),</span>
-<span id="cb29-18"><a href="#cb29-18" aria-hidden="true" tabindex="-1"></a>                )</span>
-<span id="cb29-19"><a href="#cb29-19" aria-hidden="true" tabindex="-1"></a>            <span class="cf">end</span></span>
-<span id="cb29-20"><a href="#cb29-20" aria-hidden="true" tabindex="-1"></a>            JuMP.<span class="pp">@objective</span>(problem, Min, expression)</span>
-<span id="cb29-21"><a href="#cb29-21" aria-hidden="true" tabindex="-1"></a>            JuMP.<span class="fu">optimize!</span>(problem)</span>
-<span id="cb29-22"><a href="#cb29-22" aria-hidden="true" tabindex="-1"></a>            latest_constraint <span class="op">=</span></span>
-<span id="cb29-23"><a href="#cb29-23" aria-hidden="true" tabindex="-1"></a>                <span class="fu">isempty</span>(temporary_constraints) ? <span class="cn">nothing</span> <span class="op">:</span> <span class="fu">last</span>(temporary_constraints)</span>
-<span id="cb29-24"><a href="#cb29-24" aria-hidden="true" tabindex="-1"></a>            <span class="fu">parse_termination_status</span>(</span>
-<span id="cb29-25"><a href="#cb29-25" aria-hidden="true" tabindex="-1"></a>                model, objective, expression, latest_constraint, config, t,</span>
-<span id="cb29-26"><a href="#cb29-26" aria-hidden="true" tabindex="-1"></a>            )</span>
-<span id="cb29-27"><a href="#cb29-27" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> objective.retain_expressions[expression_idx]</span>
-<span id="cb29-28"><a href="#cb29-28" aria-hidden="true" tabindex="-1"></a>                latest_bound <span class="op">=</span> JuMP.<span class="fu">objective_value</span>(problem)</span>
-<span id="cb29-29"><a href="#cb29-29" aria-hidden="true" tabindex="-1"></a>                latest_expression <span class="op">=</span> expression</span>
-<span id="cb29-30"><a href="#cb29-30" aria-hidden="true" tabindex="-1"></a>                latest_expression_is_constrained <span class="op">=</span> <span class="cn">false</span></span>
-<span id="cb29-31"><a href="#cb29-31" aria-hidden="true" tabindex="-1"></a>            <span class="cf">end</span></span>
-<span id="cb29-32"><a href="#cb29-32" aria-hidden="true" tabindex="-1"></a>        <span class="cf">end</span></span>
-<span id="cb29-33"><a href="#cb29-33" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
-<span id="cb29-34"><a href="#cb29-34" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb29-35"><a href="#cb29-35" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Clean up temporary constraints after optimization</span></span>
-<span id="cb29-36"><a href="#cb29-36" aria-hidden="true" tabindex="-1"></a>    <span class="fu">delete_temporary_constraints!</span>(allocation_model)</span>
-<span id="cb29-37"><a href="#cb29-37" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb29-38"><a href="#cb29-38" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="cn">nothing</span></span>
-<span id="cb29-39"><a href="#cb29-39" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb30"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">optimize_multi_objective!</span>(</span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>    model<span class="op">::</span><span class="dt">AllocationModel</span>,</span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>    config<span class="op">::</span><span class="dt">Config</span>,</span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a>    t<span class="op">::</span><span class="dt">Number</span>,</span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a>    <span class="co"># ...</span></span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a>)<span class="op">::</span><span class="dt">Nothing</span></span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a>    (; problem, objectives, temporary_constraints) <span class="op">=</span> model</span>
+<span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-9"><a href="#cb30-9" aria-hidden="true" tabindex="-1"></a>    latest_expression <span class="op">=</span> JuMP.<span class="fu">AffExpr</span>()</span>
+<span id="cb30-10"><a href="#cb30-10" aria-hidden="true" tabindex="-1"></a>    latest_bound <span class="op">=</span> <span class="fl">0.0</span></span>
+<span id="cb30-11"><a href="#cb30-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> objective <span class="kw">in</span> objectives</span>
+<span id="cb30-12"><a href="#cb30-12" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> (expression_idx, expression) <span class="kw">in</span> <span class="fu">enumerate</span>(objective.expressions)</span>
+<span id="cb30-13"><a href="#cb30-13" aria-hidden="true" tabindex="-1"></a>            <span class="fu">iszero</span>(expression) <span class="op">&amp;&amp;</span> <span class="cf">continue</span></span>
+<span id="cb30-14"><a href="#cb30-14" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> !<span class="fu">iszero</span>(latest_expression) <span class="op">&amp;&amp;</span> !latest_expression_is_constrained</span>
+<span id="cb30-15"><a href="#cb30-15" aria-hidden="true" tabindex="-1"></a>                <span class="fu">push!</span>(</span>
+<span id="cb30-16"><a href="#cb30-16" aria-hidden="true" tabindex="-1"></a>                    temporary_constraints,</span>
+<span id="cb30-17"><a href="#cb30-17" aria-hidden="true" tabindex="-1"></a>                    JuMP.<span class="pp">@constraint</span>(problem, latest_expression <span class="op">&lt;=</span> latest_bound),</span>
+<span id="cb30-18"><a href="#cb30-18" aria-hidden="true" tabindex="-1"></a>                )</span>
+<span id="cb30-19"><a href="#cb30-19" aria-hidden="true" tabindex="-1"></a>            <span class="cf">end</span></span>
+<span id="cb30-20"><a href="#cb30-20" aria-hidden="true" tabindex="-1"></a>            JuMP.<span class="pp">@objective</span>(problem, Min, expression)</span>
+<span id="cb30-21"><a href="#cb30-21" aria-hidden="true" tabindex="-1"></a>            <span class="fu">optimize_cold!</span>(problem)</span>
+<span id="cb30-22"><a href="#cb30-22" aria-hidden="true" tabindex="-1"></a>            latest_constraint <span class="op">=</span></span>
+<span id="cb30-23"><a href="#cb30-23" aria-hidden="true" tabindex="-1"></a>                <span class="fu">isempty</span>(temporary_constraints) ? <span class="cn">nothing</span> <span class="op">:</span> <span class="fu">last</span>(temporary_constraints)</span>
+<span id="cb30-24"><a href="#cb30-24" aria-hidden="true" tabindex="-1"></a>            <span class="fu">parse_termination_status</span>(</span>
+<span id="cb30-25"><a href="#cb30-25" aria-hidden="true" tabindex="-1"></a>                model, objective, expression, latest_constraint, config, t,</span>
+<span id="cb30-26"><a href="#cb30-26" aria-hidden="true" tabindex="-1"></a>            )</span>
+<span id="cb30-27"><a href="#cb30-27" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> objective.retain_expressions[expression_idx]</span>
+<span id="cb30-28"><a href="#cb30-28" aria-hidden="true" tabindex="-1"></a>                latest_bound <span class="op">=</span> JuMP.<span class="fu">objective_value</span>(problem)</span>
+<span id="cb30-29"><a href="#cb30-29" aria-hidden="true" tabindex="-1"></a>                latest_expression <span class="op">=</span> expression</span>
+<span id="cb30-30"><a href="#cb30-30" aria-hidden="true" tabindex="-1"></a>                latest_expression_is_constrained <span class="op">=</span> <span class="cn">false</span></span>
+<span id="cb30-31"><a href="#cb30-31" aria-hidden="true" tabindex="-1"></a>            <span class="cf">end</span></span>
+<span id="cb30-32"><a href="#cb30-32" aria-hidden="true" tabindex="-1"></a>        <span class="cf">end</span></span>
+<span id="cb30-33"><a href="#cb30-33" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
+<span id="cb30-34"><a href="#cb30-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-35"><a href="#cb30-35" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Clean up temporary constraints after optimization</span></span>
+<span id="cb30-36"><a href="#cb30-36" aria-hidden="true" tabindex="-1"></a>    <span class="fu">delete_temporary_constraints!</span>(allocation_model)</span>
+<span id="cb30-37"><a href="#cb30-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-38"><a href="#cb30-38" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="cn">nothing</span></span>
+<span id="cb30-39"><a href="#cb30-39" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p><strong>Key concepts:</strong> - <strong>Lexicographic optimization</strong>: Each objective is optimized in order - Before optimizing objective <span class="math inline">\(i + 1\)</span>, add constraint: <span class="math inline">\(\text{obj}_i \le \text{optimal}_i\)</span> - This ensures later objectives don’t degrade earlier ones - An expression can be non-retained. It is optimized as a deterministic tie-break, but is not constrained for the next expression. - Temporary constraints are removed after all objectives are solved - The termination status is checked after every objective optimization; an infeasible or other non-optimal solve stops allocation immediately - If all objective expressions are zero, for instance when all demands are zero in a subnetwork without Basins, the problem is solved once without an objective, so that there are results to read</p>
 </section>
 </section>
 <section id="scaling-for-numerical-stability" class="level1" data-number="6">
 <h1 data-number="6"><span class="header-section-number">6</span> Scaling for Numerical Stability</h1>
 <p>The optimization uses scaling factors to improve numerical conditioning:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb30"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="pp">@kwdef</span> <span class="kw">mutable struct</span> ScalingFactors</span>
-<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>    flow<span class="op">::</span><span class="dt">Float64 </span><span class="op">=</span> <span class="fl">1.0e3</span>            <span class="co"># Typical flow rate (m³/s)</span></span>
-<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>    storage<span class="op">::</span><span class="dt">Float64 </span><span class="op">=</span> <span class="fl">1.0e6</span>         <span class="co"># Typical storage value (m³)</span></span>
-<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a>    mean_half_storage<span class="op">::</span><span class="dt">Float64 </span><span class="op">=</span> <span class="fl">0.0</span> <span class="co"># Initialization-time reference storage (m³)</span></span>
-<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span>
-<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">update_scaling!</span>(p<span class="op">::</span><span class="dt">Parameters</span>, t<span class="op">::</span><span class="dt">Float64</span>, Δt<span class="op">::</span><span class="dt">Float64</span>, t_known<span class="op">::</span><span class="dt">Float64</span>)</span>
-<span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a>    (; p_independent, current_basin_properties) <span class="op">=</span> p</span>
-<span id="cb30-9"><a href="#cb30-9" aria-hidden="true" tabindex="-1"></a>    (; allocation_models) <span class="op">=</span> p_independent.allocation</span>
-<span id="cb30-10"><a href="#cb30-10" aria-hidden="true" tabindex="-1"></a>    (; current_storage) <span class="op">=</span> current_basin_properties</span>
-<span id="cb30-11"><a href="#cb30-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> allocation_model <span class="kw">in</span> allocation_models</span>
-<span id="cb30-12"><a href="#cb30-12" aria-hidden="true" tabindex="-1"></a>        (; node_ids_in_subnetwork, scaling) <span class="op">=</span> allocation_model</span>
-<span id="cb30-13"><a href="#cb30-13" aria-hidden="true" tabindex="-1"></a>        (; basin_ids_subnetwork) <span class="op">=</span> node_ids_in_subnetwork</span>
-<span id="cb30-14"><a href="#cb30-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb30-15"><a href="#cb30-15" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="fu">isempty</span>(basin_ids_subnetwork)</span>
-<span id="cb30-16"><a href="#cb30-16" aria-hidden="true" tabindex="-1"></a>            <span class="co"># Without a Basin the storage scale is not used, so scale by the flows. If these</span></span>
-<span id="cb30-17"><a href="#cb30-17" aria-hidden="true" tabindex="-1"></a>            <span class="co"># are all zero, keep the previous scaling.</span></span>
-<span id="cb30-18"><a href="#cb30-18" aria-hidden="true" tabindex="-1"></a>            flow <span class="op">=</span> <span class="fu">typical_boundary_flow</span>(p_independent, node_ids_in_subnetwork, t, t_known)</span>
-<span id="cb30-19"><a href="#cb30-19" aria-hidden="true" tabindex="-1"></a>            <span class="fu">isnothing</span>(flow) <span class="op">||</span> (scaling.flow <span class="op">=</span> flow)</span>
-<span id="cb30-20"><a href="#cb30-20" aria-hidden="true" tabindex="-1"></a>            scaling.storage <span class="op">=</span> scaling.flow <span class="op">*</span> Δt</span>
-<span id="cb30-21"><a href="#cb30-21" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span></span>
-<span id="cb30-22"><a href="#cb30-22" aria-hidden="true" tabindex="-1"></a>            storage_sum <span class="op">=</span> <span class="fu">sum</span>(current_storage[id.idx] <span class="cf">for</span> id <span class="kw">in</span> basin_ids_subnetwork)</span>
-<span id="cb30-23"><a href="#cb30-23" aria-hidden="true" tabindex="-1"></a>            scaling.storage <span class="op">=</span></span>
-<span id="cb30-24"><a href="#cb30-24" aria-hidden="true" tabindex="-1"></a>                (scaling.mean_half_storage <span class="op">+</span> storage_sum <span class="op">/</span> <span class="fu">length</span>(basin_ids_subnetwork)) <span class="op">/</span> <span class="fl">2</span></span>
-<span id="cb30-25"><a href="#cb30-25" aria-hidden="true" tabindex="-1"></a>            scaling.flow <span class="op">=</span> scaling.storage <span class="op">/</span> Δt</span>
-<span id="cb30-26"><a href="#cb30-26" aria-hidden="true" tabindex="-1"></a>        <span class="cf">end</span></span>
-<span id="cb30-27"><a href="#cb30-27" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
-<span id="cb30-28"><a href="#cb30-28" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span></span>
-<span id="cb30-29"><a href="#cb30-29" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb31"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="pp">@kwdef</span> <span class="kw">mutable struct</span> ScalingFactors</span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>    flow<span class="op">::</span><span class="dt">Float64 </span><span class="op">=</span> <span class="fl">1.0e3</span>            <span class="co"># Typical flow rate (m³/s)</span></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>    storage<span class="op">::</span><span class="dt">Float64 </span><span class="op">=</span> <span class="fl">1.0e6</span>         <span class="co"># Typical storage value (m³)</span></span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>    mean_half_storage<span class="op">::</span><span class="dt">Float64 </span><span class="op">=</span> <span class="fl">0.0</span> <span class="co"># Initialization-time reference storage (m³)</span></span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">update_scaling!</span>(p<span class="op">::</span><span class="dt">Parameters</span>, t<span class="op">::</span><span class="dt">Float64</span>, Δt<span class="op">::</span><span class="dt">Float64</span>, t_known<span class="op">::</span><span class="dt">Float64</span>)</span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a>    (; p_independent, current_basin_properties) <span class="op">=</span> p</span>
+<span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a>    (; allocation_models) <span class="op">=</span> p_independent.allocation</span>
+<span id="cb31-10"><a href="#cb31-10" aria-hidden="true" tabindex="-1"></a>    (; current_storage) <span class="op">=</span> current_basin_properties</span>
+<span id="cb31-11"><a href="#cb31-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> allocation_model <span class="kw">in</span> allocation_models</span>
+<span id="cb31-12"><a href="#cb31-12" aria-hidden="true" tabindex="-1"></a>        (; node_ids_in_subnetwork, scaling) <span class="op">=</span> allocation_model</span>
+<span id="cb31-13"><a href="#cb31-13" aria-hidden="true" tabindex="-1"></a>        (; basin_ids_subnetwork) <span class="op">=</span> node_ids_in_subnetwork</span>
+<span id="cb31-14"><a href="#cb31-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-15"><a href="#cb31-15" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="fu">isempty</span>(basin_ids_subnetwork)</span>
+<span id="cb31-16"><a href="#cb31-16" aria-hidden="true" tabindex="-1"></a>            <span class="co"># Without a Basin the storage scale is not used, so scale by the flows. If these</span></span>
+<span id="cb31-17"><a href="#cb31-17" aria-hidden="true" tabindex="-1"></a>            <span class="co"># are all zero, keep the previous scaling.</span></span>
+<span id="cb31-18"><a href="#cb31-18" aria-hidden="true" tabindex="-1"></a>            flow <span class="op">=</span> <span class="fu">typical_boundary_flow</span>(p_independent, node_ids_in_subnetwork, t, t_known)</span>
+<span id="cb31-19"><a href="#cb31-19" aria-hidden="true" tabindex="-1"></a>            <span class="fu">isnothing</span>(flow) <span class="op">||</span> (scaling.flow <span class="op">=</span> flow)</span>
+<span id="cb31-20"><a href="#cb31-20" aria-hidden="true" tabindex="-1"></a>            scaling.storage <span class="op">=</span> scaling.flow <span class="op">*</span> Δt</span>
+<span id="cb31-21"><a href="#cb31-21" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span></span>
+<span id="cb31-22"><a href="#cb31-22" aria-hidden="true" tabindex="-1"></a>            storage_sum <span class="op">=</span> <span class="fu">sum</span>(current_storage[id.idx] <span class="cf">for</span> id <span class="kw">in</span> basin_ids_subnetwork)</span>
+<span id="cb31-23"><a href="#cb31-23" aria-hidden="true" tabindex="-1"></a>            scaling.storage <span class="op">=</span></span>
+<span id="cb31-24"><a href="#cb31-24" aria-hidden="true" tabindex="-1"></a>                (scaling.mean_half_storage <span class="op">+</span> storage_sum <span class="op">/</span> <span class="fu">length</span>(basin_ids_subnetwork)) <span class="op">/</span> <span class="fl">2</span></span>
+<span id="cb31-25"><a href="#cb31-25" aria-hidden="true" tabindex="-1"></a>            scaling.flow <span class="op">=</span> scaling.storage <span class="op">/</span> Δt</span>
+<span id="cb31-26"><a href="#cb31-26" aria-hidden="true" tabindex="-1"></a>        <span class="cf">end</span></span>
+<span id="cb31-27"><a href="#cb31-27" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
+<span id="cb31-28"><a href="#cb31-28" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span></span>
+<span id="cb31-29"><a href="#cb31-29" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p><code>mean_half_storage</code> is computed once when the allocation problem is built, as the mean over the Basins in the subnetwork of half their maximum storage. A subnetwork without a Basin is scaled by its flows instead: <code>typical_boundary_flow</code> gives the order of magnitude (power of 10) of the geometric mean of the nonzero FlowBoundary flow rates and UserDemand and FlowDemand demands in the subnetwork. Unlike the arithmetic mean, the geometric mean is not dominated by a single large value, like a demand that is much larger than the available flow. As in the optimization, the FlowBoundary flow rates are read at the intervention time <code>t_known</code>, so that a future change of a boundary flow doesn’t change the scaling.</p>
 <p><strong>Key concepts:</strong> - Storage variables are divided by <code>scaling.storage</code> - Flow variables are divided by <code>scaling.flow</code> - The storage scale is updated for each allocation solve from the current mean storage and the initialization-time mean half-storage - The flow scale equals <code>scaling.storage / Δt</code>, so that a typical flow over an allocation timestep amounts to a typical storage change - Per-priority flow-demand objectives are normalized independently, because a global flow scale can still make a small active demand numerically insignificant - Improves numerical stability and solver performance - Must scale/unscale when communicating with physical layer</p>
 <section id="example-scaled-volume-conservation" class="level2" data-number="6.1">
@@ -1244,11 +1261,11 @@ Important
 <p>where <span class="math inline">\(\tilde{\Delta S} = \Delta S / S_{\text{scale}}\)</span> and <span class="math inline">\(\tilde{Q} = Q / Q_{\text{scale}}\)</span>.</p>
 <p>Dividing through by <span class="math inline">\(S_{\text{scale}}\)</span>: <span class="math display">\[\tilde{\Delta S} = \frac{\Delta t \cdot Q_{\text{scale}}}{S_{\text{scale}}} \left( \tilde{Q}_{\text{in}} - \tilde{Q}_{\text{out}} \right)\]</span></p>
 <p>In the code:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb31"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>storage_change[node_id] <span class="op">==</span></span>
-<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>    scaling.flow <span class="op">/</span> scaling.storage <span class="op">*</span> (</span>
-<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>        f_pos <span class="op">-</span> f_neg <span class="op">*</span> low_storage_factor[node_id] <span class="op">+</span></span>
-<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>        inflow_sum[node_id] <span class="op">-</span> outflow_sum[node_id]</span>
-<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb32"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>storage_change[node_id] <span class="op">==</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>    scaling.flow <span class="op">/</span> scaling.storage <span class="op">*</span> (</span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>        f_pos <span class="op">-</span> f_neg <span class="op">*</span> low_storage_factor[node_id] <span class="op">+</span></span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>        inflow_sum[node_id] <span class="op">-</span> outflow_sum[node_id]</span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Since <code>scaling.flow = scaling.storage / Δt</code>, this single coefficient carries both the unit conversion from flow rate to volume over the allocation timestep and the ratio of the two scaling factors. It is updated together with the rest of the constraint in <code>set_simulation_data!</code>.</p>
 </section>
 </section>
@@ -1257,59 +1274,59 @@ Important
 <section id="nodeid" class="level2" data-number="7.1">
 <h2 data-number="7.1" class="anchored" data-anchor-id="nodeid"><span class="header-section-number">7.1</span> NodeID</h2>
 <p>Nodes are identified by the <code>NodeID</code> struct:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb32"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> NodeID</span>
-<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">type</span><span class="op">::</span><span class="dt">NodeType.T  </span><span class="co"># e.g., NodeType.Basin, NodeType.UserDemand</span></span>
-<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>    idx<span class="op">::</span><span class="dt">Int32        </span><span class="co"># Index into the type-specific data arrays</span></span>
-<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>    value<span class="op">::</span><span class="dt">Int32      </span><span class="co"># User-facing ID from input file</span></span>
-<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> NodeID</span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">type</span><span class="op">::</span><span class="dt">NodeType.T  </span><span class="co"># e.g., NodeType.Basin, NodeType.UserDemand</span></span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>    idx<span class="op">::</span><span class="dt">Int32        </span><span class="co"># Index into the type-specific data arrays</span></span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>    value<span class="op">::</span><span class="dt">Int32      </span><span class="co"># User-facing ID from input file</span></span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p><strong>Key concepts:</strong> - <code>idx</code> is used to index into type-specific arrays (e.g., <code>basin.storage[basin_id.idx]</code>) - <code>value</code> is the ID from the input file (for error messages, output) - <code>type</code> distinguishes different node types</p>
 </section>
 <section id="links" class="level2" data-number="7.2">
 <h2 data-number="7.2" class="anchored" data-anchor-id="links"><span class="header-section-number">7.2</span> Links</h2>
 <p>Links are represented as tuples of NodeIDs:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>link<span class="op">::</span><span class="dt">Tuple{NodeID, NodeID}  </span><span class="co"># (source, destination)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb34"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>link<span class="op">::</span><span class="dt">Tuple{NodeID, NodeID}  </span><span class="co"># (source, destination)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p><strong>Key concepts:</strong> - Used to index flow variables: <code>problem[:flow][link]</code> - Direction matters: <code>(A, B) ≠ (B, A)</code> - Stored in graph edge metadata</p>
 </section>
 <section id="jump-sparse-arrays" class="level2" data-number="7.3">
 <h2 data-number="7.3" class="anchored" data-anchor-id="jump-sparse-arrays"><span class="header-section-number">7.3</span> JuMP Sparse Arrays</h2>
 <p>JuMP uses <code>SparseAxisArray</code> for multi-dimensional variables:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb34"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Example: doubly-indexed variable</span></span>
-<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>user_demand_allocated[node_id, demand_priority]</span>
-<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Example: triply-indexed variable</span></span>
-<span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a>user_demand_error[node_id, demand_priority, objective_ord]  <span class="co"># objective_ord ∈ (:first, :second)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb35"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Example: doubly-indexed variable</span></span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>user_demand_allocated[node_id, demand_priority]</span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Example: triply-indexed variable</span></span>
+<span id="cb35-5"><a href="#cb35-5" aria-hidden="true" tabindex="-1"></a>user_demand_error[node_id, demand_priority, objective_ord]  <span class="co"># objective_ord ∈ (:first, :second)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p><strong>Key concepts:</strong> - Only creates variables for valid index combinations - Filtered by iterating over <code>DemandPriorityIterator(node_id, p_independent)</code>, which yields only the demand priorities the node actually has - Efficient for sparse problems (not all nodes have all priorities)</p>
 </section>
 <section id="allocationmodel-struct" class="level2" data-number="7.4">
 <h2 data-number="7.4" class="anchored" data-anchor-id="allocationmodel-struct"><span class="header-section-number">7.4</span> AllocationModel Struct</h2>
 <p>The main data structure:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb35"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="pp">@kwdef</span> <span class="kw">mutable struct</span> AllocationModel</span>
-<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>    subnetwork_id<span class="op">::</span><span class="dt">Int32</span></span>
-<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a>    node_ids_in_subnetwork<span class="op">::</span><span class="dt">NodeIDsInSubnetwork</span></span>
-<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a>    problem<span class="op">::</span><span class="dt">JuMP.Model  </span><span class="co"># The JuMP optimization problem</span></span>
-<span id="cb35-5"><a href="#cb35-5" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Time since the last time results were written</span></span>
-<span id="cb35-6"><a href="#cb35-6" aria-hidden="true" tabindex="-1"></a>    Δt_since_last_record<span class="op">::</span><span class="dt">Float64 </span><span class="op">=</span> <span class="fl">0.0</span></span>
-<span id="cb35-7"><a href="#cb35-7" aria-hidden="true" tabindex="-1"></a>    has_demand_priority<span class="op">::</span><span class="dt">Vector{Bool}</span></span>
-<span id="cb35-8"><a href="#cb35-8" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Optimization objectives</span></span>
-<span id="cb35-9"><a href="#cb35-9" aria-hidden="true" tabindex="-1"></a>    objectives<span class="op">::</span><span class="dt">Vector{AllocationObjective} </span><span class="op">=</span> AllocationObjective[]</span>
-<span id="cb35-10"><a href="#cb35-10" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Forcing volumes (precipitation, drainage, evaporation, infiltration)</span></span>
-<span id="cb35-11"><a href="#cb35-11" aria-hidden="true" tabindex="-1"></a>    explicit_positive_forcing_volume<span class="op">::</span><span class="dt">OrderedDict{NodeID, Float64} </span><span class="op">=</span> <span class="fu">OrderedDict</span>()</span>
-<span id="cb35-12"><a href="#cb35-12" aria-hidden="true" tabindex="-1"></a>    implicit_negative_forcing_volume<span class="op">::</span><span class="dt">OrderedDict{NodeID, Float64} </span><span class="op">=</span> <span class="fu">OrderedDict</span>()</span>
-<span id="cb35-13"><a href="#cb35-13" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Cumulative tracking for output</span></span>
-<span id="cb35-14"><a href="#cb35-14" aria-hidden="true" tabindex="-1"></a>    cumulative_supplied_volume<span class="op">::</span><span class="dt">OrderedDict{Tuple{NodeID, NodeID}, Float64} </span><span class="op">=</span> <span class="fu">OrderedDict</span>()</span>
-<span id="cb35-15"><a href="#cb35-15" aria-hidden="true" tabindex="-1"></a>    sources<span class="op">::</span><span class="dt">OrderedDict{Int32, NodeID} </span><span class="op">=</span> <span class="fu">OrderedDict</span>()</span>
-<span id="cb35-16"><a href="#cb35-16" aria-hidden="true" tabindex="-1"></a>    secondary_network_demand<span class="op">::</span><span class="dt">OrderedDict{Tuple{NodeID, NodeID}, Vector{Float64}} </span><span class="op">=</span></span>
-<span id="cb35-17"><a href="#cb35-17" aria-hidden="true" tabindex="-1"></a>        <span class="fu">OrderedDict</span>()</span>
-<span id="cb35-18"><a href="#cb35-18" aria-hidden="true" tabindex="-1"></a>    <span class="co"># All links with at least one node in this subnetwork</span></span>
-<span id="cb35-19"><a href="#cb35-19" aria-hidden="true" tabindex="-1"></a>    flow_links_subnetwork<span class="op">::</span><span class="dt">Vector{Tuple{NodeID, NodeID}} </span><span class="op">=</span> <span class="dt">Tuple</span>{NodeID, NodeID}[]</span>
-<span id="cb35-20"><a href="#cb35-20" aria-hidden="true" tabindex="-1"></a>    scaling<span class="op">::</span><span class="dt">ScalingFactors </span><span class="op">=</span> <span class="fu">ScalingFactors</span>()</span>
-<span id="cb35-21"><a href="#cb35-21" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Current LevelDemand fairness normalization by demand priority</span></span>
-<span id="cb35-22"><a href="#cb35-22" aria-hidden="true" tabindex="-1"></a>    level_demand_area_sum<span class="op">::</span><span class="dt">Dict{Int32, Float64} </span><span class="op">=</span> <span class="fu">Dict</span>()</span>
-<span id="cb35-23"><a href="#cb35-23" aria-hidden="true" tabindex="-1"></a>    level_demand_count<span class="op">::</span><span class="dt">Dict{Int32, Int} </span><span class="op">=</span> <span class="fu">Dict</span>()</span>
-<span id="cb35-24"><a href="#cb35-24" aria-hidden="true" tabindex="-1"></a>    level_demand_area_scale<span class="op">::</span><span class="dt">Dict{Int32, Float64} </span><span class="op">=</span> <span class="fu">Dict</span>()</span>
-<span id="cb35-25"><a href="#cb35-25" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Temporary constraints for lexicographic optimization</span></span>
-<span id="cb35-26"><a href="#cb35-26" aria-hidden="true" tabindex="-1"></a>    temporary_constraints<span class="op">::</span><span class="dt">Vector{JuMP.ConstraintRef} </span><span class="op">=</span> JuMP.ConstraintRef[]</span>
-<span id="cb35-27"><a href="#cb35-27" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb36"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="pp">@kwdef</span> <span class="kw">mutable struct</span> AllocationModel</span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a>    subnetwork_id<span class="op">::</span><span class="dt">Int32</span></span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a>    node_ids_in_subnetwork<span class="op">::</span><span class="dt">NodeIDsInSubnetwork</span></span>
+<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a>    problem<span class="op">::</span><span class="dt">JuMP.Model  </span><span class="co"># The JuMP optimization problem</span></span>
+<span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Time since the last time results were written</span></span>
+<span id="cb36-6"><a href="#cb36-6" aria-hidden="true" tabindex="-1"></a>    Δt_since_last_record<span class="op">::</span><span class="dt">Float64 </span><span class="op">=</span> <span class="fl">0.0</span></span>
+<span id="cb36-7"><a href="#cb36-7" aria-hidden="true" tabindex="-1"></a>    has_demand_priority<span class="op">::</span><span class="dt">Vector{Bool}</span></span>
+<span id="cb36-8"><a href="#cb36-8" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Optimization objectives</span></span>
+<span id="cb36-9"><a href="#cb36-9" aria-hidden="true" tabindex="-1"></a>    objectives<span class="op">::</span><span class="dt">Vector{AllocationObjective} </span><span class="op">=</span> AllocationObjective[]</span>
+<span id="cb36-10"><a href="#cb36-10" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Forcing volumes (precipitation, drainage, evaporation, infiltration)</span></span>
+<span id="cb36-11"><a href="#cb36-11" aria-hidden="true" tabindex="-1"></a>    explicit_positive_forcing_volume<span class="op">::</span><span class="dt">OrderedDict{NodeID, Float64} </span><span class="op">=</span> <span class="fu">OrderedDict</span>()</span>
+<span id="cb36-12"><a href="#cb36-12" aria-hidden="true" tabindex="-1"></a>    implicit_negative_forcing_volume<span class="op">::</span><span class="dt">OrderedDict{NodeID, Float64} </span><span class="op">=</span> <span class="fu">OrderedDict</span>()</span>
+<span id="cb36-13"><a href="#cb36-13" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Cumulative tracking for output</span></span>
+<span id="cb36-14"><a href="#cb36-14" aria-hidden="true" tabindex="-1"></a>    cumulative_supplied_volume<span class="op">::</span><span class="dt">OrderedDict{Tuple{NodeID, NodeID}, Float64} </span><span class="op">=</span> <span class="fu">OrderedDict</span>()</span>
+<span id="cb36-15"><a href="#cb36-15" aria-hidden="true" tabindex="-1"></a>    sources<span class="op">::</span><span class="dt">OrderedDict{Int32, NodeID} </span><span class="op">=</span> <span class="fu">OrderedDict</span>()</span>
+<span id="cb36-16"><a href="#cb36-16" aria-hidden="true" tabindex="-1"></a>    secondary_network_demand<span class="op">::</span><span class="dt">OrderedDict{Tuple{NodeID, NodeID}, Vector{Float64}} </span><span class="op">=</span></span>
+<span id="cb36-17"><a href="#cb36-17" aria-hidden="true" tabindex="-1"></a>        <span class="fu">OrderedDict</span>()</span>
+<span id="cb36-18"><a href="#cb36-18" aria-hidden="true" tabindex="-1"></a>    <span class="co"># All links with at least one node in this subnetwork</span></span>
+<span id="cb36-19"><a href="#cb36-19" aria-hidden="true" tabindex="-1"></a>    flow_links_subnetwork<span class="op">::</span><span class="dt">Vector{Tuple{NodeID, NodeID}} </span><span class="op">=</span> <span class="dt">Tuple</span>{NodeID, NodeID}[]</span>
+<span id="cb36-20"><a href="#cb36-20" aria-hidden="true" tabindex="-1"></a>    scaling<span class="op">::</span><span class="dt">ScalingFactors </span><span class="op">=</span> <span class="fu">ScalingFactors</span>()</span>
+<span id="cb36-21"><a href="#cb36-21" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Current LevelDemand fairness normalization by demand priority</span></span>
+<span id="cb36-22"><a href="#cb36-22" aria-hidden="true" tabindex="-1"></a>    level_demand_area_sum<span class="op">::</span><span class="dt">Dict{Int32, Float64} </span><span class="op">=</span> <span class="fu">Dict</span>()</span>
+<span id="cb36-23"><a href="#cb36-23" aria-hidden="true" tabindex="-1"></a>    level_demand_count<span class="op">::</span><span class="dt">Dict{Int32, Int} </span><span class="op">=</span> <span class="fu">Dict</span>()</span>
+<span id="cb36-24"><a href="#cb36-24" aria-hidden="true" tabindex="-1"></a>    level_demand_area_scale<span class="op">::</span><span class="dt">Dict{Int32, Float64} </span><span class="op">=</span> <span class="fu">Dict</span>()</span>
+<span id="cb36-25"><a href="#cb36-25" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Temporary constraints for lexicographic optimization</span></span>
+<span id="cb36-26"><a href="#cb36-26" aria-hidden="true" tabindex="-1"></a>    temporary_constraints<span class="op">::</span><span class="dt">Vector{JuMP.ConstraintRef} </span><span class="op">=</span> JuMP.ConstraintRef[]</span>
+<span id="cb36-27"><a href="#cb36-27" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -1357,26 +1374,26 @@ Note
 <li>Use that minimum inlet flow as the secondary network’s request for the priority</li>
 </ol>
 <p>The tie-break removes solver-dependent excess flow from demand collection. It is non-retained because later priorities may legitimately need more inlet flow.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb36"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">preprocess_demand_collection!</span>(</span>
-<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a>    allocation_model<span class="op">::</span><span class="dt">AllocationModel</span>,</span>
-<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a>    p_independent<span class="op">::</span><span class="dt">ParametersIndependent</span>,</span>
-<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a>)<span class="op">::</span><span class="dt">Nothing</span></span>
-<span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a>    (; problem, subnetwork_id) <span class="op">=</span> allocation_model</span>
-<span id="cb36-6"><a href="#cb36-6" aria-hidden="true" tabindex="-1"></a>    <span class="pp">@assert</span> !<span class="fu">is_primary_network</span>(subnetwork_id)</span>
-<span id="cb36-7"><a href="#cb36-7" aria-hidden="true" tabindex="-1"></a>    flow <span class="op">=</span> problem[<span class="op">:</span>flow]</span>
-<span id="cb36-8"><a href="#cb36-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb36-9"><a href="#cb36-9" aria-hidden="true" tabindex="-1"></a>    <span class="co"># The capacity bounds of the primary network connections were set from the current</span></span>
-<span id="cb36-10"><a href="#cb36-10" aria-hidden="true" tabindex="-1"></a>    <span class="co"># allocation data, so demands are collected up to the physical capacity. The primary</span></span>
-<span id="cb36-11"><a href="#cb36-11" aria-hidden="true" tabindex="-1"></a>    <span class="co"># network allocation will subsequently restrict these links to its result.</span></span>
-<span id="cb36-12"><a href="#cb36-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> link <span class="kw">in</span> p_independent.allocation.primary_network_connections[subnetwork_id]</span>
-<span id="cb36-13"><a href="#cb36-13" aria-hidden="true" tabindex="-1"></a>        flow_variable <span class="op">=</span> flow[link]</span>
-<span id="cb36-14"><a href="#cb36-14" aria-hidden="true" tabindex="-1"></a>        lower_bound <span class="op">=</span></span>
-<span id="cb36-15"><a href="#cb36-15" aria-hidden="true" tabindex="-1"></a>            JuMP.<span class="fu">has_lower_bound</span>(flow_variable) ? JuMP.<span class="fu">lower_bound</span>(flow_variable) <span class="op">:</span> <span class="fl">0.0</span></span>
-<span id="cb36-16"><a href="#cb36-16" aria-hidden="true" tabindex="-1"></a>        JuMP.<span class="fu">set_lower_bound</span>(flow_variable, <span class="fu">max</span>(<span class="fl">0.0</span>, lower_bound))</span>
-<span id="cb36-17"><a href="#cb36-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
-<span id="cb36-18"><a href="#cb36-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb36-19"><a href="#cb36-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="cn">nothing</span></span>
-<span id="cb36-20"><a href="#cb36-20" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb37"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">preprocess_demand_collection!</span>(</span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>    allocation_model<span class="op">::</span><span class="dt">AllocationModel</span>,</span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>    p_independent<span class="op">::</span><span class="dt">ParametersIndependent</span>,</span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a>)<span class="op">::</span><span class="dt">Nothing</span></span>
+<span id="cb37-5"><a href="#cb37-5" aria-hidden="true" tabindex="-1"></a>    (; problem, subnetwork_id) <span class="op">=</span> allocation_model</span>
+<span id="cb37-6"><a href="#cb37-6" aria-hidden="true" tabindex="-1"></a>    <span class="pp">@assert</span> !<span class="fu">is_primary_network</span>(subnetwork_id)</span>
+<span id="cb37-7"><a href="#cb37-7" aria-hidden="true" tabindex="-1"></a>    flow <span class="op">=</span> problem[<span class="op">:</span>flow]</span>
+<span id="cb37-8"><a href="#cb37-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb37-9"><a href="#cb37-9" aria-hidden="true" tabindex="-1"></a>    <span class="co"># The capacity bounds of the primary network connections were set from the current</span></span>
+<span id="cb37-10"><a href="#cb37-10" aria-hidden="true" tabindex="-1"></a>    <span class="co"># allocation data, so demands are collected up to the physical capacity. The primary</span></span>
+<span id="cb37-11"><a href="#cb37-11" aria-hidden="true" tabindex="-1"></a>    <span class="co"># network allocation will subsequently restrict these links to its result.</span></span>
+<span id="cb37-12"><a href="#cb37-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> link <span class="kw">in</span> p_independent.allocation.primary_network_connections[subnetwork_id]</span>
+<span id="cb37-13"><a href="#cb37-13" aria-hidden="true" tabindex="-1"></a>        flow_variable <span class="op">=</span> flow[link]</span>
+<span id="cb37-14"><a href="#cb37-14" aria-hidden="true" tabindex="-1"></a>        lower_bound <span class="op">=</span></span>
+<span id="cb37-15"><a href="#cb37-15" aria-hidden="true" tabindex="-1"></a>            JuMP.<span class="fu">has_lower_bound</span>(flow_variable) ? JuMP.<span class="fu">lower_bound</span>(flow_variable) <span class="op">:</span> <span class="fl">0.0</span></span>
+<span id="cb37-16"><a href="#cb37-16" aria-hidden="true" tabindex="-1"></a>        JuMP.<span class="fu">set_lower_bound</span>(flow_variable, <span class="fu">max</span>(<span class="fl">0.0</span>, lower_bound))</span>
+<span id="cb37-17"><a href="#cb37-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
+<span id="cb37-18"><a href="#cb37-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb37-19"><a href="#cb37-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="cn">nothing</span></span>
+<span id="cb37-20"><a href="#cb37-20" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Note that only the lower bound needs adjusting here: the upper bound already is the physical capacity of the link, set by <code>update_flow_variable_bounds!</code>. Since the connecting node is always an allocation controlled Pump or Outlet, that capacity is finite.</p>
 </section>
 <section id="stage-2-allocation" class="level3" data-number="8.3.2">
@@ -1395,66 +1412,35 @@ Note
 <li>Set inflow constraint to the allocated amount from primary network</li>
 <li>Solve allocation to distribute water to internal demands</li>
 </ol>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb37"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">allocate_flows_to_subnetwork</span>(</span>
-<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>    allocation_models<span class="op">::</span><span class="dt">Vector{AllocationModel}</span>,</span>
-<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>    primary_network_connections,</span>
-<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a>)<span class="op">::</span><span class="dt">Nothing</span></span>
-<span id="cb37-5"><a href="#cb37-5" aria-hidden="true" tabindex="-1"></a>    primary_network <span class="op">=</span> <span class="fu">get_primary_network</span>(allocation_models)</span>
-<span id="cb37-6"><a href="#cb37-6" aria-hidden="true" tabindex="-1"></a>    primary_problem <span class="op">=</span> primary_network.problem</span>
-<span id="cb37-7"><a href="#cb37-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb37-8"><a href="#cb37-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> secondary_network <span class="kw">in</span> <span class="fu">get_secondary_networks</span>(allocation_models)</span>
-<span id="cb37-9"><a href="#cb37-9" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Get allocated flow from primary network</span></span>
-<span id="cb37-10"><a href="#cb37-10" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> link <span class="kw">in</span> primary_network_connections[secondary_network.subnetwork_id]</span>
-<span id="cb37-11"><a href="#cb37-11" aria-hidden="true" tabindex="-1"></a>            allocated_flow <span class="op">=</span> JuMP.<span class="fu">value</span>(primary_problem[<span class="op">:</span>flow][link])</span>
-<span id="cb37-12"><a href="#cb37-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb37-13"><a href="#cb37-13" aria-hidden="true" tabindex="-1"></a>            <span class="co"># Set as capacity for secondary network</span></span>
-<span id="cb37-14"><a href="#cb37-14" aria-hidden="true" tabindex="-1"></a>            secondary_problem <span class="op">=</span> secondary_network.problem</span>
-<span id="cb37-15"><a href="#cb37-15" aria-hidden="true" tabindex="-1"></a>            JuMP.<span class="fu">set_upper_bound</span>(</span>
-<span id="cb37-16"><a href="#cb37-16" aria-hidden="true" tabindex="-1"></a>                secondary_problem[<span class="op">:</span>flow][link],</span>
-<span id="cb37-17"><a href="#cb37-17" aria-hidden="true" tabindex="-1"></a>                allocated_flow</span>
-<span id="cb37-18"><a href="#cb37-18" aria-hidden="true" tabindex="-1"></a>            )</span>
-<span id="cb37-19"><a href="#cb37-19" aria-hidden="true" tabindex="-1"></a>        <span class="cf">end</span></span>
-<span id="cb37-20"><a href="#cb37-20" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
-<span id="cb37-21"><a href="#cb37-21" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</section>
-</section>
-</section>
-<section id="warm-start" class="level1" data-number="9">
-<h1 data-number="9"><span class="header-section-number">9</span> Warm Start</h1>
-<p>To improve solver performance, the optimization can be warm-started with flow rates from the physical layer:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb38"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">warm_start!</span>(</span>
-<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a>    allocation_model<span class="op">::</span><span class="dt">AllocationModel</span>,</span>
-<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a>    integrator<span class="op">::</span><span class="dt">DEIntegrator</span>,</span>
-<span id="cb38-4"><a href="#cb38-4" aria-hidden="true" tabindex="-1"></a>    Δt_allocation<span class="op">::</span><span class="dt">Float64</span>,</span>
-<span id="cb38-5"><a href="#cb38-5" aria-hidden="true" tabindex="-1"></a>)<span class="op">::</span><span class="dt">Nothing</span></span>
-<span id="cb38-6"><a href="#cb38-6" aria-hidden="true" tabindex="-1"></a>    (; p, t) <span class="op">=</span> integrator</span>
-<span id="cb38-7"><a href="#cb38-7" aria-hidden="true" tabindex="-1"></a>    (; problem, scaling, node_ids_in_subnetwork) <span class="op">=</span> allocation_model</span>
-<span id="cb38-8"><a href="#cb38-8" aria-hidden="true" tabindex="-1"></a>    (; basin_ids_subnetwork) <span class="op">=</span> node_ids_in_subnetwork</span>
-<span id="cb38-9"><a href="#cb38-9" aria-hidden="true" tabindex="-1"></a>    flow <span class="op">=</span> problem[<span class="op">:</span>flow]</span>
-<span id="cb38-10"><a href="#cb38-10" aria-hidden="true" tabindex="-1"></a>    storage_change <span class="op">=</span> problem[<span class="op">:</span>basin_storage_change]</span>
-<span id="cb38-11"><a href="#cb38-11" aria-hidden="true" tabindex="-1"></a>    du <span class="op">=</span> <span class="fu">get_du</span>(integrator)</span>
-<span id="cb38-12"><a href="#cb38-12" aria-hidden="true" tabindex="-1"></a>    (; link_to_state_idx) <span class="op">=</span> p.p_independent</span>
-<span id="cb38-13"><a href="#cb38-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb38-14"><a href="#cb38-14" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Extrapolate the current instantaneous flow rates from the physical layer</span></span>
-<span id="cb38-15"><a href="#cb38-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> link <span class="kw">in</span> <span class="fu">only</span>(flow.axes)</span>
-<span id="cb38-16"><a href="#cb38-16" aria-hidden="true" tabindex="-1"></a>        state_index <span class="op">=</span> <span class="fu">get_state_index</span>(<span class="fu">getaxes</span>(du), link_to_state_idx, link)</span>
-<span id="cb38-17"><a href="#cb38-17" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> !<span class="fu">isnothing</span>(state_index)</span>
-<span id="cb38-18"><a href="#cb38-18" aria-hidden="true" tabindex="-1"></a>            JuMP.<span class="fu">set_start_value</span>(flow[link], du[state_index] <span class="op">/</span> scaling.flow)</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb38"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">allocate_flows_to_subnetwork</span>(</span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a>    allocation_models<span class="op">::</span><span class="dt">Vector{AllocationModel}</span>,</span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a>    primary_network_connections,</span>
+<span id="cb38-4"><a href="#cb38-4" aria-hidden="true" tabindex="-1"></a>)<span class="op">::</span><span class="dt">Nothing</span></span>
+<span id="cb38-5"><a href="#cb38-5" aria-hidden="true" tabindex="-1"></a>    primary_network <span class="op">=</span> <span class="fu">get_primary_network</span>(allocation_models)</span>
+<span id="cb38-6"><a href="#cb38-6" aria-hidden="true" tabindex="-1"></a>    primary_problem <span class="op">=</span> primary_network.problem</span>
+<span id="cb38-7"><a href="#cb38-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-8"><a href="#cb38-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> secondary_network <span class="kw">in</span> <span class="fu">get_secondary_networks</span>(allocation_models)</span>
+<span id="cb38-9"><a href="#cb38-9" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Get allocated flow from primary network</span></span>
+<span id="cb38-10"><a href="#cb38-10" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> link <span class="kw">in</span> primary_network_connections[secondary_network.subnetwork_id]</span>
+<span id="cb38-11"><a href="#cb38-11" aria-hidden="true" tabindex="-1"></a>            allocated_flow <span class="op">=</span> JuMP.<span class="fu">value</span>(primary_problem[<span class="op">:</span>flow][link])</span>
+<span id="cb38-12"><a href="#cb38-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-13"><a href="#cb38-13" aria-hidden="true" tabindex="-1"></a>            <span class="co"># Set as capacity for secondary network</span></span>
+<span id="cb38-14"><a href="#cb38-14" aria-hidden="true" tabindex="-1"></a>            secondary_problem <span class="op">=</span> secondary_network.problem</span>
+<span id="cb38-15"><a href="#cb38-15" aria-hidden="true" tabindex="-1"></a>            JuMP.<span class="fu">set_upper_bound</span>(</span>
+<span id="cb38-16"><a href="#cb38-16" aria-hidden="true" tabindex="-1"></a>                secondary_problem[<span class="op">:</span>flow][link],</span>
+<span id="cb38-17"><a href="#cb38-17" aria-hidden="true" tabindex="-1"></a>                allocated_flow</span>
+<span id="cb38-18"><a href="#cb38-18" aria-hidden="true" tabindex="-1"></a>            )</span>
 <span id="cb38-19"><a href="#cb38-19" aria-hidden="true" tabindex="-1"></a>        <span class="cf">end</span></span>
 <span id="cb38-20"><a href="#cb38-20" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
-<span id="cb38-21"><a href="#cb38-21" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb38-22"><a href="#cb38-22" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Extrapolate the current instantaneous storage rates from the physical layer</span></span>
-<span id="cb38-23"><a href="#cb38-23" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> node_id <span class="kw">in</span> basin_ids_subnetwork</span>
-<span id="cb38-24"><a href="#cb38-24" aria-hidden="true" tabindex="-1"></a>        JuMP.<span class="fu">set_start_value</span>(</span>
-<span id="cb38-25"><a href="#cb38-25" aria-hidden="true" tabindex="-1"></a>            storage_change[node_id],</span>
-<span id="cb38-26"><a href="#cb38-26" aria-hidden="true" tabindex="-1"></a>            <span class="fu">formulate_dstorage_wrt_time</span>(du, p.p_independent, t, node_id) <span class="op">*</span> Δt_allocation <span class="op">/</span></span>
-<span id="cb38-27"><a href="#cb38-27" aria-hidden="true" tabindex="-1"></a>                scaling.storage,</span>
-<span id="cb38-28"><a href="#cb38-28" aria-hidden="true" tabindex="-1"></a>        )</span>
-<span id="cb38-29"><a href="#cb38-29" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
-<span id="cb38-30"><a href="#cb38-30" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb38-31"><a href="#cb38-31" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="cn">nothing</span></span>
-<span id="cb38-32"><a href="#cb38-32" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p><strong>Key concepts:</strong> - Starting values guide the solver to a good initial solution - Can significantly reduce solver iterations - Based on extrapolating current physical state forward - Not every flow link corresponds to a state of the physical layer, hence the <code>isnothing</code> check</p>
+<span id="cb38-21"><a href="#cb38-21" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+</section>
+</section>
+<section id="solving-from-scratch" class="level1" data-number="9">
+<h1 data-number="9"><span class="header-section-number">9</span> Solving from scratch</h1>
+<p>Every optimization solves the problem from scratch with <code>optimize_cold!</code>, without start values or the basis of the previous solve. HiGHS only uses presolve when there is no basis. For large subnetworks presolve removes nearly all rows, because most flows follow from linearized flow-level relations.</p>
+<p>Start values make HiGHS construct a basis, which is slow for large subnetworks. Reusing the basis of the previous solve needs fewer iterations and has a lower median solve time, but on large subnetworks some solves take much longer and more of them end in status <code>Unknown</code>, so we prefer the more robust solve from scratch.</p>
+<p>A solve from scratch can also end in status <code>Unknown</code> or a solver error, when its solution just violates the feasibility tolerance after unscaling. A solve that doesn’t reach the optimum is first retried with slightly relaxed constraints on the previous objectives, and if that fails or there are no previous objectives, with looser feasibility tolerances. The looser tolerances are the last resort, because the next objectives can’t reach a bound found with them, so each of those solves then needs a retry as well.</p>
 </section>
 <section id="output-and-communication-with-physical-layer" class="level1" data-number="10">
 <h1 data-number="10"><span class="header-section-number">10</span> Output and Communication with Physical Layer</h1>
@@ -1543,7 +1529,7 @@ Note
 <span id="cb41-21"><a href="#cb41-21" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> constraint <span class="kw">in</span> violated_constraints</span>
 <span id="cb41-22"><a href="#cb41-22" aria-hidden="true" tabindex="-1"></a>    )</span>
 <span id="cb41-23"><a href="#cb41-23" aria-hidden="true" tabindex="-1"></a>    constraint_to_slack <span class="op">=</span> JuMP.<span class="fu">relax_with_penalty!</span>(problem, constraint_to_penalty)</span>
-<span id="cb41-24"><a href="#cb41-24" aria-hidden="true" tabindex="-1"></a>    JuMP.<span class="fu">optimize!</span>(problem)</span>
+<span id="cb41-24"><a href="#cb41-24" aria-hidden="true" tabindex="-1"></a>    <span class="fu">optimize_cold!</span>(problem)</span>
 <span id="cb41-25"><a href="#cb41-25" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb41-26"><a href="#cb41-26" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Report which constraints are in conflict</span></span>
 <span id="cb41-27"><a href="#cb41-27" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> irreducible_infeasible_subset <span class="kw">in</span> data_infeasibility.iis</span>
@@ -1585,7 +1571,7 @@ Note
 <span id="cb42-7"><a href="#cb42-7" aria-hidden="true" tabindex="-1"></a>        <span class="st">"small_matrix_value"</span> <span class="op">=&gt;</span> <span class="fl">1e-12</span>,  <span class="co"># Numerical threshold</span></span>
 <span id="cb42-8"><a href="#cb42-8" aria-hidden="true" tabindex="-1"></a>    )</span>
 <span id="cb42-9"><a href="#cb42-9" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p><strong>Tips for performance:</strong> - Use scaling to keep values O(1) - Minimize number of priorities (each adds objectives) - Warm start with physical layer flows - Simplify network topology where possible</p>
+<p><strong>Tips for performance:</strong> - Use scaling to keep values O(1) - Minimize number of priorities (each adds objectives) - Simplify network topology where possible</p>
 </section>
 <section id="allocation-timestep-selection" class="level2" data-number="12.3">
 <h2 data-number="12.3" class="anchored" data-anchor-id="allocation-timestep-selection"><span class="header-section-number">12.3</span> Allocation Timestep Selection</h2>

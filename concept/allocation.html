@@ -291,6 +291,7 @@ window.Quarto = {
   <ul class="collapse">
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example"><span class="header-section-number">3.5.1</span> Example</a></li>
   </ul></li>
+  <li><a href="#staying-close-to-the-previous-timestep" id="toc-staying-close-to-the-previous-timestep" class="nav-link" data-scroll-target="#staying-close-to-the-previous-timestep"><span class="header-section-number">3.6</span> Staying close to the previous timestep</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -498,7 +499,7 @@ Note
 <section id="objectives-goals" class="level1" data-number="3">
 <h1 data-number="3"><span class="header-section-number">3</span> Objectives (goals)</h1>
 <p>The allocation algorithm optimizes for a sequence of objectives in succession. Before optimizing the next goal, it adds an inequality constraint that retains the preceding result in the direction of improvement. For a minimization objective with optimal value <span class="math inline">\(z^*\)</span>, this is <span class="math inline">\(z \le z^*\)</span>. This approach is known as <a href="https://en.wikipedia.org/wiki/Goal_programming">goal programming</a>.</p>
-<p>The first objective maximizes the sum of the low storage factors of the Basins, which reduce the outflows of a Basin to prevent negative storage, like the low storage factor in the physical layer. Because this objective comes first, these factors are only lowered when a Basin would otherwise run empty, and the demand objectives cannot lower them to hold back water. Then come the demand objectives below, and finally the route priority objective.</p>
+<p>The first objective maximizes the sum of the low storage factors of the Basins, which reduce the outflows of a Basin to prevent negative storage, like the low storage factor in the physical layer. Because this objective comes first, these factors are only lowered when a Basin would otherwise run empty, and the demand objectives cannot lower them to hold back water. Then come the demand objectives below, then the route priority objective, and finally the objective to stay close to the previous timestep.</p>
 <section id="demand-objectives" class="level3" data-number="3.0.1">
 <h3 data-number="3.0.1" class="anchored" data-anchor-id="demand-objectives"><span class="header-section-number">3.0.1</span> Demand objectives</h3>
 <p>There are several types of demand nodes:</p>
@@ -779,9 +780,17 @@ Figure&nbsp;2: Flow rate results with a preferential routes via the pumps
 </figcaption>
 </figure>
 </div>
-
-
 </section>
+</section>
+<section id="staying-close-to-the-previous-timestep" class="level2" data-number="3.6">
+<h2 data-number="3.6" class="anchored" data-anchor-id="staying-close-to-the-previous-timestep"><span class="header-section-number">3.6</span> Staying close to the previous timestep</h2>
+<p>After the objectives above there can still be many optimal solutions, for instance when two Pumps with the same route priority can supply the same demand. The solver could then return a different one every allocation timestep, which makes the flow switch between routes. Therefore the last objective minimizes the change of the flows through the allocation controlled nodes <span class="math inline">\(i = 1, \ldots, n\)</span> since the previous allocation timestep:</p>
+<p><span class="math display">\[
+\min \sum_{i=1}^n w_i \left| Q_i - Q_i^\text{prev} \right|, \quad w_i = 1 + 0.01 \frac{i - 1}{n - 1}
+\]</span></p>
+<p>Here <span class="math inline">\(Q_i^\text{prev}\)</span> is the flow of the previous allocation timestep, or for the first timestep of an intervention interval the average flow over the previous interval. At the start of the simulation it is the <code>flow_rate</code> from the input, and 0 for a TabulatedRatingCurve. The nodes are ordered by node type (Pump, Outlet, TabulatedRatingCurve) and node ID. Without the slightly increasing weights <span class="math inline">\(w_i\)</span> this objective itself would often have many optimal solutions, for instance when two tied Pumps both need to supply more, since any division of the increase would then be equally good. With them the flow of the first node changes. This objective is skipped for subnetworks without allocation controlled nodes, and it does not apply to the demands that secondary networks pass to the primary network.</p>
+
+
 </section>
 </section>
 
