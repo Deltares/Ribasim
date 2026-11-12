@@ -119,7 +119,7 @@ website:
         - dev/bmi.qmd
         - dev/ci.qmd
         - dev/release.qmd
-        - dev/copilot.qmd
+        - dev/agents.qmd
         - section: QGIS
           contents:
             - dev/qgis.qmd
