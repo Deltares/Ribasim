@@ -196,8 +196,16 @@ try {
     # ---------------------------------------------------------------- bio slides (shown by the host, first)
     if ($BioTemplate) {
         $people = @(
-            @("Hendrik Kok", "[Position], Deltares"),
-            @("Bart de Koning", "[Position], Deltares")
+            @(
+                "Hendrik Kok",
+                "Senior Advisor / Researcher, Deltares",
+                "Hendrik Kok specializes in coupling hydrological models. He is one of the main developers of iMOD Coupler, which runs MODFLOW 6 groundwater models together with the unsaturated zone model MetaSWAP and surface water models. There he built the coupling of Ribasim with MetaSWAP and MODFLOW 6, including sprinkling from surface water. He also contributes to iMOD Python, xugrid and Ribasim-NL, where he uses results of the national groundwater model as forcing for Ribasim."
+            ),
+            @(
+                "Bart de Koning",
+                "Advanced Engineer, Deltares",
+                "Bart de Koning has a background in applied mathematics and has been one of the core developers of Ribasim since 2023. He built much of its control and allocation: PID, discrete and continuous control, the demand nodes, and the optimization that distributes water over users by priority. He also works on making Ribasim fast and robust for large models. Besides Ribasim he has contributed to Wflow.jl. In the coupling of Ribasim and Wflow he focuses on irrigation."
+            )
         )
         for ($k = $people.Count - 1; $k -ge 0; $k--) {
             [void]$pres.Slides.InsertFromFile($BioTemplate.FullName, 0, 1, 1)
@@ -211,7 +219,7 @@ try {
             $name.Top = $bio.Shapes("Rectangle 7").Top - $name.Height
             $bio.Shapes("TextBox 4").TextFrame.TextRange.Text = "$TalkTitle`: $TalkSubtitle"
             $bio.Shapes("Rectangle 7").TextFrame.TextRange.Text = $people[$k][1]
-            $bio.Shapes("TextBox 6").TextFrame.TextRange.Text = "[Short bio to follow]"
+            $bio.Shapes("TextBox 6").TextFrame.TextRange.Text = $people[$k][2]
         }
     }
 
