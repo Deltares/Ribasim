@@ -1517,6 +1517,8 @@ an immutable struct.
     const reduced_implicit_solve::Bool
     # Matrix which aggregates flows into the basin storages
     const incidence_matrix::SparseMatrixCSC{Float64, Int}
+    # The transpose of the incidence matrix, of which a column holds the flows of a Basin
+    const incidence_matrix_transpose::SparseMatrixCSC{Float64, Int} = permutedims(incidence_matrix)
     # Per flow state the Basins it flows into via Junction nodes, with the weights, see `set_routing!`
     const routed_basins::Vector{Vector{Tuple{Int, Float64}}}
     # The indices of the flow states with a nonempty `routed_basins`

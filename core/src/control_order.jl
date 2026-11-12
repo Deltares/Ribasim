@@ -95,7 +95,7 @@ it depends on. A circular dependency is an error, since then there is no order t
 """
 function set_control_order!(p::Parameters)::Nothing
     (; p_independent) = p
-    (; pid_control, continuous_control, user_demand, junction, incidence_matrix, flow_ranges, control_order) =
+    (; pid_control, continuous_control, user_demand, junction, incidence_matrix_transpose, flow_ranges, control_order) =
         p_independent
     empty!(control_order)
     isempty(pid_control.node_id) && isempty(continuous_control.node_id) && return nothing
@@ -113,7 +113,9 @@ function set_control_order!(p::Parameters)::Nothing
         elseif type == ControlUnitType.PID
             if has_derivative_term(pid_control, idx)
                 own_flow_idx = controlled_flow_idx(flow_ranges, pid_control.controlled_node_id[idx])
-                basin_flows = findnz(incidence_matrix[pid_control.listen_node_id[idx].idx, :])[1]
+                # The flows of the listened Basin, a column of the transposed incidence matrix
+                basin_idx = pid_control.listen_node_id[idx].idx
+                basin_flows = rowvals(incidence_matrix_transpose)[nzrange(incidence_matrix_transpose, basin_idx)]
                 filter(!=(own_flow_idx), basin_flows)
             else
                 Int[]

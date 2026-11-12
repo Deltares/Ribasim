@@ -158,6 +158,7 @@ function formulate_vertical_flux!(
         storage_uplink::FlowCVector,
         p::Parameters,
         t::Number,
+        indices::AbstractUnitRange{Int} = eachindex(p.p_independent.basin.node_id),
     )
     (;
         node_id,
@@ -165,7 +166,7 @@ function formulate_vertical_flux!(
     ) = p.p_independent.basin
 
     # Outgoing
-    @threaded 1024 for idx in eachindex(node_id)
+    for idx in indices
         id = node_id[idx]
         # Evaporation and infiltration have the same 'uplink' storage,
         # but they are separated here for AD purposes
@@ -334,9 +335,16 @@ function formulate_dstorage_single_basin(
         node_id::NodeID;
         t::Union{Number, Nothing} = nothing,
     )
-    (; incidence_matrix, basin, flow_boundary, basin) = p_independent
+    (; incidence_matrix_transpose, basin, flow_boundary, basin) = p_independent
     (; vertical_flux) = basin
-    result = dot(incidence_matrix[node_id.idx, :], flow) +
+    # The row of the incidence matrix for the Basin, without allocating a slice of it
+    flow_idxs = rowvals(incidence_matrix_transpose)
+    weights = nonzeros(incidence_matrix_transpose)
+    result = zero(eltype(flow))
+    for k in nzrange(incidence_matrix_transpose, node_id.idx)
+        result += weights[k] * flow[flow_idxs[k]]
+    end
+    result +=
         vertical_flux.precipitation[node_id.idx] +
         vertical_flux.drainage[node_id.idx] +
         vertical_flux.surface_runoff[node_id.idx]
@@ -365,12 +373,13 @@ function formulate_flow!(
         storage_downlink::FlowCVector,
         p::Parameters,
         t::Number,
+        indices::AbstractUnitRange{Int} = eachindex(user_demand.node_id),
     )::Nothing
     (; p_independent, time_dependent_cache) = p
     (; current_return_factor) = time_dependent_cache.user_demand
     (; level_difference_threshold) = p_independent
 
-    for node_idx in eachindex(user_demand.node_id)
+    for node_idx in indices
         # UserDemands fed by Junction nodes are handled separately
         user_demand.in_routed_subgraph[node_idx] && continue
 
@@ -420,10 +429,11 @@ function formulate_flow!(
         storage_downlink::FlowCVector,
         p::Parameters,
         t::Number,
+        indices::AbstractUnitRange{Int} = eachindex(linear_resistance.node_id),
     )::Nothing
     (; node_id) = linear_resistance
 
-    @threaded for node_idx in eachindex(linear_resistance.node_id)
+    for node_idx in indices
         id = node_id[node_idx]
         q = linear_resistance_flow(
             linear_resistance,
@@ -525,8 +535,9 @@ function formulate_flow!(
         storage_downlink::FlowCVector,
         p::Parameters,
         t::Number,
+        indices::AbstractUnitRange{Int} = eachindex(tabulated_rating_curve.node_id),
     )::Nothing
-    @threaded for node_idx in eachindex(tabulated_rating_curve.node_id)
+    for node_idx in indices
         id = tabulated_rating_curve.node_id[node_idx]
         s_a = storage_uplink.horizontal.tabulated_rating_curve[node_idx]
         s_b = storage_downlink.horizontal.tabulated_rating_curve[node_idx]
@@ -770,10 +781,11 @@ function formulate_flow!(
         storage_downlink::FlowCVector,
         p::Parameters,
         t::Number,
+        indices::AbstractUnitRange{Int} = eachindex(manning_resistance.node_id),
     )::Nothing
     (; node_id) = manning_resistance
 
-    @threaded for node_idx in eachindex(manning_resistance.node_id)
+    for node_idx in indices
         id = node_id[node_idx]
         s_a = storage_uplink.horizontal.manning_resistance[node_idx]
         s_b = storage_downlink.horizontal.manning_resistance[node_idx]
@@ -970,9 +982,10 @@ function formulate_uncontrolled_flow!(
         storage_downlink::FlowCVector,
         p::Parameters,
         t::Number,
+        indices::AbstractUnitRange{Int} = eachindex(node.node_id),
     )::Nothing
     component_cache = node isa Pump ? p.time_dependent_cache.pump : p.time_dependent_cache.outlet
-    @threaded 256 for node_idx in eachindex(node.node_id)
+    for node_idx in indices
         node.control_type[node_idx] == ContinuousControlType.None || continue
         flow_rate = uncontrolled_flow_rate(node, node_idx, p, t, component_cache)
         formulate_pump_or_outlet_flow!(
@@ -993,28 +1006,55 @@ function formulate_uncontrolled_flows!(
         p::Parameters,
         t::Number,
     )::Nothing
-    (;
-        linear_resistance,
-        manning_resistance,
-        tabulated_rating_curve,
-        pump,
-        outlet,
-        user_demand,
-    ) = p.p_independent
+    (; basin, linear_resistance, manning_resistance, tabulated_rating_curve, pump, outlet, user_demand) =
+        p.p_independent
     common_args = (storage_uplink, storage_downlink, p, t)
 
-    # Basin forcings (precipitation, evaporation, infiltration, drainage, surface_runoff)
-    formulate_vertical_flux!(du.flow, storage_uplink, p, t)
-
-    formulate_uncontrolled_flow!(du, pump, common_args...)
-    formulate_uncontrolled_flow!(du, outlet, common_args...)
-    formulate_flow!(du.flow, linear_resistance, common_args...)
-    formulate_flow!(du.flow, manning_resistance, common_args...)
-    formulate_flow!(du.flow, tabulated_rating_curve, common_args...)
-    formulate_flow!(du.flow, user_demand, common_args...)
+    # All these flows only depend on the storages, so they are computed in one set of parallel
+    # tasks, where each chunk has its part of every node type
+    n = length(basin.node_id) + length(pump.node_id) + length(outlet.node_id) +
+        length(linear_resistance.node_id) + length(manning_resistance.node_id) +
+        length(tabulated_rating_curve.node_id) + length(user_demand.node_id)
+    n_chunks = parallel_chunk_count(n, 256)
+    if n_chunks == 1
+        formulate_uncontrolled_flows_chunk!(du, common_args..., 1, 1)
+    else
+        parallel_chunks(n_chunks) do k
+            formulate_uncontrolled_flows_chunk!(du, common_args..., k, n_chunks)
+        end
+    end
 
     # The PID errors, which the PID controlled flows use for the proportional term
     formulate_PID_control!(du.pid_integral, common_args...)
+    return nothing
+end
+
+"""
+Formulate the `k`-th of `n_chunks` chunks of the flows of each node type that are not controlled
+by PidControl or ContinuousControl, see `formulate_uncontrolled_flows!`.
+"""
+function formulate_uncontrolled_flows_chunk!(
+        du::RibasimStateCVector,
+        storage_uplink::FlowCVector,
+        storage_downlink::FlowCVector,
+        p::Parameters,
+        t::Number,
+        k::Int,
+        n_chunks::Int,
+    )::Nothing
+    (; basin, linear_resistance, manning_resistance, tabulated_rating_curve, pump, outlet, user_demand) =
+        p.p_independent
+    common_args = (storage_uplink, storage_downlink, p, t)
+    chunk(node) = chunk_range(eachindex(node.node_id), k, n_chunks)
+
+    # Basin forcings (precipitation, evaporation, infiltration, drainage, surface_runoff)
+    formulate_vertical_flux!(du.flow, storage_uplink, p, t, chunk(basin))
+    formulate_uncontrolled_flow!(du, pump, common_args..., chunk(pump))
+    formulate_uncontrolled_flow!(du, outlet, common_args..., chunk(outlet))
+    formulate_flow!(du.flow, linear_resistance, common_args..., chunk(linear_resistance))
+    formulate_flow!(du.flow, manning_resistance, common_args..., chunk(manning_resistance))
+    formulate_flow!(du.flow, tabulated_rating_curve, common_args..., chunk(tabulated_rating_curve))
+    formulate_flow!(du.flow, user_demand, common_args..., chunk(user_demand))
     return nothing
 end
 
@@ -1037,16 +1077,10 @@ function formulate_controlled_flows!(
         t::Number;
         storage::Union{AbstractVector, Nothing} = nothing,
     )::Nothing
-    (; continuous_control, pid_control, pump, outlet) = p.p_independent
+    (; continuous_control, pid_control) = p.p_independent
     (; compound_variable, func) = continuous_control
     boundary_flow = p.time_dependent_cache.flow_boundary.current_flow_rate
-
-    function formulate_controlled_flow!(controlled_node_id::NodeID, flow_rate::Number)
-        node = controlled_node_id.type == NodeType.Pump ? pump : outlet
-        return formulate_pump_or_outlet_flow!(
-            du, node, controlled_node_id.idx, flow_rate, storage_uplink, storage_downlink, p, t
-        )
-    end
+    flow_args = (storage_uplink, storage_downlink, p, t)
 
     for level in p.p_independent.control_order
         for user_demand_idx in level.user_demand_idx
@@ -1060,13 +1094,34 @@ function formulate_controlled_flows!(
         end
         for pid_idx in level.pid_idx
             flow_rate = get_pid_value(du, storage_uplink, storage_downlink, pid_integral, p, t, pid_idx)
-            formulate_controlled_flow!(pid_control.controlled_node_id[pid_idx], flow_rate)
+            formulate_controlled_flow!(du, pid_control.controlled_node_id[pid_idx], flow_rate, flow_args...)
         end
         for cc_idx in level.continuous_idx
             formulate_controlled_flow!(
-                continuous_control.controlled_node_id[cc_idx], compound_variables[cc_idx]
+                du, continuous_control.controlled_node_id[cc_idx], compound_variables[cc_idx], flow_args...
             )
         end
+    end
+    return nothing
+end
+
+"Formulate the flow of the controlled Pump or Outlet for the given flow rate."
+function formulate_controlled_flow!(
+        du::RibasimStateCVector,
+        controlled_node_id::NodeID,
+        flow_rate::Number,
+        storage_uplink::FlowCVector,
+        storage_downlink::FlowCVector,
+        p::Parameters,
+        t::Number,
+    )::Nothing
+    (; pump, outlet) = p.p_independent
+    args = (controlled_node_id.idx, flow_rate, storage_uplink, storage_downlink, p, t)
+    # Separate calls, so that each has a concrete node type
+    if controlled_node_id.type == NodeType.Pump
+        formulate_pump_or_outlet_flow!(du, pump, args...)
+    else
+        formulate_pump_or_outlet_flow!(du, outlet, args...)
     end
     return nothing
 end

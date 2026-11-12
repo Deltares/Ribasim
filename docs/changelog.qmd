@@ -7,8 +7,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - ContinuousControl can listen to flows set by other ContinuousControl or PidControl nodes, also via Junctions. Before, such a flow was read as 0 without an error. A circular dependency in the control of flows is now an error. [#3408](https://github.com/Deltares/Ribasim/issues/3408)
+- The reduced linear solve is now exact for chained control, so the Newton iterations of models where ContinuousControl listens to a flow set by ContinuousControl or PidControl converge as fast as those without.
 
 ### Changed
+- Large models are faster with multiple threads: the threads divide the work as they go, which helps on processors with performance and efficiency cores, the flows of all node types share one set of tasks, and the Jacobian and the linear solve update their sparse matrices in place. A day of the Dutch national model takes about 20% less time with 8 threads and 30% less with 4.
 - PidControl: the derivative term now includes the flows set by ContinuousControl and other PidControl nodes into the listened Basin, also via Junctions. Before, these were left out or depended on the order of the nodes. [#3408](https://github.com/Deltares/Ribasim/issues/3408)
 
 ## [v2026.2.0-rc1] - 2026-11-11
