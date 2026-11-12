@@ -1218,6 +1218,8 @@ function AllocationModel(subnetwork_id::Int32, p_independent::ParametersIndepend
     add_demand_objectives!(allocation_model, p_independent)
     add_route_priority_objective!(allocation_model, p_independent)
     add_flow_change_objective!(allocation_model)
+    # update_control_states! only rebuilds this if the allocation controlled nodes change
+    add_flow_change!(allocation_model, p_independent)
 
     return allocation_model
 end
