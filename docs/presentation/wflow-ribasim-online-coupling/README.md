@@ -33,7 +33,8 @@ Run all generators from the repository root with:
 The scripts use the Piave proof-of-concept data in `wflow-coupled`. Set the
 `RIBASIM_REPO` environment variable when running them from another checkout.
 The `source_images` folder contains the original figures from the referenced
-pull requests and the Wflow SBM concept figure from the Wflow.jl documentation.
+pull requests, the Wflow SBM concept figure from the Wflow.jl documentation and the
+photos for the bio slides (`presenters`).
 
 The outlet comparison (`08_outlet_discharge.py`) uses rleander73's five-year validation
 runs (PR #3390), which are not in the repository. Their daily outlet discharge is cached in

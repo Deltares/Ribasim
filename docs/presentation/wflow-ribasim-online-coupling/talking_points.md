@@ -204,7 +204,7 @@ Answers marked (check) are my understanding and need confirmation by you or Hend
 
 ## OPEN
 
-- Bio slides: bios and photos from both presenters.
+- Bio slides: Hendrik to check his bio.
 - Hendrik: check his slides' talking points and the split.
 - Q&A answer still marked (check): run time (7).
 - rleander73: confirm the explanation of the lower peaks (8).
