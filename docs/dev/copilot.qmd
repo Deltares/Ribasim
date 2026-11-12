@@ -1,0 +1,11 @@
+---
+title: "Copilot instructions"
+---
+
+The developers sometimes use GitHub Copilot to assist in their work.
+To make this more effective, we supply custom instructions for this repository, as documented [here](https://docs.github.com/en/copilot/how-tos/custom-instructions/adding-repository-custom-instructions-for-github-copilot).
+These instructions are automatically used by Copilot.
+
+# Current repository Copilot instructions
+
+{{< include ../../.github/copilot-instructions.md >}}
