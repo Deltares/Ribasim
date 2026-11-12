@@ -2,7 +2,7 @@ minimize
 obj: 50 flow_(Pump_#2,_Junction_#4)_
 subject to
 c1: -1 low_storage_factor_Basin_#1_ - 1 low_storage_factor_Basin_#8_ - 1 low_storage_factor_Basin_#9_ - 1 low_storage_factor_Basin_#11_ <= -4
-c2: 1 user_demand_error_UserDemand_#5,1,first_ <= 0.37500000000000006
+c2: 1 user_demand_error_UserDemand_#5,1,first_ <= 0.375
 c3: 1 user_demand_error_UserDemand_#5,1,second_ <= 0
 user_demand_relative_error_constraint_UserDemand_#5,1_: 1 user_demand_allocated_UserDemand_#5,1_ + 9.735198927212628e-5 user_demand_error_UserDemand_#5,1,first_ >= 9.735198927212628e-5
 user_demand_fairness_error_constraint_UserDemand_#5,1_: -1 user_demand_error_UserDemand_#5,1,first_ + 1 user_demand_error_UserDemand_#5,1,second_ + 1 average_flow_unit_error_1_ >= 0
