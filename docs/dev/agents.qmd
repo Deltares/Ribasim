@@ -1,0 +1,11 @@
+---
+title: "AI agent instructions"
+---
+
+The developers sometimes use AI coding agents such as GitHub Copilot and Claude Code to assist in their work.
+To make this more effective, we supply instructions for this repository in [`AGENTS.md`](https://agents.md/) at the root of the repository.
+Keep the instructions short and specific to this repository; generic advice makes agents slower and more expensive without making them better.
+
+# Current agent instructions
+
+{{< include ../../AGENTS.md >}}
