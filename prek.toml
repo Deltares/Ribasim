@@ -58,6 +58,30 @@ types_or = [
 ]
 require_serial = true
 
+# plugins.qgis.org scans uploaded plugins with Bandit and detect-secrets, and blocks
+# them on any finding. ruff checks the Bandit rules (see ruff.toml), these two hooks
+# cover the rest for the files shipped in the QGIS plugin.
+[[repos.hooks]]
+id = "qgis-plugin-nosec"
+name = "QGIS plugin: noqa of a Bandit rule also needs nosec"
+description = "Bandit ignores `# noqa: S603`, add `# nosec B603` as well"
+language = "pygrep"
+entry = '^(?!.*\bnosec\b).*\bnoqa:[^#]*\bS\d{3}'
+files = '^ribasim_qgis/'
+exclude = '^ribasim_qgis/(scripts|tests)/'
+types = ["python"]
+
+[[repos.hooks]]
+id = "qgis-plugin-detect-secrets"
+name = "QGIS plugin: detect-secrets"
+description = "Look for secrets with the detect-secrets plugins that plugins.qgis.org uses"
+entry = "pixi run detect-secrets-hook --disable-plugin IPPublicDetector"
+language = "system"
+# ribasim_qgis/core/styles links to python/ribasim/ribasim/styles
+files = '^(ribasim_qgis/|python/ribasim/ribasim/styles/)'
+exclude = '^ribasim_qgis/(scripts/|tests/|metadata\.txt$)'
+types = ["text"]
+
 [[repos.hooks]]
 id = "yamlfmt"
 name = "yamlfmt"

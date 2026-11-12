@@ -263,6 +263,7 @@ ribasim = { path = "python/ribasim", editable = true, extras = ["all"] }
 ribasim_api = { path = "python/ribasim_api", editable = true }
 ribasim_testmodels = { path = "python/ribasim_testmodels", editable = true }
 # Lint and typecheck
+detect-secrets = "*"
 nbstripout = "*"
 pandas-stubs = "*"
 prek = "*"
