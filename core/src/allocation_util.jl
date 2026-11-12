@@ -52,7 +52,11 @@ function collect_primary_network_connections!(
         for node_id in graph[].node_ids[subnetwork_id]
             for upstream_id in inflow_ids(graph, node_id)
                 upstream_node_subnetwork_id = graph[upstream_id].subnetwork_id
-                if is_primary_network(upstream_node_subnetwork_id)
+                if (upstream_id.is_routed || node_id.is_routed) &&
+                        upstream_node_subnetwork_id != subnetwork_id
+                    @error "Junction nodes at the boundary between subnetworks are not supported." upstream_id node_id
+                    errors = true
+                elseif is_primary_network(upstream_node_subnetwork_id)
                     if upstream_id.type ∈ (NodeType.Pump, NodeType.Outlet)
                         push!(
                             primary_network_connections_subnetwork,
@@ -83,6 +87,21 @@ function collect_primary_network_connections!(
             primary_network_connections_subnetwork
     end
 
+    # Flow from a subnetwork into the primary network is not supported, which includes Junction nodes
+    # at this boundary
+    for node_id in get(graph[].node_ids, Int32(1), ())
+        for upstream_id in inflow_ids(graph, node_id)
+            if !is_primary_network(graph[upstream_id].subnetwork_id)
+                if upstream_id.is_routed || node_id.is_routed
+                    @error "Junction nodes at the boundary between subnetworks are not supported." upstream_id node_id
+                else
+                    @error "This node flows from a subnetwork into the primary network, which is not supported." upstream_id node_id
+                end
+                errors = true
+            end
+        end
+    end
+
     errors &&
         error("Errors detected in connections between primary network and subnetworks.")
 
@@ -96,6 +115,17 @@ function get_low_storage_factor(problem::JuMP.Model, node_id::NodeID)
     else
         1.0
     end
+end
+
+"""
+The fraction of the outflow of a node that flows over a link. This is the fraction of the link if it
+leaves a Junction node, otherwise the node has a single outflow link.
+"""
+function outflow_link_fraction(junction::Junction, link::Tuple{NodeID, NodeID})::Float64
+    from_id = link[1]
+    from_id.is_routed || return 1.0
+    link_idx = findfirst(link_metadata -> link_metadata.link == link, junction.outflow_links[from_id.idx])
+    return junction.fraction[from_id.idx][link_idx]
 end
 
 function write_problem_to_file(problem, config; info = true, path = nothing)::Nothing
@@ -275,10 +305,49 @@ function ScalingFactors(
         basin.storage_to_level[node_id.idx].t[end] for
             node_id in basin.node_id if graph[node_id].subnetwork_id == subnetwork_id
     ]
+    # The problem is scaled by the Basin storages of the subnetwork. A subnetwork without
+    # a Basin is scaled by its boundary flows and demands instead, see `update_scaling!`.
+    isempty(max_storages) && return ScalingFactors()
     return ScalingFactors(; mean_half_storage = sum(max_storages) / (2 * length(max_storages)))
 end
 
-function update_scaling!(p::Parameters, Δt::Float64)
+"""
+The order of magnitude (power of 10) of the geometric mean of the nonzero FlowBoundary flow
+rates and UserDemand and FlowDemand demands in the subnetwork, as a typical flow rate for a
+subnetwork without a Basin. Unlike the arithmetic mean, the geometric mean is not dominated
+by a single large value, like a demand that is much larger than the available flow.
+Like in the optimization, the FlowBoundary flow rates are read at the intervention time
+`t_known` and the demands at the start of the allocation timestep `t`.
+Returns `nothing` if all of these are zero or there are none.
+"""
+function typical_boundary_flow(
+        p_independent::ParametersIndependent,
+        node_ids_in_subnetwork::NodeIDsInSubnetwork,
+        t::Float64,
+        t_known::Float64,
+    )::Union{Float64, Nothing}
+    (; flow_boundary, user_demand, flow_demand, allocation) = p_independent
+    (; flow_boundary_ids_subnetwork, user_demand_ids_subnetwork, flow_demand_ids_subnetwork) =
+        node_ids_in_subnetwork
+    flows = Float64[]
+    for node_id in flow_boundary_ids_subnetwork
+        push!(flows, boundary_flow_rate(flow_boundary, node_id.idx, t_known))
+    end
+    for demand_priority_idx in eachindex(allocation.demand_priorities_all)
+        for node_id in user_demand_ids_subnetwork
+            user_demand.has_demand_priority[node_id.idx, demand_priority_idx] || continue
+            push!(flows, get_demand(user_demand, node_id, demand_priority_idx, t))
+        end
+        for node_id in flow_demand_ids_subnetwork
+            flow_demand.has_demand_priority[node_id.idx, demand_priority_idx] || continue
+            push!(flows, flow_demand.demand_interpolation[node_id.idx][demand_priority_idx](t))
+        end
+    end
+    filter!(q -> isfinite(q) && !iszero(q), flows)
+    return isempty(flows) ? nothing : exp10(round(sum(log10 ∘ abs, flows) / length(flows)))
+end
+
+function update_scaling!(p::Parameters, t::Float64, Δt::Float64, t_known::Float64)
     (; p_independent, current_basin_properties) = p
     (; allocation_models) = p_independent.allocation
     (; current_storage) = current_basin_properties
@@ -286,9 +355,18 @@ function update_scaling!(p::Parameters, Δt::Float64)
         (; node_ids_in_subnetwork, scaling) = allocation_model
         (; basin_ids_subnetwork) = node_ids_in_subnetwork
 
-        storage_sum = sum(current_storage[id.idx] for id in basin_ids_subnetwork)
-        scaling.storage = (scaling.mean_half_storage + storage_sum / length(basin_ids_subnetwork)) / 2
-        scaling.flow = scaling.storage / Δt
+        if isempty(basin_ids_subnetwork)
+            # Without a Basin the storage scale is not used, so scale by the flows. If these
+            # are all zero, keep the previous scaling.
+            flow = typical_boundary_flow(p_independent, node_ids_in_subnetwork, t, t_known)
+            isnothing(flow) || (scaling.flow = flow)
+            scaling.storage = scaling.flow * Δt
+        else
+            storage_sum = sum(current_storage[id.idx] for id in basin_ids_subnetwork)
+            scaling.storage =
+                (scaling.mean_half_storage + storage_sum / length(basin_ids_subnetwork)) / 2
+            scaling.flow = scaling.storage / Δt
+        end
     end
     return
 end

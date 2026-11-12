@@ -14,7 +14,7 @@ For more granular access, see:
 """
 module Ribasim
 
-const RIBASIM_VERSION = "2026.1.2"
+const RIBASIM_VERSION = "2026.2.0-rc1"
 
 using PrecompileTools: @setup_workload, @compile_workload
 
@@ -89,7 +89,8 @@ using SparseArrays: SparseMatrixCSC, sparse, spzeros, nonzeros, nzrange, rowvals
 
 # Linear algebra
 using LinearAlgebra: LinearAlgebra, I, mul!, UniformScaling, dot
-using LinearSolve: OperatorAssumptions, NonstructuralZeros
+using LinearSolve:
+    OperatorAssumptions, NonstructuralZeros, KLUFactorization, LinearAliasSpecifier
 
 # Interpolation functionality, used for e.g.
 # basin profiles and TabulatedRatingCurve. See also the node

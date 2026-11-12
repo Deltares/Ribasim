@@ -299,7 +299,9 @@ end
     )
     model = Ribasim.Model(toml_path)
     (; flow_ranges) = model.integrator.p.p_independent
-    (; flow_input_ranges, ∂flow_∂flow_input) = model.integrator.cache.nlsolver.cache.W.J.cache
+    (; jac_flow) = model.integrator.cache.nlsolver.cache.W.J.cache
+    flow_input_ranges = jac_flow.ranges
+    ∂flow_∂flow_input = jac_flow.jac
     rows = rowvals(∂flow_∂flow_input)
 
     inflow_flow_idxs = flow_ranges.horizontal.user_demand_inflow
@@ -552,8 +554,8 @@ end
         :Terminal,
         :UserDemand,
     ]
-    # Junction, Terminal have no tables
-    no_tables = (:Terminal, :Junction)
+    # Terminal has no tables
+    no_tables = (:Terminal,)
     @test unique(node_type.(table_types)) == filter(!in(no_tables), node_types)
     @test collect(keys(node_kinds)) == node_types
     for node_type in node_types

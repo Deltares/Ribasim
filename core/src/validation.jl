@@ -28,6 +28,7 @@ neighbortypes(::Val{:junction}) = OrderedSet(
         :outlet,
         :user_demand,
         :terminal,
+        :level_boundary,
     )
 )
 neighbortypes(::Val{:flow_boundary}) =
@@ -83,7 +84,10 @@ n_neighbor_bounds_flow(::Val{:FlowBoundary}) = n_neighbor_bounds(0, 0, 1, 1)
 n_neighbor_bounds_flow(::Val{:Pump}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:Outlet}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:Terminal}) = n_neighbor_bounds(1, M, 0, 0)
-n_neighbor_bounds_flow(::Val{:Junction}) = n_neighbor_bounds(1, M, 1, M)
+# The required links of a Junction depend on its group, see `valid_junction_group`: in a group
+# with exactly one Basin a Junction may have only inflows or only outflows. These bounds also
+# generate the Python validation, which runs before the Junction groups are simplified.
+n_neighbor_bounds_flow(::Val{:Junction}) = n_neighbor_bounds(0, M, 0, M)
 n_neighbor_bounds_flow(::Val{:PidControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:ContinuousControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:DiscreteControl}) = n_neighbor_bounds(0, 0, 0, 0)
@@ -198,6 +202,8 @@ sort_key(::Type{Schema.Basin.Subgrid}) = (:subgrid_id, :basin_level)
 sort_key(::Type{Schema.Basin.SubgridTime}) = (:subgrid_id, :time, :basin_level)
 sort_key(::Type{Schema.Basin.Time}) = (:node_id, :time)
 
+sort_key(::Type{Schema.Junction.Static}) = (:node_id, :to_node_id)
+
 sort_key(::Type{Schema.ContinuousControl.Function}) = (:node_id, :input)
 sort_key(::Type{Schema.ContinuousControl.Variable}) = (:node_id, :listen_node_id, :variable)
 
@@ -237,7 +243,6 @@ sort_key(::Type{Schema.Pump.Time}) = (:node_id, :time)
 sort_key(::Type{Schema.TabulatedRatingCurve.Static}) = (:node_id, :control_state, :level)
 sort_key(::Type{Schema.TabulatedRatingCurve.Time}) = (:node_id, :time, :level)
 
-sort_key(::Type{Schema.UserDemand.Concentration}) = (:node_id, :substance, :time)
 sort_key(::Type{Schema.UserDemand.Static}) = (:node_id, :demand_priority)
 sort_key(::Type{Schema.UserDemand.Time}) = (:node_id, :demand_priority, :time)
 
@@ -293,23 +298,46 @@ function valid_unique_rows(table::StructVector{T})::Bool where {T <: Table}
 end
 
 """
-Check that the return_factor and min_level of each UserDemand node are the same for all its
-demand priorities (at the same time), since they cannot differ per demand priority.
+Check that the return_factor of each UserDemand node is between 0 and 1, and that its
+return_factor and min_level are the same for all its demand priorities (at the same time),
+since they cannot differ per demand priority.
 """
 function valid_user_demand_parameters(
         table::StructVector{T},
     )::Bool where {T <: Union{Schema.UserDemand.Static, Schema.UserDemand.Time}}
     errors = false
     for node_group in IterTools.groupby(row -> row.node_id, table)
-        parameters = Dict{Union{Nothing, DateTime}, Tuple{Float64, Float64}}()
+        parameters = Dict{Union{Nothing, DateTime}, Tuple{Float64, Union{Float64, Missing}}}()
         for row in node_group
             time = T <: Schema.UserDemand.Time ? row.time : nothing
+            if !(0 <= row.return_factor <= 1)
+                @error "The return_factor of UserDemand #$(row.node_id) must be between 0 and 1, got $(row.return_factor)."
+                errors = true
+                break
+            end
             row_parameters = (row.return_factor, row.min_level)
             if !isequal(get!(parameters, time, row_parameters), row_parameters)
                 @error "The return_factor and min_level of UserDemand #$(row.node_id) must be the same for all demand priorities."
                 errors = true
                 break
             end
+        end
+    end
+    return !errors
+end
+
+"""
+Check that a min_level is provided for the UserDemand nodes that abstract from Basin(s),
+since the abstraction is reduced below this level. It is not needed for Junction inflow,
+which has no level.
+"""
+function valid_user_demand_min_level(user_demand::UserDemand)::Bool
+    errors = false
+    for (id, inflow_links, min_level) in
+        zip(user_demand.node_id, user_demand.inflow_links, user_demand.min_level)
+        if isnan(min_level) && any(link_metadata.link[1].is_basin for link_metadata in inflow_links)
+            @error "$id abstracts from a Basin, so a min_level must be provided."
+            errors = true
         end
     end
     return !errors
@@ -414,6 +442,51 @@ function valid_links(graph::MetaGraph)::Bool
             errors = true
             @error "Cannot connect a $type_src to a $type_dst." id_src id_dst
         end
+    end
+    return !errors
+end
+
+"""
+Test whether a connected group of Junctions has the links it needs. The Junctions must form a
+tree, together with the Basin if the group has exactly one Basin as a neighbor. Such a group
+connects each other neighbor to that Basin, so each of its Junctions needs at least two links.
+Otherwise a Junction connects its upstream with its downstream nodes, so it needs both.
+"""
+function valid_junction_group(
+        graph::MetaGraph,
+        group::Vector{NodeID},
+        basin_ids::Vector{NodeID},
+    )::Bool
+    errors = false
+    has_one_basin = length(basin_ids) == 1
+    n_tree_links = 0
+    for junction_id in group
+        n_in = 0
+        n_out = 0
+        for neighbor in inflow_ids(graph, junction_id)
+            n_in += 1
+            n_tree_links +=
+                is_plain_junction(neighbor) ||
+                (has_one_basin && neighbor.type == NodeType.Basin)
+        end
+        for neighbor in outflow_ids(graph, junction_id)
+            n_out += 1
+            n_tree_links += has_one_basin && neighbor.type == NodeType.Basin
+        end
+        if has_one_basin
+            if n_in + n_out < 2
+                errors = true
+                @error "$junction_id must have at least 2 flow links (got $(n_in + n_out))."
+            end
+        elseif n_in < 1 || n_out < 1
+            errors = true
+            @error "$junction_id must have at least 1 flow inneighbor and 1 flow outneighbor (got $n_in and $n_out), since its Junction group does not have exactly one Basin as a neighbor."
+        end
+    end
+    # A tree has one link less than nodes, and each link is counted once
+    if n_tree_links != length(group) + has_one_basin - 1
+        errors = true
+        @error "The links of a Junction group must form a tree, without cycles." basin_ids group
     end
     return !errors
 end
@@ -690,11 +763,11 @@ function incomplete_subnetwork(
     )::Bool
     errors = false
 
-    # analyze the subnetwork without junctions
+    # analyze the subnetwork without the Junction nodes that were removed from the graph
     node_ids_without_junctions = OrderedDict{Int32, OrderedSet{NodeID}}()
     for (subnetwork_id, node_ids_in_subnetwork) in node_ids
         node_ids_without_junctions[subnetwork_id] =
-            OrderedSet(filter(x -> x.type != NodeType.Junction, node_ids_in_subnetwork))
+            OrderedSet(filter(!is_plain_junction, node_ids_in_subnetwork))
     end
 
 
@@ -733,6 +806,76 @@ function valid_n_neighbors(graph::MetaGraph)::Bool
         errors |= !valid_n_neighbors(node_type, graph)
     end
 
+    errors |= !valid_junction_connectivity(graph)
+
+    return !errors
+end
+
+"""
+Validate the connectivity of the Junction nodes that divide the flow or supply a UserDemand
+(the routed Junction nodes, which have rows in `Junction / static`), and of the UserDemand nodes
+that abstract from them. The other Junction nodes were removed from the graph already.
+"""
+function valid_junction_connectivity(graph)
+    errors = false
+    source_types = (
+        NodeType.Pump,
+        NodeType.Outlet,
+        NodeType.TabulatedRatingCurve,
+        NodeType.FlowBoundary,
+        NodeType.UserDemand,
+    )
+    target_types =
+        (NodeType.Basin, NodeType.LevelBoundary, NodeType.Terminal, NodeType.UserDemand)
+
+    for id in labels(graph)
+        if id.type == NodeType.UserDemand
+            n_routed_in = 0
+            n_other_in = 0
+            for inflow_id in inflow_ids(graph, id)
+                if inflow_id.is_routed
+                    n_routed_in += 1
+                else
+                    n_other_in += 1
+                end
+            end
+            if !iszero(n_routed_in) && (n_routed_in + n_other_in > 1)
+                @error "$id must have either one or more Basin inflow links, or exactly one inflow link from a Junction that divides the flow or supplies a UserDemand."
+                errors = true
+            end
+        elseif id.is_routed
+            n_user_demand_out = 0
+            n_other_out = 0
+            for outflow_id in outflow_ids(graph, id)
+                if outflow_id.type == NodeType.UserDemand
+                    n_user_demand_out += 1
+                elseif outflow_id.is_routed || outflow_id.type in target_types
+                    n_other_out += 1
+                else
+                    @error "$id divides the flow or supplies a UserDemand, so it cannot flow into $outflow_id: it has no level, and it can only flow into Basin, LevelBoundary, Terminal, UserDemand or Junction nodes."
+                    errors = true
+                end
+            end
+            for inflow_id in inflow_ids(graph, id)
+                if !(inflow_id.is_routed || inflow_id.type in source_types)
+                    @error "$id divides the flow or supplies a UserDemand, so its inflow must come from a Pump, Outlet, TabulatedRatingCurve, FlowBoundary, UserDemand or such a Junction, not from $inflow_id."
+                    errors = true
+                end
+            end
+            if isempty(inflow_ids(graph, id))
+                @error "$id has rows in Junction / static but no inflow link."
+                errors = true
+            end
+            if n_user_demand_out > 1
+                @error "$id cannot have more than one UserDemand outflow."
+                errors = true
+            elseif iszero(n_other_out)
+                @error "$id cannot only flow out into a UserDemand node, the remainder flow needs somewhere to go."
+                errors = true
+            end
+        end
+    end
+
     return !errors
 end
 
@@ -740,7 +883,6 @@ function valid_n_neighbors(node_name::Symbol, graph::MetaGraph)::Bool
     node_type = NodeType.T(node_name)
 
     errors = false
-    # return !errors
     for node_id in labels(graph)
         node_id.type == node_type || continue
         # listen links are not part of the graph, only validated in python

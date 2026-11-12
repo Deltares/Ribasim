@@ -105,7 +105,11 @@ def _make_boundary(data, boundary_type, values="concentration"):
         "name": bid,
         "substances": list(map(_quote, piv.columns[1:])),
         "df": piv.to_string(
-            formatters={"time": _quote}, header=False, index=False, na_rep=-999
+            formatters={"time": _quote},
+            float_format="{:.9g}".format,
+            header=False,
+            index=False,
+            na_rep=-999,
         ),
     }
     substances = data.substance.unique()
@@ -115,7 +119,47 @@ def _make_boundary(data, boundary_type, values="concentration"):
     return boundary, substances
 
 
-def _setup_graph(nodes, link, evaporate_mass=True):
+def _junction_term_flows(G, flows: pd.DataFrame) -> pd.DataFrame | None:
+    """Compute the flows over the links that bypass the Junction nodes that divide the flow, see ``_setup_graph``.
+
+    Each term is the flow of a link into such a Junction node, times the share of each
+    outflow link of the Junction along the way: the flow of that link divided by the total
+    outflow of the Junction node, per timestep. The result has the Delwaq link index as
+    ``link_id``, like the mapped flows.
+    """
+    wide = flows.pivot_table(
+        index="time", columns="link_id", values="flow_rate", aggfunc="sum"
+    )
+    dfs = []
+    for i, (_a, _b, d) in enumerate(G.edges(data=True)):
+        terms = d.get("terms")
+        if not terms:
+            continue
+        total = np.zeros(len(wide.index))
+        for base, ratios, sign in terms:
+            contribution = sign * wide[base].to_numpy(dtype=float)
+            for numerator_ids, denominator_ids in ratios:
+                numerator = wide[numerator_ids].sum(axis=1).to_numpy(dtype=float)
+                denominator = wide[denominator_ids].sum(axis=1).to_numpy(dtype=float)
+                share = np.divide(
+                    numerator,
+                    denominator,
+                    out=np.zeros_like(numerator),
+                    where=denominator != 0,
+                )
+                contribution = contribution * share
+            total += contribution
+        dfs.append(pd.DataFrame({"time": wide.index, "link_id": i, "flow_rate": total}))
+    return _concat(dfs, ignore_index=True) if dfs else None
+
+
+def _setup_graph(nodes, link, evaporate_mass=True, routed_junction_ids=frozenset()):
+    """Set up the Delwaq network graph from the Ribasim nodes and links.
+
+    ``routed_junction_ids`` are the Junction nodes with rows in `Junction / static`, which
+    divide the flow or supply a UserDemand. They are removed with the flow per source,
+    unlike the other Junction nodes, which only connect their neighbors.
+    """
     nx = cast(Any, _nx)
     G = nx.DiGraph()
 
@@ -124,6 +168,7 @@ def _setup_graph(nodes, link, evaporate_mass=True):
             G.add_node(
                 row.Index,
                 type=row.node_type,
+                routed=row.Index in routed_junction_ids,
                 id=row.Index,
                 x=row.geometry.x,
                 y=row.geometry.y,
@@ -137,13 +182,51 @@ def _setup_graph(nodes, link, evaporate_mass=True):
                 id=[row.Index],
             )
 
+    # The links into each UserDemand, whose flows add up to its abstraction
+    user_demand_inflow_ids = {
+        node_id: [
+            link_id for _, _, d in G.in_edges(node_id, data=True) for link_id in d["id"]
+        ]
+        for node_id, node_type in G.nodes(data="type")
+        if node_type == "UserDemand"
+    }
+
     # Simplify network, only keeping Basins and Boundaries.
     # We find an unwanted node, remove it,
     # and merge the flow links to/from the node.
     # Remove Junctions first, as they can be chained
+    # A connected group of Junctions with one Basin connects its other neighbors to
+    # that Basin, and the flow is the one on the link of the neighbor with the group.
+    junction_ids = [
+        n for n, d in G.nodes(data=True) if d["type"] == "Junction" and not d["routed"]
+    ]
+    for group in list(nx.weakly_connected_components(G.subgraph(junction_ids))):
+        basin_ids = {
+            neighbor
+            for node_id in group
+            for neighbor in nx.all_neighbors(G, node_id)
+            if G.nodes[neighbor]["type"] == "Basin"
+        }
+        if len(basin_ids) != 1:
+            continue
+        basin_id = basin_ids.pop()
+        new_links = []
+        for node_id in group:
+            for neighbor, data in G.pred[node_id].items():
+                if neighbor not in group and neighbor != basin_id:
+                    new_links.append((neighbor, basin_id, data["id"]))
+            for neighbor, data in G.succ[node_id].items():
+                if neighbor not in group and neighbor != basin_id:
+                    new_links.append((basin_id, neighbor, data["id"]))
+        for from_id, to_id, link_ids in new_links:
+            if G.has_edge(from_id, to_id):
+                raise ValueError("Merging links would create duplicate links.")
+            G.add_edge(from_id, to_id, id=link_ids)
+        G.remove_nodes_from(group)
+
     remove_nodes = []
     for node_id, out in G.succ.items():
-        if G.nodes[node_id]["type"] == "Junction":
+        if G.nodes[node_id]["type"] == "Junction" and not G.nodes[node_id]["routed"]:
             inneighbor_ids = G.pred[node_id]
             remove_nodes.append(node_id)
 
@@ -172,6 +255,61 @@ def _setup_graph(nodes, link, evaporate_mass=True):
     for node_id in remove_nodes:
         G.remove_node(node_id)
 
+    # Remove the Junction nodes that divide the flow or supply a UserDemand next. They have no
+    # storage, so the flow over each link into such a Junction is passed on over its outflow
+    # links in proportion to their flows. A link that bypasses the Junction therefore carries
+    # the flow of the link into the node times the share of the outflow link, per timestep:
+    # see `_junction_term_flows`. Such a link has `terms` instead of `id`:
+    # (link_id, [(numerator link ids, denominator link ids), ...], sign).
+    # Upstream nodes are removed first, so that the terms compose along chains.
+    #
+    # A UserDemand passes on water in the same way: its return flow carries the concentrations
+    # of the water it abstracted. Each link into a UserDemand is passed on over its return
+    # links, with the share of the return flow in the abstraction. The UserDemand stays in the
+    # network as a boundary, that only receives the water it consumes: the links into it get
+    # the passed on flow as negative terms.
+    routed_ids = [
+        n for n, d in G.nodes(data=True) if d["routed"] or d["type"] == "UserDemand"
+    ]
+    while routed_ids:
+        node_id = next(
+            (n for n in routed_ids if not any(m in routed_ids for m in G.pred[n])),
+            None,
+        )
+        if node_id is None:
+            raise ValueError(
+                f"Cannot simplify network with a cycle of UserDemand and Junction nodes: {routed_ids}."
+            )
+        routed_ids.remove(node_id)
+        is_user_demand = G.nodes[node_id]["type"] == "UserDemand"
+        out_edges = list(G.out_edges(node_id, data=True))
+        if is_user_demand:
+            denominator = user_demand_inflow_ids[node_id]
+        else:
+            denominator = [link_id for _, _, d in out_edges for link_id in d["id"]]
+        for in_id, _, d_in in list(G.in_edges(node_id, data=True)):
+            in_terms = [
+                *d_in.get("terms", []),
+                *((link_id, [], 1) for link_id in d_in["id"]),
+            ]
+            for _, out_id, d_out in out_edges:
+                ratio = (list(d_out["id"]), denominator)
+                new_terms = [
+                    (base, [*ratios, ratio], sign) for base, ratios, sign in in_terms
+                ]
+                if G.has_edge(in_id, out_id):
+                    G.edges[in_id, out_id].setdefault("terms", []).extend(new_terms)
+                else:
+                    G.add_edge(in_id, out_id, id=[], terms=new_terms)
+                if is_user_demand:
+                    d_in.setdefault("terms", []).extend(
+                        (base, ratios, -sign) for base, ratios, sign in new_terms
+                    )
+        if is_user_demand:
+            G.remove_edges_from(list(G.out_edges(node_id)))
+        else:
+            G.remove_node(node_id)
+
     remove_nodes = []
     for node_id, out in G.succ.items():
         if G.nodes[node_id]["type"] not in [
@@ -190,35 +328,23 @@ def _setup_graph(nodes, link, evaporate_mass=True):
                         logger.debug("Not making link to removed node.")
                         continue
                     link = (inneighbor_id, outneighbor_id)
-                    link_id = G.get_edge_data(node_id, outneighbor_id)["id"][0]
+                    d_out = G.get_edge_data(node_id, outneighbor_id)
                     if G.has_edge(*link):
                         data = G.get_edge_data(*link)
-                        data["id"].append(link_id)
+                        data["id"].extend(d_out["id"])
+                        data.setdefault("terms", []).extend(d_out.get("terms", []))
                     else:
-                        G.add_edge(*link, id=[link_id])
+                        G.add_edge(
+                            *link,
+                            id=list(d_out["id"]),
+                            terms=list(d_out.get("terms", [])),
+                        )
 
     for node_id in remove_nodes:
         G.remove_node(node_id)
 
-    # Due to the simplification, we can end up with cycles of length 2.
-    # This happens when a UserDemand is connected to and from a Basin,
-    # but can also happen in other cases (rivers with a outlet and pump),
-    # for which we do nothing. We merge these UserDemand cycles links to
-    # a single link, and later merge the flows.
-    merge_links = []
-    for loop in nx.simple_cycles(G, length_bound=2):
-        if len(loop) == 2:
-            node_a = G.nodes[loop[0]]
-            node_b = G.nodes[loop[1]]
-            if node_a["type"] != "UserDemand" and node_b["type"] != "UserDemand":
-                logger.debug(
-                    f"Found non UserDemand cycle between {node_a['type']} #{loop[0]} and {node_b['type']} #{loop[1]}."
-                )
-            else:
-                link_ids = G.edges[loop]["id"]
-                G.edges[reversed(loop)]["id"].extend(link_ids)
-                merge_links.extend(link_ids)
-                G.remove_edge(*loop)
+    # Water that returns to where it came from, through a UserDemand, needs no link
+    G.remove_edges_from(list(nx.selfloop_edges(G)))
 
     # Remove boundary to boundary links
     remove_double_boundary = []
@@ -358,7 +484,7 @@ def _setup_graph(nodes, link, evaporate_mass=True):
 
     assert len(basin_mapping) == basin_id
 
-    return G, merge_links, node_mapping, link_mapping, basin_mapping
+    return G, node_mapping, link_mapping, basin_mapping
 
 
 def _setup_boundaries(model, node_mapping):
@@ -375,12 +501,6 @@ def _setup_boundaries(model, node_mapping):
     if model.flow_boundary.concentration.df is not None:
         for _, rows in model.flow_boundary.concentration.df.groupby("node_id"):
             boundary, substance = _make_boundary(rows, "FlowBoundary")
-            concentrations.append(boundary)
-            substances.update(substance)
-
-    if model.user_demand.concentration.df is not None:
-        for _, rows in model.user_demand.concentration.df.groupby("node_id"):
-            boundary, substance = _make_boundary(rows, "UserDemand")
             concentrations.append(boundary)
             substances.update(substance)
 
@@ -445,8 +565,11 @@ def generate(
     include_path.mkdir(exist_ok=True)
 
     # Setup flow network
-    G, merge_links, node_mapping, link_mapping, basin_mapping = _setup_graph(
-        model.node, model.link, evaporate_mass=evaporate_mass
+    G, node_mapping, link_mapping, basin_mapping = _setup_graph(
+        model.node,
+        model.link,
+        evaporate_mass=evaporate_mass,
+        routed_junction_ids=model.junction._routed_node_ids(),
     )
 
     # Plot
@@ -468,7 +591,11 @@ def generate(
     # Write topology to delwaq pointer file
     pointer = pd.DataFrame(G.edges(), columns=["from_node_id", "to_node_id"])
     write_pointer(output_path / "ribasim.poi", pointer)
-    pointer["riba_link_id"] = [e[2] for e in G.edges.data("id")]
+    # For links that bypass Junction nodes that divide the flow, the links into these Junction nodes
+    pointer["riba_link_id"] = [
+        d["id"] + [base for base, _, _ in d.get("terms", [])]
+        for _, _, d in G.edges(data=True)
+    ]
     pointer["riba_from_node_id"] = pointer["from_node_id"].map(
         {v: k for k, v in node_mapping.items()}
     )
@@ -510,9 +637,9 @@ def generate(
         (basins["time"] - basins["time"].iloc[0]).dt.total_seconds().astype("int32")
     )
 
-    # Invert flows for half-link of cycles so later summing is correct
-    m = flows.link_id.isin(merge_links)
-    flows.loc[m, "flow_rate"] = flows.loc[m, "flow_rate"] * -1
+    # The flows over links that bypass the UserDemand nodes and the Junction nodes that divide
+    # the flow are computed from the original flows
+    term_flows = _junction_term_flows(G, flows)
 
     # Map link_id to the new link_id and merge any duplicate flows
     flows["riba_link_id"] = flows["link_id"]
@@ -520,6 +647,13 @@ def generate(
     flows.dropna(subset=["link_id"], inplace=True)
     flows["link_id"] = flows["link_id"].astype("int32")
     nflows = flows.groupby(["time", "link_id"]).sum().reset_index()
+    if term_flows is not None:
+        nflows = (
+            _concat([nflows, term_flows], ignore_index=True)
+            .groupby(["time", "link_id"])
+            .sum(min_count=1)
+            .reset_index()
+        )
 
     # Add basin boundaries to flows
     # Map all boundary node_ids to link_ids (unique per boundary type)
@@ -549,6 +683,7 @@ def generate(
     # Save flows to Delwaq format
     nflows.sort_values(by=["time", "link_id"], inplace=True)
     # nflows.to_csv(output_path / "flows.csv", index=False)  # not needed
+    assert (nflows.groupby("time").size() == total_exchanges).all()
     nflows.drop(
         columns=["link_id", "riba_link_id"],
         inplace=True,
@@ -602,7 +737,6 @@ def generate(
         "Initial": 1.0,
         "LevelBoundary": 0.0,
         "FlowBoundary": 0.0,
-        "UserDemand": 0.0,
         "Precipitation": 0.0,
         "Drainage": 0.0,
         "SurfaceRunoff": 0.0,
@@ -741,7 +875,6 @@ def add_tracer(
         "Basin",
         "LevelBoundary",
         "FlowBoundary",
-        "UserDemand",
     ]:
         raise ValueError("Can only trace Basins and boundaries")
     snake_node_type = _pascal_to_snake(node_type)

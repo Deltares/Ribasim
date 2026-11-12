@@ -2,10 +2,15 @@
 title: "![](/assets/node-icons/Junction.svg){height=20} Junction"
 ---
 
-A Junction node allows explicitly representing confluences and bifurcations in the network. It doesn't introduce new behavior but makes it easier to make the network layout recognizable.
+A Junction node allows explicitly representing confluences and bifurcations in the network. It has no storage, so the sum of its inflows is always equal to the sum of its outflows, and it does not need any profile information.
 
-Junctions can connect to other Junctions, but are not allowed to form cycles. Note that a confluence Junction followed by bifurcation Junction is generally invalid, as it will connect a connector node with multiple basins.
+A Junction can supply a UserDemand, as long as (i) the return flow of the UserDemand does not create a cycle of Junctions with the UserDemand, and (ii) the Junction has at least one other outflow link to pass on the remainder of its inflow.
 
+Except for the UserDemand abstraction, a Junction that is not in the [Static](#static) table does not introduce new behavior, it makes the network layout recognizable: the flow goes where the links go, as if the nodes around the Junction were connected directly. See [Junctions not in the Static table](#junctions-not-in-the-static-table) for examples.
+
+A Junction that is in the [Static](#static) table divides the flow it receives over its outflow links by the fractions in that table. A UserDemand that abstracts from the Junction receives its flow before the remainder is divided. The flow over each of its links is in the flow results. Such Junctions can be combined into larger networks, see [Junctions in the Static table](#junctions-in-the-static-table).
+
+Flow cannot be divided directly by other nodes: a connector node (e.g. Pump or Outlet), FlowBoundary or UserDemand has a single outflow link. To divide such flow, put a Junction that is in the Static table downstream of it.
 
 # Allowed connectivity
 
@@ -22,22 +27,36 @@ plt.close(fig)
 
 # Tables
 
-No tables are required for Junction nodes.
+## Static
+
+This table is optional. A Junction that isn't in the table only connects its neighbors, see [Equations](#equations). A Junction that is in the table divides the flow it receives.
+
+The fractions are defined per link from the Junction `node_id` to the node `to_node_id`. All outflow links of the Junction have a fraction, except the link to a UserDemand node, which gets the abstraction instead. A single outflow link gets the whole flow, so a row with a fraction of 1 or no fraction is enough for a Junction with one outflow, for instance to supply a UserDemand from it.
+
+The `to_node_id` can be a Junction that isn't in the table. The row then applies to the node that Junction passes the flow on to, or to the Basin of its group. Such a Junction cannot divide the flow it receives from a Junction in the table, since nothing says how: add it to the table as well, or name the nodes downstream of it directly.
+
+```{python}
+# | code-fold: true
+%run ../../gen_docs_table.py
+table_from_schema("Junction.Static", restrictions = {"to_node_id": "Must be a node directly downstream of `node_id` that is not a UserDemand node", "fraction": "Must be in [0,1]. The fractions of the outflow links of a node must sum to 1, where at most one may be unspecified and gets the remainder."})
+```
 
 # Equations
 
+## Junctions not in the Static table
+
 Junctions connect all upstream nodes with all downstream nodes,
 and are not used in the equations themselves.
+For example, this model with diverging and converging Junctions
 
-# Examples
-
-This model with both diverging and converging Junctions
 ```{mermaid}
 flowchart LR
     classDef junction fill:#000,stroke:#000,color:white
-    C((Boundary)) --> E((Junction))
-    E --> F[\Basin/]
-    E --> G[\Basin/]
+    A[\Basin/] --> E((Junction))
+    E --> B{{Connector}}
+    E --> C{{Connector}}
+    B --> F[\Basin/]
+    C --> G[\Basin/]
     F --> H{{Connector}}
     G --> I{{Connector}}
     H --> J((Junction))
@@ -50,7 +69,9 @@ translates to the following model:
 
 ```{mermaid}
 flowchart LR
-    C((Boundary)) --> F[\Basin/]
+    A[\Basin/] --> B{{Connector}}
+    A --> C{{Connector}}
+    B --> F[\Basin/]
     C --> G[\Basin/]
     F --> H{{Connector}}
     G --> I{{Connector}}
@@ -79,3 +100,174 @@ flowchart LR
     B{{Connector}} --> F
     C{{Connector}} --> F
 ```
+
+A group of connected Junctions must form a tree: also when ignoring the direction of the links, the Junctions cannot form a cycle.
+So flow that is split by these Junctions cannot be joined again by them.
+A confluence Junction followed by a bifurcation Junction is generally invalid as well, as it connects a connector node with multiple Basins downstream, while a connector node has a single outflow link.
+
+### A Junction tree with one Basin
+
+A group of connected Junctions with exactly one Basin as a neighbor connects that Basin in both directions.
+Then inflows and outflows of the Basin along the same waterway can share one Junction tree,
+
+```{mermaid}
+flowchart LR
+    classDef junction fill:#000,stroke:#000,color:white
+    B[\Basin/] --- J1((Junction))
+    J1 --- J2((Junction))
+    A{{Connector A}} --> J1
+    J1 --> C{{Connector C}}
+    E{{Connector E}} --> J2
+    J2 --> D{{Connector D}}
+    class J1,J2 junction
+```
+
+which translates to the following model:
+
+```{mermaid}
+flowchart LR
+    A{{Connector A}} --> B[\Basin/]
+    E{{Connector E}} --> B
+    B --> C{{Connector C}}
+    B --> D{{Connector D}}
+```
+
+The links of A, C, D and E keep their direction, now to or from the Basin.
+The links between the Junctions, and between the Junctions and the Basin, are drawn without arrows here since their direction does not matter.
+The rules for such a group are:
+
+- The Junctions and the Basin form a tree, and each of these Junctions has at least two links.
+- A UserDemand can connect to the Basin in both directions through the group.
+- A Terminal or a LevelBoundary does not take the place of the Basin.
+
+The flow over a link in the tree, such as the link between the two Junctions above, is the sum of the flows of the nodes on the side of the link away from the Basin.
+Flows in the direction of the link count as positive and flows against it as negative, so the link reports the net flow through that part of the waterway.
+In the example above, if the link between the Junctions points towards the Basin, it reports the flow of E minus the flow of D.
+To get the inflows and outflows separately, use separate Junction trees, which do not connect to each other:
+
+```{mermaid}
+flowchart LR
+    classDef junction fill:#000,stroke:#000,color:white
+    A{{Connector A}} --> J1((Junction))
+    E{{Connector E}} --> J2((Junction))
+    J2 --> J1
+    J1 --> B[\Basin/]
+    B --> J3((Junction))
+    J3 --> C{{Connector C}}
+    J3 --> J4((Junction))
+    J4 --> D{{Connector D}}
+    class J1,J2,J3,J4 junction
+```
+
+This translates to the same model.
+
+The flow rate of a Junction in such a tree is the net flow on its link towards the Basin, see [Flow rate](#flow-rate).
+
+## Junctions in the Static table
+
+In this example Junction J1 divides the flow of the Pump: 30% goes to Basin A and the remainder to Junction J2, which supplies the UserDemand first and passes the remainder on to Basin B.
+
+```{mermaid}
+flowchart LR
+    classDef junction fill:#000,stroke:#000,color:white
+    P{{Pump}} --> J1
+    subgraph S [Junction subgraph]
+        J1((J1)) -->|remainder| J2((J2))
+        J2 --> U[/UserDemand\]
+    end
+    J1 -->|0.3| A[\Basin A/]
+    J2 -->|remainder| B[\Basin B/]
+    U --> B
+    class J1,J2 junction
+    style S fill:none,stroke:#888,stroke-dasharray:5 5,color:#333
+```
+
+| node_id | to_node_id | fraction |
+|--------:|-----------:|---------:|
+| J1      | A          | 0.3      |
+| J1      | J2         |          |
+| J2      | B          |          |
+
+: Junction / static {.striped}
+
+Junction J1 and J2, and the UserDemand that abstracts from J2, form a Junction subgraph, over which flow travels instantaneously.
+The inflow of a subgraph comes from nodes which determine their own flow: a Pump, Outlet, TabulatedRatingCurve, FlowBoundary or a UserDemand outside the subgraph.
+Multiple nodes can flow into the same Junction (a confluence), in which case the inflows are summed.
+A subgraph can be any network of Junctions, as long as there are no loops when following the direction of the links: splitting the flow and joining it again in a Junction downstream is allowed.
+
+The flows in a subgraph are computed as follows:
+
+- Traverse the subgraph node-wise in topological order, so that every node comes after all nodes it depends on: the nodes upstream of it, and the UserDemand nodes that take precedence over it. UserDemands take precedence over the division of the flow because the UserDemand abstracts before the remainder is passed on. Since the order is only well defined if there are no loops, loops in a subgraph are not allowed.
+- For Junction nodes:
+    - Compute the total inflow
+    $$
+        q_\text{total in} = \sum q_\text{in}
+    $$
+    - Compute the remaining outflow
+    $$
+        q_\text{out} = q_\text{total in} - q_\text{ud},
+    $$
+    where $q_\text{ud}$ is the UserDemand abstraction given the effective total demand $d$:
+    $$
+        q_\text{ud} = \min(q_\text{total in}, d).
+    $$
+    Then the flow over each outflow link $l$, except the link to the UserDemand node, follows from the fraction $f_l$ of that link:
+    $$
+        q_l = f_l \cdot q_\text{out}.
+    $$
+- For UserDemand nodes it works like the standard [UserDemand flow](/reference/node/user-demand.qmd#equations), but without the low storage factor or minimum level.
+
+Without allocation, a UserDemand abstracting from a Junction takes its demand before anything is passed on, regardless of its `demand_priority`: in a chain of Junctions the upstream UserDemand is served first. Demand priorities are only applied by [allocation](#behavior-in-allocation), which bounds the abstraction of each UserDemand by what it allocated.
+
+A model does not need a Basin when all flow comes from FlowBoundary nodes and passes through Junctions, for instance into UserDemand or Terminal nodes.
+
+### Downstream level
+
+A Junction has no level of its own. A structure that flows into a Junction sees the level of the single Basin or LevelBoundary downstream of it, if the Junction, and the Junctions downstream of it, do not divide the flow: then the structure behaves as if it flowed into that node directly, so a Pump or Outlet can still be drowned by `max_downstream_level`. This holds whether or not the Junction is in the Static table. Where the flow is divided over several nodes there is no single level, and the structure has free outflow: `max_downstream_level` and the downstream level reduction of a TabulatedRatingCurve are not applied. In the example above the Pump has free outflow, since J1 divides the flow over Basin A and Basin B.
+
+### Tracers
+
+With `experimental.concentration` the tracers are propagated through the subgraphs using the mass over the timestep rather than concentrations, so that no mass is lost when a flow is zero:
+
+- For flows into a subgraph the mass is the flow times the concentration of the source: the concentration of the FlowBoundary or LevelBoundary, or of the Basin upstream of a Pump, Outlet or TabulatedRatingCurve. For a UserDemand outside the subgraph it is the mass in its return flow.
+- The mass of the inflows of a Junction is mixed: the concentration of the flow out of a Junction, including the flow abstracted by a UserDemand, is the total mass in divided by the total volume out.
+- A UserDemand abstracting from a Junction handles tracers like a UserDemand abstracting from Basins: its return flow has the concentration of the water it abstracts. The mass in the water it consumes leaves the model.
+- The mass that flows from a subgraph into a Basin is added to the mass of that Basin, as a source in the [implicit transport between Basins](/concept/core.qmd#sec-tracer). The flows into a subgraph use the Basin concentrations at the start of the timestep, so unlike the transport between Basins this part is explicit. A Junction itself does not store water, so tracers do not age in it.
+
+### Water quality
+
+In the offline [Delwaq coupling](/guide/delwaq.qmd) a Junction has no volume, so it is removed from the Delwaq network like the connector nodes: each node that flows into the Junction gets an exchange with each node it flows into. The flow over such an exchange is the flow of the link into the Junction times the share of the outflow link in the total outflow, per timestep, so the mixing in the Junction is the same as in the [tracers](#tracers) of the core. An exchange between two boundary nodes, like a FlowBoundary and the UserDemand that abstracts from the Junction, is dropped, since it does not touch a Basin.
+
+## Flow rate
+
+Control nodes can listen to the `flow_rate` of a Junction, and QGIS plots it. There are two rules:
+
+- The flow rate of a Junction is its total inflow: the sum of the flows on its incoming links. For a Junction in the Static table this is the flow before its UserDemand abstracts, so listen to a Junction downstream of it to get the remainder.
+- In [a Junction tree with one Basin](#a-junction-tree-with-one-basin) the links can carry flow in both directions. There the flow rate of a Junction is the net flow on its link towards the Basin, positive in the direction of that link. It is the same value as that link has in the flow results, and it is negative when the water flows against the link.
+
+Both rules give the same value as long as the water flows along the links, for instance at a confluence or a bifurcation.
+
+# Behavior in allocation
+
+[Allocation](/concept/allocation.qmd) can give it less water than the inflows into the Junction, to leave water for demands downstream with an higher priority.
+
+A Junction that is in the Static table divides the flow over its outflow links by the same fractions as in the simulation.
+Allocation cannot change these fractions; it can only change how much water flows into the Junction, for instance by steering an allocation-controlled Pump or Outlet upstream.
+
+A UserDemand that abstracts from a Junction gets an allocated flow rate per demand priority, like a UserDemand that abstracts from a Basin.
+Allocation can give it less than flows into the Junction, to leave water for demands downstream with an earlier priority.
+The remainder of the flow is divided over the other outflow links.
+
+Such a Junction must have the same subnetwork ID as the nodes it is connected to: Junctions at the boundary between the primary network and a subnetwork, or between subnetworks, are not supported yet.
+
+# Connectivity rules
+
+A Junction in the Static table has some specific connectivity rules:
+
+- Its inflow comes from a Pump, Outlet, TabulatedRatingCurve, FlowBoundary, UserDemand or another Junction in the Static table, in the direction of the flow.
+- It flows into Basin, LevelBoundary, Terminal, UserDemand or Junction nodes. A Junction that isn't in the Static table and that it flows into cannot divide the flow over several nodes.
+- A maximum of 1 UserDemand node can abstract from it.
+- A UserDemand node must have either one or more Basin inflow links, or exactly one inflow link from such a Junction.
+- Since a Junction cannot accumulate water, it always needs one or more outflow links. If the Junction flows into a UserDemand node, there must be another outflow link, because the inflow to the Junction can be larger than the demand and the remainder needs somewhere to go.
+- Multiple nodes can flow into the same Junction, but the Junctions and the UserDemand nodes that abstract from them cannot form a loop when following the direction of the links.
+- A node that is not such a Junction (a connector node, FlowBoundary or UserDemand) has a single outflow link. To divide its flow, put a Junction that is in the Static table downstream of it.

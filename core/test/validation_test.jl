@@ -96,6 +96,74 @@ end
     )
 end
 
+@testitem "Junction group validation" begin
+    import SQLite
+    using Logging
+    using MetaGraphsNext: edge_labels
+
+    config = Ribasim.Config(
+        normpath(@__DIR__, "../../generated_testmodels/junction_bidirectional/ribasim.toml"),
+    )
+    node_types = Dict(
+        1 => :Basin, 2 => :Junction, 3 => :Junction, 4 => :Pump, 5 => :Outlet,
+        6 => :UserDemand, 7 => :Basin, 8 => :Terminal, 9 => :UserDemand,
+    )
+
+    # Create the graph of the given links, with the error messages
+    function create_graph(links)
+        db = SQLite.DB()
+        SQLite.execute(db, "CREATE TABLE Node (node_id, node_type, subnetwork_id, route_priority)")
+        SQLite.execute(db, "CREATE TABLE Link (link_id, from_node_id, to_node_id, link_type)")
+        for id in unique(Iterators.flatten(links))
+            SQLite.execute(db, "INSERT INTO Node VALUES (?, ?, NULL, NULL)", (id, String(node_types[id])))
+        end
+        for (id, (from_id, to_id)) in enumerate(links)
+            SQLite.execute(db, "INSERT INTO Link VALUES (?, ?, ?, 'flow')", (id, from_id, to_id))
+        end
+        logger = TestLogger()
+        graph = with_logger(
+            () -> try
+                Ribasim.create_graph(db, config)
+            catch end, logger
+        )
+        return graph, [log.message for log in logger.logs if log.level == Error]
+    end
+    as_ints(link) = (Int(link[1].value), Int(link[2].value))
+
+    # Invalid groups
+    for (links, message) in (
+            ([(1, 2), (2, 3), (3, 1), (4, 2)], "The links of a Junction group must form a tree, without cycles."),
+            ([(1, 2), (2, 3), (4, 2)], "Junction #3 must have at least 2 flow links (got 1)."),
+            ([(1, 2), (7, 2)], "Junction #2 must have at least 1 flow inneighbor and 1 flow outneighbor (got 2 and 0), since its Junction group does not have exactly one Basin as a neighbor."),
+            ([(1, 2), (2, 3), (2, 6), (3, 6)], "Duplicate link: a Junction group connects these nodes through multiple links."),
+            ([(1, 2), (2, 4), (4, 3), (3, 2)], "Invalid link: the opposite link already exists (this is only allowed for UserDemand)."),
+        )
+        graph, errors = create_graph(links)
+        @test isnothing(graph)
+        @test errors == [message]
+    end
+
+    # With one Basin each neighbor connects to it, also a UserDemand in both directions,
+    # whatever the direction of the links in the group
+    graph, errors = create_graph([(2, 1), (3, 2), (2, 4), (3, 5), (6, 3), (3, 6)])
+    @test isempty(errors)
+    @test Set(as_ints.(edge_labels(graph))) == Set([(1, 4), (1, 5), (1, 6), (6, 1)])
+
+    # Otherwise upstream neighbors connect to downstream ones along the direction of the links,
+    # and the flow rate of a Junction is the sum of its incoming links
+    graph, errors = create_graph([(1, 2), (2, 6), (2, 3), (7, 3), (3, 9)])
+    @test isempty(errors)
+    @test Set(as_ints.(edge_labels(graph))) == Set([(1, 6), (1, 9), (7, 9)])
+    @test [Set((as_ints(link), sign) for (link, sign) in flows) for flows in graph.graph_data.junction_flows] ==
+        [Set([((1, 6), 1), ((1, 9), 1)]), Set([((1, 9), 1), ((7, 9), 1)])]
+
+    # A Terminal does not take the place of the Basin, nor connects to it
+    graph, _ = create_graph([(1, 2), (2, 8)])
+    logger = TestLogger()
+    @test !with_logger(() -> Ribasim.valid_links(graph), logger)
+    @test only(logger.logs).message == "Cannot connect a basin to a terminal."
+end
+
 @testitem "PidControl connectivity validation" begin
     using Graphs: DiGraph
     using Logging
@@ -431,29 +499,6 @@ end
         "Pump #2 has multiple control states but is not controlled by DiscreteControl, add a row without control_state to define its parameters."
 end
 
-@testitem "Missing demand priority when allocation is active" begin
-    using Ribasim
-    using Logging
-    using IOCapture: capture
-
-    toml_path =
-        normpath(@__DIR__, "../../generated_testmodels/invalid_priorities/ribasim.toml")
-    @test ispath(toml_path)
-
-    logger = TestLogger()
-    with_logger(logger) do
-        @test_throws "Missing demand priority parameter(s)." Ribasim.run(toml_path)
-    end
-    @test length(logger.logs) == 3
-    @test logger.logs[1].level == Error
-    @test logger.logs[1].message ==
-        "Missing demand_priority parameter(s) for a FlowDemand / static node in the allocation problem."
-    @test logger.logs[2].message ==
-        "Missing demand_priority parameter(s) for a LevelDemand / static node in the allocation problem."
-    @test logger.logs[3].message ==
-        "Missing demand_priority parameter(s) for a UserDemand / static node in the allocation problem."
-end
-
 @testitem "Node ID not in Node table" begin
     using Ribasim
     import SQLite
@@ -750,7 +795,7 @@ end
         "UserDemand #1 has multiple different values over time for 'min_level', which does not support time-varying values."
 end
 
-@testitem "UserDemand parameters equal per demand priority" begin
+@testitem "UserDemand parameter validation" begin
     using Logging
     using Dates: DateTime
     using StructArrays: StructVector
@@ -800,4 +845,40 @@ end
     end
     @test only(logger.logs).message ==
         "The return_factor and min_level of UserDemand #1 must be the same for all demand priorities."
+
+    # A UserDemand cannot return more than it abstracts
+    static = StructVector(
+        [
+            Schema.UserDemand.Static(1, 1.0, 0.0, 0.0, Int32(1)),
+            Schema.UserDemand.Static(2, 1.0, 1.0, 0.0, Int32(1)),
+            Schema.UserDemand.Static(3, 1.0, 1.2, 0.0, Int32(1)),
+            Schema.UserDemand.Static(4, 1.0, -0.1, 0.0, Int32(1)),
+        ]
+    )
+    logger = TestLogger()
+    with_logger(logger) do
+        @test !valid_user_demand_parameters(static)
+    end
+    @test length(logger.logs) == 2
+    @test logger.logs[1].message ==
+        "The return_factor of UserDemand #3 must be between 0 and 1, got 1.2."
+    @test logger.logs[2].message ==
+        "The return_factor of UserDemand #4 must be between 0 and 1, got -0.1."
+end
+
+@testitem "UserDemand min_level required for Basin inflow" begin
+    using Logging
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/invalid_user_demand_missing_min_level/ribasim.toml",
+    )
+    @test ispath(toml_path)
+
+    logger = TestLogger()
+    with_logger(logger) do
+        @test_throws "Errors encountered when parsing UserDemand data." Ribasim.Model(toml_path)
+    end
+    @test [string(log.message) for log in logger.logs if log.level == Logging.Error] ==
+        ["UserDemand #2 abstracts from a Basin, so a min_level must be provided."]
 end

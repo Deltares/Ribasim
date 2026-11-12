@@ -9,9 +9,10 @@ When allocation is not used, a `UserDemand` node attempts to extract the full de
 When allocation is used, the amount a `UserDemand` node is allowed to abstract is determined by the [allocation algorithm](../../concept/allocation.qmd).
 This algorithm first tries to allocate from the directly connected basin, and then from other sources whose flow can reach the `UserDemand` node.
 Note that `demand_priority` is used to determine the order in which the UserDemands are allocated water.
-This parameter is only used when allocation is active and is optional when allocation is not active.
+This parameter is only used when allocation is active and is optional, it defaults to 1.
 
 When the connected Basin is almost empty or reaches the minimum level at which the UserDemand can extract water (`min_level`), it will stop extraction.
+The `min_level` must be provided when the UserDemand abstracts from Basin(s); it is not used for abstraction from a [Junction](/reference/node/junction.qmd).
 
 UserDemands need an outgoing flow link along which they can send their return flow, this can also be to the same Basin from which it extracts water.
 The amount of return flow is always a fraction of the inflow into the UserDemand.
@@ -64,17 +65,6 @@ table_from_schema(Ribasim.Schema.UserDemand.Time; restrictions = USER_DEMAND_RES
 Although it may seem that way, this table does *not* describe demands that change `demand_priority` over time. Rather, this table defines a `demand(time)` relationship for every occurring `demand_priority` in the table for a certain `node_id`.
 :::
 
-## Concentration
-This table defines the concentration of substances for the flow from the UserDemand.
-
-```{julia}
-# | code-fold: true
-table_from_schema(
-    Ribasim.Schema.UserDemand.Concentration;
-    restrictions = Dict(:substance => "can correspond to known Delwaq substances"),
-)
-```
-
 # Equations
 
 UserDemand receive an allocated flow rate $F^p$ per demand priority $p=1,2,\ldots, p_{\max}$, which is either determined by [allocation optimization](/concept/allocation.qmd) or simply equal to the demand at time $t$; $F^p = d^p(t)$.
@@ -99,3 +89,17 @@ Q_\text{out} = r \cdot Q_\text{in}.
 $$
 
 Note that this means that the UserDemand has a consumption rate of $(1-r)Q_\text{in}$.
+
+# Behavior in allocation
+
+Without allocation, a UserDemand tries to abstract its full demand, summed over all demand priorities.
+
+With [allocation](/concept/allocation.qmd), a UserDemand gets an allocated flow rate for each demand priority, and abstracts at most this allocated flow rate until the next intervention time, set by `intervention_interval` in the [allocation settings](/reference/usage.qmd#sec-allocation-settings).
+Demands with an earlier `demand_priority` are met first.
+When there is not enough water for all demands with the same priority, each demand gets the same share of what it asked for.
+The water can come from the Basins or Junction the UserDemand abstracts from, and from further upstream.
+When a UserDemand abstracts from several Basins, allocation decides how much is taken from each.
+The return flow can be used again by demands downstream.
+
+The demand, allocated and realized flow rates of each UserDemand are in [`allocation.nc`](/reference/usage.qmd#sec-results).
+The realized flow rate can be lower than the allocated flow rate, for instance when the Basin it abstracts from is almost empty or reaches `min_level`, or because less water arrives than allocation predicted.

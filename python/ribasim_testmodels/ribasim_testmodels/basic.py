@@ -612,14 +612,18 @@ def flow_boundary_interpolation_model() -> Model:
         interpolation=Interpolation(flow_boundary="block", block_transition_period=0),
     )
 
+    time = ["2020-01-01", "2020-01-02", "2020-01-03", "2020-01-04"]
+    flow_rate = [1e-3, 2.5e-3, 0.0, 1e-3]
+
+    # Uses the interpolation type from the config
     fb = model.flow_boundary.add(
         Node(1, Point(0, 0), cyclic_time=True),
-        [
-            flow_boundary.Time(
-                time=["2020-01-01", "2020-01-02", "2020-01-03", "2020-01-04"],
-                flow_rate=[1e-3, 2.5e-3, 0.0, 1e-3],
-            )
-        ],
+        [flow_boundary.Time(time=time, flow_rate=flow_rate)],
+    )
+    # Overrides the interpolation type from the config
+    fb_linear = model.flow_boundary.add(
+        Node(5, Point(0, 1), cyclic_time=True),
+        [flow_boundary.Time(time=time, flow_rate=flow_rate, interpolation="linear")],
     )
 
     bsn = model.basin.add(
@@ -638,8 +642,41 @@ def flow_boundary_interpolation_model() -> Model:
     tml = model.terminal.add(Node(4, Point(0, 12)))
 
     model.link.add(fb, bsn)
+    model.link.add(fb_linear, bsn)
     model.link.add(bsn, trc)
     model.link.add(trc, tml)
+
+    return model
+
+
+def flow_boundary_terminal_model() -> Model:
+    """Create a model with a FlowBoundary that flows straight into a Terminal.
+
+    Basin #3 only has an outflow via Pump #4, which is off, so it must not change.
+    """
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 1, 10),
+        crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
+    )
+
+    fb = model.flow_boundary.add(
+        Node(1, Point(0, 0)), [flow_boundary.Static(flow_rate=[1.0])]
+    )
+    tml = model.terminal.add(Node(2, Point(1, 0)))
+    bsn = model.basin.add(
+        Node(3, Point(0, 1)),
+        [
+            basin.State(level=[1.0]),
+            basin.Profile(level=[0.0, 10.0], area=[1000.0, 1000.0]),
+        ],
+    )
+    pmp = model.pump.add(Node(4, Point(1, 1)), [pump.Static(flow_rate=[0.0])])
+
+    model.link.add(fb, tml)
+    model.link.add(bsn, pmp)
+    model.link.add(pmp, tml)
 
     return model
 

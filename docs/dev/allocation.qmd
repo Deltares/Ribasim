@@ -1014,6 +1014,7 @@ end
 - An expression can be non-retained. It is optimized as a deterministic tie-break, but is not constrained for the next expression.
 - Temporary constraints are removed after all objectives are solved
 - The termination status is checked after every objective optimization; an infeasible or other non-optimal solve stops allocation immediately
+- If all objective expressions are zero, for instance when all demands are zero in a subnetwork without Basins, the problem is solved once without an objective, so that there are results to read
 
 # Scaling for Numerical Stability
 
@@ -1026,7 +1027,7 @@ The optimization uses scaling factors to improve numerical conditioning:
     mean_half_storage::Float64 = 0.0 # Initialization-time reference storage (m³)
 end
 
-function update_scaling!(p::Parameters, Δt::Float64)
+function update_scaling!(p::Parameters, t::Float64, Δt::Float64, t_known::Float64)
     (; p_independent, current_basin_properties) = p
     (; allocation_models) = p_independent.allocation
     (; current_storage) = current_basin_properties
@@ -1034,16 +1035,25 @@ function update_scaling!(p::Parameters, Δt::Float64)
         (; node_ids_in_subnetwork, scaling) = allocation_model
         (; basin_ids_subnetwork) = node_ids_in_subnetwork
 
-        storage_sum = sum(current_storage[id.idx] for id in basin_ids_subnetwork)
-        scaling.storage =
-            (scaling.mean_half_storage + storage_sum / length(basin_ids_subnetwork)) / 2
-        scaling.flow = scaling.storage / Δt
+        if isempty(basin_ids_subnetwork)
+            # Without a Basin the storage scale is not used, so scale by the flows. If these
+            # are all zero, keep the previous scaling.
+            flow = typical_boundary_flow(p_independent, node_ids_in_subnetwork, t, t_known)
+            isnothing(flow) || (scaling.flow = flow)
+            scaling.storage = scaling.flow * Δt
+        else
+            storage_sum = sum(current_storage[id.idx] for id in basin_ids_subnetwork)
+            scaling.storage =
+                (scaling.mean_half_storage + storage_sum / length(basin_ids_subnetwork)) / 2
+            scaling.flow = scaling.storage / Δt
+        end
     end
     return
 end
 ```
 
 `mean_half_storage` is computed once when the allocation problem is built, as the mean over the Basins in the subnetwork of half their maximum storage.
+A subnetwork without a Basin is scaled by its flows instead: `typical_boundary_flow` gives the order of magnitude (power of 10) of the geometric mean of the nonzero FlowBoundary flow rates and UserDemand and FlowDemand demands in the subnetwork. Unlike the arithmetic mean, the geometric mean is not dominated by a single large value, like a demand that is much larger than the available flow. As in the optimization, the FlowBoundary flow rates are read at the intervention time `t_known`, so that a future change of a boundary flow doesn't change the scaling.
 
 **Key concepts:**
 - Storage variables are divided by `scaling.storage`

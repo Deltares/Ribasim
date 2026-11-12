@@ -47,3 +47,7 @@ The table below shows the time series for both nodes:
 - They are intended for reference, validation, or visualization purposes only.
 - Flow links cannot be observed directly; link to the connector node with variable `flow_rate` instead.
 - Non-conservative nodes don't have `flow_rate`; specify either `inflow_rate` or `outflow_rate` for e.g. Basin or UserDemand.
+
+# Behavior in allocation
+
+An Observation node is not used in [allocation](/concept/allocation.qmd), like it is not used in the simulation.

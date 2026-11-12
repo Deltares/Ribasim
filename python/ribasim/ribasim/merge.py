@@ -81,7 +81,7 @@ def _merge_models(
                 df = _shift(
                     table.df,
                     k,
-                    ["node_id", "listen_node_id", "subgrid_id"],
+                    ["node_id", "to_node_id", "listen_node_id", "subgrid_id"],
                     crs,
                     id_offset,
                     x_offset,
