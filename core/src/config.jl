@@ -479,8 +479,8 @@ if it is not set the `RIBASIM_SHOW_PROGRESS` environment variable is used, defau
 """
 function show_progress(logging::Logging)::Bool
     isnothing(logging.progress) || return logging.progress
-    value = lowercase(strip(get(ENV, "RIBASIM_SHOW_PROGRESS", "true")))
-    value in ("true", "1") && return true
+    value = lowercase(strip(get(ENV, "RIBASIM_SHOW_PROGRESS", "")))
+    value in ("", "true", "1") && return true
     value in ("false", "0") && return false
     throw(
         ArgumentError(

@@ -133,6 +133,9 @@ end
         # The config takes precedence over the environment variable
         @test show_progress(Logging(; progress = true))
     end
+    withenv("RIBASIM_SHOW_PROGRESS" => "") do
+        @test show_progress(Logging())
+    end
     withenv("RIBASIM_SHOW_PROGRESS" => "maybe") do
         @test_throws ArgumentError show_progress(Logging())
     end
