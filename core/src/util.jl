@@ -1343,13 +1343,6 @@ function get_inflows(flow::FlowCVector, user_demand::UserDemand, idx::Integer)
     return @view flow.horizontal.user_demand_inflow[(offset_1 + 1):offset_2]
 end
 
-function get_link_index(
-        link::Tuple{NodeID, NodeID},
-        flow_link_lookup::Dict{Tuple{NodeID, NodeID}, Int},
-    )::Union{Int64, Nothing}
-    return get(flow_link_lookup, link, nothing)
-end
-
 function set_controlled_node_ids!(p_independent, node::Union{PidControl, ContinuousControl})
     (; graph, inflow_id, outflow_id, flow_ranges) = p_independent
 

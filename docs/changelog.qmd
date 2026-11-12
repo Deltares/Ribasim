@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- Allocation: solve every problem from scratch, so that HiGHS uses presolve, which is much faster for large subnetworks. Start values made HiGHS construct a basis and then skip presolve. [#3387](https://github.com/Deltares/Ribasim/pull/3387)
+
 ## [v2026.2.0-rc1] - 2026-11-11
 
 This is the first release candidate for v2026.2.0, and it is all about simpler models, speed, and robustness.

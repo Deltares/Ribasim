@@ -925,7 +925,6 @@ update_flow_variable_bounds!(allocation_model, p, t, Δt)
 update_user_demand_flow_bounds!(allocation_model, p_independent)
 update_flow_demand_variable_bounds!(allocation_model, p_independent)
 normalize_flow_demand_objectives!(allocation_model)
-warm_start!(allocation_model, p, t, Δt, du)
 ```
 
 The order matters: `set_demands!` must run before the flow bounds are set, because `update_user_demand_flow_bounds!` reads the demands from the bounds of the allocated variables, and `update_flow_demand_variable_bounds!` in turn reads the finalized flow variable bounds.
@@ -959,7 +958,7 @@ function optimize_multi_objective!(
                 )
             end
             JuMP.@objective(problem, Min, expression)
-            JuMP.optimize!(problem)
+            optimize_cold!(problem)
             latest_constraint =
                 isempty(temporary_constraints) ? nothing : last(temporary_constraints)
             parse_termination_status(
@@ -1243,50 +1242,13 @@ function allocate_flows_to_subnetwork(
 end
 ```
 
-# Warm Start
+# Solving from scratch
 
-To improve solver performance, the optimization can be warm-started with flow rates from the physical layer:
+Every optimization solves the problem from scratch with `optimize_cold!`, without start values or the basis of the previous solve. HiGHS only uses presolve when there is no basis. For large subnetworks presolve removes nearly all rows, because most flows follow from linearized flow-level relations.
 
-```julia
-function warm_start!(
-    allocation_model::AllocationModel,
-    integrator::DEIntegrator,
-    Δt_allocation::Float64,
-)::Nothing
-    (; p, t) = integrator
-    (; problem, scaling, node_ids_in_subnetwork) = allocation_model
-    (; basin_ids_subnetwork) = node_ids_in_subnetwork
-    flow = problem[:flow]
-    storage_change = problem[:basin_storage_change]
-    du = get_du(integrator)
-    (; link_to_state_idx) = p.p_independent
+Start values make HiGHS construct a basis, which is slow for large subnetworks. Reusing the basis of the previous solve needs fewer iterations and has a lower median solve time, but on large subnetworks some solves take much longer and more of them end in status `Unknown`, so we prefer the more robust solve from scratch.
 
-    # Extrapolate the current instantaneous flow rates from the physical layer
-    for link in only(flow.axes)
-        state_index = get_state_index(getaxes(du), link_to_state_idx, link)
-        if !isnothing(state_index)
-            JuMP.set_start_value(flow[link], du[state_index] / scaling.flow)
-        end
-    end
-
-    # Extrapolate the current instantaneous storage rates from the physical layer
-    for node_id in basin_ids_subnetwork
-        JuMP.set_start_value(
-            storage_change[node_id],
-            formulate_dstorage_wrt_time(du, p.p_independent, t, node_id) * Δt_allocation /
-                scaling.storage,
-        )
-    end
-
-    return nothing
-end
-```
-
-**Key concepts:**
-- Starting values guide the solver to a good initial solution
-- Can significantly reduce solver iterations
-- Based on extrapolating current physical state forward
-- Not every flow link corresponds to a state of the physical layer, hence the `isnothing` check
+A solve from scratch can also end in status `Unknown` or a solver error, when its solution just violates the feasibility tolerance after unscaling. A solve that doesn't reach the optimum is first retried with slightly relaxed constraints on the previous objectives, and if that fails or there are no previous objectives, with looser feasibility tolerances. The looser tolerances are the last resort, because the next objectives can't reach a bound found with them, so each of those solves then needs a retry as well.
 
 # Output and Communication with Physical Layer
 
@@ -1384,7 +1346,7 @@ function analyze_infeasibility(
         for constraint in violated_constraints
     )
     constraint_to_slack = JuMP.relax_with_penalty!(problem, constraint_to_penalty)
-    JuMP.optimize!(problem)
+    optimize_cold!(problem)
 
     # Report which constraints are in conflict
     for irreducible_infeasible_subset in data_infeasibility.iis
@@ -1437,7 +1399,6 @@ end
 **Tips for performance:**
 - Use scaling to keep values O(1)
 - Minimize number of priorities (each adds objectives)
-- Warm start with physical layer flows
 - Simplify network topology where possible
 
 ## Allocation Timestep Selection

@@ -611,6 +611,58 @@ end
     @test isfinite(last(pump_table.supplied))
 end
 
+@testitem "Allocation solves from scratch" begin
+    import BasicModelInterface as BMI
+    import JuMP
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/two_basin_user_demand/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.Model(toml_path)
+    BMI.update(model)
+
+    (; problem) = only(model.integrator.p.p_independent.allocation.allocation_models)
+    # Start values would make HiGHS construct a basis, and then it skips presolve
+    @test all(isnothing, JuMP.start_value.(JuMP.all_variables(problem)))
+
+    objective_value = JuMP.objective_value(problem)
+    Ribasim.optimize_cold!(problem)
+    @test JuMP.termination_status(problem) == JuMP.OPTIMAL
+    @test JuMP.objective_value(problem) ≈ objective_value
+
+    # A problem presolve doesn't solve by itself: from the basis of the previous solve
+    # no iterations are needed, unless the solver is cleared
+    problem = JuMP.Model(Ribasim.get_optimizer())
+    JuMP.@variable(problem, 0 <= x[1:50] <= 1)
+    JuMP.@constraint(problem, [i in 1:49], x[i] + x[i + 1] <= 1.5)
+    JuMP.@objective(problem, Max, sum(x))
+    Ribasim.optimize_cold!(problem)
+    iterations = JuMP.simplex_iterations(problem)
+    @test iterations > 0
+    JuMP.optimize!(problem)
+    @test JuMP.simplex_iterations(problem) == 0
+    Ribasim.optimize_cold!(problem)
+    @test JuMP.simplex_iterations(problem) == iterations
+
+    # The tolerances of a retry only apply to that solve, and its solution can be read
+    Ribasim.optimize_cold!(
+        problem;
+        feasibility_tolerance = Ribasim.RETRY_FEASIBILITY_TOLERANCE,
+    )
+    @test JuMP.get_attribute(problem, "primal_feasibility_tolerance") ==
+        Ribasim.RETRY_FEASIBILITY_TOLERANCE
+    @test JuMP.get_attribute(problem, "dual_feasibility_tolerance") ==
+        Ribasim.RETRY_FEASIBILITY_TOLERANCE
+    @test JuMP.value(first(x)) >= 0
+    Ribasim.optimize_cold!(problem)
+    @test JuMP.get_attribute(problem, "primal_feasibility_tolerance") ==
+        Ribasim.FEASIBILITY_TOLERANCE
+    @test JuMP.get_attribute(problem, "dual_feasibility_tolerance") ==
+        Ribasim.FEASIBILITY_TOLERANCE
+end
+
 @testitem "FlowDemand on a node with negative physical flow" begin
     using DataFrames: DataFrame
 
