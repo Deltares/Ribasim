@@ -43,7 +43,8 @@ class RibasimTask(QgsTask):
             # Hide console window on Windows
             creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
-            with subprocess.Popen(
+            # Safe: no shell, and the user chose both the Ribasim CLI and the model
+            with subprocess.Popen(  # noqa: S603  # nosec B603
                 [self.cli, self.toml_path],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,

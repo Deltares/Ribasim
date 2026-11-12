@@ -227,9 +227,9 @@ class DatasetWidget:
         rel.addFieldPair(fk, fk)
         rel.generateId()
         instance = QgsProject.instance()
-        assert instance is not None
-        rel_manager = instance.relationManager()
-        assert rel_manager is not None
+        rel_manager = instance.relationManager() if instance is not None else None
+        if rel_manager is None:
+            return
         rel_manager.addRelation(rel)
 
         # Also use the relationship as an editor widget
@@ -268,7 +268,6 @@ class DatasetWidget:
 
         # Connect node and link layer to derive connectivities.
         self.node_layer = node.layer
-        assert self.node_layer is not None
         self.link_layer = link.layer
 
         def filterbyrel(relationships, feature_ids):
@@ -289,15 +288,14 @@ class DatasetWidget:
         # When the Node selection changes, filter all related tables
         link_rels = []
         instance = QgsProject.instance()
-        assert instance is not None
-        rel_manager = instance.relationManager()
-        assert rel_manager is not None
-        for rel in rel_manager.relations().values():
+        rel_manager = instance.relationManager() if instance is not None else None
+        relations = rel_manager.relations().values() if rel_manager is not None else []
+        for rel in relations:
             # Link relations are special, they have two references to the Node table
             referencing = rel.referencingLayer()
             referenced = rel.referencedLayer()
-            assert referencing is not None
-            assert referenced is not None
+            if referencing is None or referenced is None:
+                continue
 
             if referencing.name() == "Link":
                 link_rels.append(rel)
@@ -343,9 +341,9 @@ class DatasetWidget:
     @staticmethod
     def is_layer_visible(layer: QgsMapLayer):
         instance = QgsProject.instance()
-        assert instance is not None
-        layer_tree_root = instance.layerTreeRoot()
-        assert layer_tree_root is not None
+        layer_tree_root = instance.layerTreeRoot() if instance is not None else None
+        if layer_tree_root is None:
+            return False
         layer_tree_layer = layer_tree_root.findLayer(layer)
         if layer_tree_layer is None:
             return False
@@ -354,9 +352,9 @@ class DatasetWidget:
     @staticmethod
     def set_layer_visible(layer: QgsMapLayer, visible: bool = True):
         instance = QgsProject.instance()
-        assert instance is not None
-        layer_tree_root = instance.layerTreeRoot()
-        assert layer_tree_root is not None
+        layer_tree_root = instance.layerTreeRoot() if instance is not None else None
+        if layer_tree_root is None:
+            return False
         layer_tree_layer = layer_tree_root.findLayer(layer)
         if layer_tree_layer is None:
             return False
@@ -374,7 +372,9 @@ class DatasetWidget:
     def run_action(self, path: str, group) -> None:
         """Run Ribasim model using QgsTask with progress bar and output dialog."""
         message_bar = self.ribasim_widget.iface.messageBar()
-        assert message_bar is not None
+        task_manager = QgsApplication.taskManager()
+        if message_bar is None or task_manager is None:
+            return
 
         model_path = Path(path)
         # "path/to/basic/ribasim.toml" -> "basic/ribasim"
@@ -435,7 +435,6 @@ class DatasetWidget:
                 text_edit.appendPlainText(line)
             # Auto-scroll to bottom
             scrollbar = text_edit.verticalScrollBar()
-            assert scrollbar is not None
             scrollbar.setValue(scrollbar.maximum())
 
         def on_finished(success: bool):
@@ -454,8 +453,6 @@ class DatasetWidget:
 
         # Track and start the task
         self.running_tasks[path] = task
-        task_manager = QgsApplication.taskManager()
-        assert task_manager is not None
         task_manager.addTask(task)
         text_edit.appendPlainText("Launching Ribasim.\n")
         dialog.show()
@@ -630,10 +627,9 @@ class DatasetWidget:
         self._set_node_results()
         self._set_link_results()
         canvas = self.ribasim_widget.iface.mapCanvas()
-        assert canvas is not None
-        temporalController = canvas.temporalController()
-        assert temporalController is not None
-        temporalController.updateTemporalRange.connect(self._update_result_layers)
+        temporalController = canvas.temporalController() if canvas is not None else None
+        if temporalController is not None:
+            temporalController.updateTemporalRange.connect(self._update_result_layers)
 
         # Connect node/link selection to plot updates
         if self.node_layer is not None:
@@ -644,9 +640,9 @@ class DatasetWidget:
     def get_current_time(self) -> datetime:
         """Retrieve the current (frame) time from the temporal controller."""
         canvas = self.ribasim_widget.iface.mapCanvas()
-        assert canvas is not None
-        temporalController = canvas.temporalController()
-        assert temporalController is not None
+        temporalController = canvas.temporalController() if canvas is not None else None
+        if temporalController is None:
+            raise RuntimeError("The QGIS map canvas has no temporal controller.")
         temporalController = cast(QgsTemporalNavigationObject, temporalController)
         f = temporalController.currentFrameNumber()
         currentDateTimeRange = temporalController.dateTimeRangeForFrameNumber(f)
@@ -657,9 +653,9 @@ class DatasetWidget:
         toml = get_toml_dict(self.path)
 
         canvas = self.ribasim_widget.iface.mapCanvas()
-        assert canvas is not None
-        temporalController = canvas.temporalController()
-        assert temporalController is not None
+        temporalController = canvas.temporalController() if canvas is not None else None
+        if canvas is None or temporalController is None:
+            return
         temporalController = cast(QgsTemporalNavigationObject, temporalController)
 
         trange = QgsDateTimeRange(
@@ -778,53 +774,57 @@ class DatasetWidget:
 
     def _set_node_results(self) -> None:
         node_layer = self.ribasim_widget.node_layer
-        assert node_layer is not None
+        if node_layer is None:
+            return
 
         result = self.results.get("basin")
         if result is not None:
             self.basin_layer = self._duplicate_layer(
                 node_layer, "Basin", "node_id", "node_type", "Basin"
             )
-            assert self.basin_layer is not None
-            self._edit_result_layer(result, self.basin_layer)
-            self.add_relationship(
-                self.basin_layer, node_layer.id(), "BasinResult", fk="node_id"
-            )
-            self._sync_selection_to_result(node_layer, self.basin_layer, "node_id")
+            # None if duplicating failed, which already showed a message
+            if self.basin_layer is not None:
+                self._edit_result_layer(result, self.basin_layer)
+                self.add_relationship(
+                    self.basin_layer, node_layer.id(), "BasinResult", fk="node_id"
+                )
+                self._sync_selection_to_result(node_layer, self.basin_layer, "node_id")
 
         result = self.results.get("concentration")
         if result is not None:
             self.concentration_layer = self._duplicate_layer(
                 node_layer, "Concentration", "node_id", "node_type", "Basin"
             )
-            assert self.concentration_layer is not None
-            self._edit_result_layer(result, self.concentration_layer)
-            self.add_relationship(
-                self.concentration_layer,
-                node_layer.id(),
-                "ConcentrationResult",
-                fk="node_id",
-            )
-            self._sync_selection_to_result(
-                node_layer, self.concentration_layer, "node_id"
-            )
+            if self.concentration_layer is not None:
+                self._edit_result_layer(result, self.concentration_layer)
+                self.add_relationship(
+                    self.concentration_layer,
+                    node_layer.id(),
+                    "ConcentrationResult",
+                    fk="node_id",
+                )
+                self._sync_selection_to_result(
+                    node_layer, self.concentration_layer, "node_id"
+                )
 
     def _set_link_results(self) -> None:
         link_layer = self.ribasim_widget.link_layer
-        assert link_layer is not None
+        if link_layer is None:
+            return
 
         result = self.results.get("flow")
         if result is not None:
             self.flow_layer = self._duplicate_layer(
                 link_layer, "Flow", "link_id", "link_type", "flow"
             )
-            assert self.flow_layer is not None
-            self.set_layer_visible(self.flow_layer, True)
-            self._edit_result_layer(result, self.flow_layer)
-            self.add_relationship(
-                self.flow_layer, link_layer.id(), "FlowResult", fk="link_id"
-            )
-            self._sync_selection_to_result(link_layer, self.flow_layer, "link_id")
+            # None if duplicating failed, which already showed a message
+            if self.flow_layer is not None:
+                self.set_layer_visible(self.flow_layer, True)
+                self._edit_result_layer(result, self.flow_layer)
+                self.add_relationship(
+                    self.flow_layer, link_layer.id(), "FlowResult", fk="link_id"
+                )
+                self._sync_selection_to_result(link_layer, self.flow_layer, "link_id")
 
     @staticmethod
     def _sync_selection_to_result(
@@ -957,6 +957,10 @@ class DatasetWidget:
         ):
             return
 
+        dataprovider = layer.dataProvider()
+        if dataprovider is None:
+            return
+
         # Find nearest time index via searchsorted
         time_idx = int(result.time.searchsorted(time))
         if time_idx >= len(result.time):
@@ -976,9 +980,6 @@ class DatasetWidget:
             layer.endEditCommand()
             layer.commitChanges()
             return
-
-        dataprovider = layer.dataProvider()
-        assert dataprovider is not None
 
         # Build column-id mapping once
         col_ids: dict[str, int] = {}

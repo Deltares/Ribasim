@@ -238,13 +238,11 @@ class RibasimPlugin:
 
     def reload_model(self):
         """Reload the last loaded Ribasim model."""
-        if self._ensure_ribasim_widget():
-            assert self.ribasim_widget is not None
+        if self._ensure_ribasim_widget() and self.ribasim_widget is not None:
             self.ribasim_widget.reload_model()
 
     def open_model(self, path=None):
-        if self._ensure_ribasim_widget():
-            assert self.ribasim_widget is not None
+        if self._ensure_ribasim_widget() and self.ribasim_widget is not None:
             self.ribasim_widget.open_model(path)
 
     def unload(self):

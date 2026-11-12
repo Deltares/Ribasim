@@ -25,11 +25,18 @@ select = [
 ignore = [
     "E501",   # line-too-long
     "PD002",  # inplace argument
-    "S101",   # assert - used extensively in tests and validation
-    "S603",   # subprocess-without-shell-equals-true - false positives with trusted input
-    "S607",   # start-process-with-partial-path - CLI paths are intentional
 ]
 fixable = ["ALL"]
+
+[lint.per-file-ignores]
+# plugins.qgis.org scans uploaded plugins with Bandit and blocks them on any finding,
+# so the code shipped in the QGIS plugin cannot ignore these.
+"!ribasim_qgis/**" = [
+    "S101",  # assert - used extensively in tests and validation
+    "S603",  # subprocess-without-shell-equals-true - false positives with trusted input
+    "S607",  # start-process-with-partial-path - CLI paths are intentional
+]
+"ribasim_qgis/{scripts,tests}/**" = ["S101", "S603", "S607"]
 
 [lint.pydocstyle]
 convention = "numpy"
