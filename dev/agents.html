@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Copilot instructions – Ribasim</title>
+<title>AI agent instructions – Ribasim</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -180,7 +180,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="Breadcrumbs"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dev/copilot.html">Copilot instructions</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="Breadcrumbs"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dev/agents.html">AI agent instructions</a></li></ol></nav>
         <a class="flex-grow-1" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -254,8 +254,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../dev/copilot.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text">Copilot instructions</span></a>
+  <a href="../dev/agents.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">AI agent instructions</span></a>
   </div>
 </li>
         <li class="sidebar-item sidebar-item-section">
@@ -288,68 +288,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#current-repository-copilot-instructions" id="toc-current-repository-copilot-instructions" class="nav-link active" data-scroll-target="#current-repository-copilot-instructions"><span class="header-section-number">1</span> Current repository Copilot instructions</a></li>
-  <li><a href="#copilot-instructions" id="toc-copilot-instructions" class="nav-link" data-scroll-target="#copilot-instructions"><span class="header-section-number">2</span> Copilot instructions</a>
+  <li><a href="#current-agent-instructions" id="toc-current-agent-instructions" class="nav-link active" data-scroll-target="#current-agent-instructions"><span class="header-section-number">1</span> Current agent instructions</a></li>
+  <li><a href="#agent-instructions" id="toc-agent-instructions" class="nav-link" data-scroll-target="#agent-instructions"><span class="header-section-number">2</span> Agent instructions</a>
   <ul class="collapse">
-  <li><a href="#project-overview" id="toc-project-overview" class="nav-link" data-scroll-target="#project-overview"><span class="header-section-number">2.1</span> Project Overview</a></li>
-  <li><a href="#repository-structure" id="toc-repository-structure" class="nav-link" data-scroll-target="#repository-structure"><span class="header-section-number">2.2</span> Repository Structure</a></li>
-  <li><a href="#key-technologies-dependencies" id="toc-key-technologies-dependencies" class="nav-link" data-scroll-target="#key-technologies-dependencies"><span class="header-section-number">2.3</span> Key Technologies &amp; Dependencies</a>
-  <ul class="collapse">
-  <li><a href="#julia-stack-core" id="toc-julia-stack-core" class="nav-link" data-scroll-target="#julia-stack-core"><span class="header-section-number">2.3.1</span> Julia Stack (Core)</a></li>
-  <li><a href="#python-stack" id="toc-python-stack" class="nav-link" data-scroll-target="#python-stack"><span class="header-section-number">2.3.2</span> Python Stack</a></li>
-  <li><a href="#build-development" id="toc-build-development" class="nav-link" data-scroll-target="#build-development"><span class="header-section-number">2.3.3</span> Build &amp; Development</a></li>
-  </ul></li>
-  <li><a href="#development-workflow" id="toc-development-workflow" class="nav-link" data-scroll-target="#development-workflow"><span class="header-section-number">2.4</span> Development Workflow</a>
-  <ul class="collapse">
-  <li><a href="#environment-setup" id="toc-environment-setup" class="nav-link" data-scroll-target="#environment-setup"><span class="header-section-number">2.4.1</span> Environment Setup</a></li>
-  <li><a href="#key-commands" id="toc-key-commands" class="nav-link" data-scroll-target="#key-commands"><span class="header-section-number">2.4.2</span> Key Commands</a></li>
-  </ul></li>
-  <li><a href="#code-architecture-patterns" id="toc-code-architecture-patterns" class="nav-link" data-scroll-target="#code-architecture-patterns"><span class="header-section-number">2.5</span> Code Architecture Patterns</a>
-  <ul class="collapse">
-  <li><a href="#julia-core-coresrc" id="toc-julia-core-coresrc" class="nav-link" data-scroll-target="#julia-core-coresrc"><span class="header-section-number">2.5.1</span> Julia Core (<code>core/src/</code>)</a></li>
-  <li><a href="#python-components" id="toc-python-components" class="nav-link" data-scroll-target="#python-components"><span class="header-section-number">2.5.2</span> Python Components</a></li>
-  </ul></li>
-  <li><a href="#common-patterns-conventions" id="toc-common-patterns-conventions" class="nav-link" data-scroll-target="#common-patterns-conventions"><span class="header-section-number">2.6</span> Common Patterns &amp; Conventions</a>
-  <ul class="collapse">
-  <li><a href="#julia-code-style" id="toc-julia-code-style" class="nav-link" data-scroll-target="#julia-code-style"><span class="header-section-number">2.6.1</span> Julia Code Style</a></li>
-  <li><a href="#python-code-style" id="toc-python-code-style" class="nav-link" data-scroll-target="#python-code-style"><span class="header-section-number">2.6.2</span> Python Code Style</a></li>
-  <li><a href="#file-naming" id="toc-file-naming" class="nav-link" data-scroll-target="#file-naming"><span class="header-section-number">2.6.3</span> File Naming</a></li>
-  </ul></li>
-  <li><a href="#data-flow-formats" id="toc-data-flow-formats" class="nav-link" data-scroll-target="#data-flow-formats"><span class="header-section-number">2.7</span> Data Flow &amp; Formats</a>
-  <ul class="collapse">
-  <li><a href="#primary-data-formats" id="toc-primary-data-formats" class="nav-link" data-scroll-target="#primary-data-formats"><span class="header-section-number">2.7.1</span> Primary Data Formats</a></li>
-  <li><a href="#key-data-structures" id="toc-key-data-structures" class="nav-link" data-scroll-target="#key-data-structures"><span class="header-section-number">2.7.2</span> Key Data Structures</a></li>
-  </ul></li>
-  <li><a href="#common-tasks-helpers" id="toc-common-tasks-helpers" class="nav-link" data-scroll-target="#common-tasks-helpers"><span class="header-section-number">2.8</span> Common Tasks &amp; Helpers</a>
-  <ul class="collapse">
-  <li><a href="#when-adding-new-node-types" id="toc-when-adding-new-node-types" class="nav-link" data-scroll-target="#when-adding-new-node-types"><span class="header-section-number">2.8.1</span> When Adding New Node Types:</a></li>
-  <li><a href="#when-modifying-solvers" id="toc-when-modifying-solvers" class="nav-link" data-scroll-target="#when-modifying-solvers"><span class="header-section-number">2.8.2</span> When Modifying Solvers:</a></li>
-  <li><a href="#when-adding-new-python-features" id="toc-when-adding-new-python-features" class="nav-link" data-scroll-target="#when-adding-new-python-features"><span class="header-section-number">2.8.3</span> When Adding New Python Features:</a></li>
-  </ul></li>
-  <li><a href="#testing-strategy" id="toc-testing-strategy" class="nav-link" data-scroll-target="#testing-strategy"><span class="header-section-number">2.9</span> Testing Strategy</a>
-  <ul class="collapse">
-  <li><a href="#julia-tests" id="toc-julia-tests" class="nav-link" data-scroll-target="#julia-tests"><span class="header-section-number">2.9.1</span> Julia Tests</a></li>
-  <li><a href="#python-tests" id="toc-python-tests" class="nav-link" data-scroll-target="#python-tests"><span class="header-section-number">2.9.2</span> Python Tests</a></li>
-  </ul></li>
-  <li><a href="#performance-considerations" id="toc-performance-considerations" class="nav-link" data-scroll-target="#performance-considerations"><span class="header-section-number">2.10</span> Performance Considerations</a>
-  <ul class="collapse">
-  <li><a href="#julia-core" id="toc-julia-core" class="nav-link" data-scroll-target="#julia-core"><span class="header-section-number">2.10.1</span> Julia Core</a></li>
-  <li><a href="#python-components-1" id="toc-python-components-1" class="nav-link" data-scroll-target="#python-components-1"><span class="header-section-number">2.10.2</span> Python Components</a></li>
-  </ul></li>
-  <li><a href="#debugging-tips" id="toc-debugging-tips" class="nav-link" data-scroll-target="#debugging-tips"><span class="header-section-number">2.11</span> Debugging Tips</a>
-  <ul class="collapse">
-  <li><a href="#julia" id="toc-julia" class="nav-link" data-scroll-target="#julia"><span class="header-section-number">2.11.1</span> Julia</a></li>
-  <li><a href="#python" id="toc-python" class="nav-link" data-scroll-target="#python"><span class="header-section-number">2.11.2</span> Python</a></li>
-  </ul></li>
-  <li><a href="#integration-points" id="toc-integration-points" class="nav-link" data-scroll-target="#integration-points"><span class="header-section-number">2.12</span> Integration Points</a>
-  <ul class="collapse">
-  <li><a href="#julia-python" id="toc-julia-python" class="nav-link" data-scroll-target="#julia-python"><span class="header-section-number">2.12.1</span> Julia ↔︎ Python</a></li>
-  <li><a href="#qgis-plugin" id="toc-qgis-plugin" class="nav-link" data-scroll-target="#qgis-plugin"><span class="header-section-number">2.12.2</span> QGIS Plugin</a></li>
-  </ul></li>
-  <li><a href="#documentation" id="toc-documentation" class="nav-link" data-scroll-target="#documentation"><span class="header-section-number">2.13</span> Documentation</a></li>
-  <li><a href="#common-gotchas" id="toc-common-gotchas" class="nav-link" data-scroll-target="#common-gotchas"><span class="header-section-number">2.14</span> Common Gotchas</a></li>
-  <li><a href="#getting-help" id="toc-getting-help" class="nav-link" data-scroll-target="#getting-help"><span class="header-section-number">2.15</span> Getting Help</a></li>
-  <li><a href="#key-files-to-understand" id="toc-key-files-to-understand" class="nav-link" data-scroll-target="#key-files-to-understand"><span class="header-section-number">2.16</span> Key Files to Understand</a></li>
+  <li><a href="#repository-layout" id="toc-repository-layout" class="nav-link" data-scroll-target="#repository-layout"><span class="header-section-number">2.1</span> Repository layout</a></li>
+  <li><a href="#commands" id="toc-commands" class="nav-link" data-scroll-target="#commands"><span class="header-section-number">2.2</span> Commands</a></li>
+  <li><a href="#conventions" id="toc-conventions" class="nav-link" data-scroll-target="#conventions"><span class="header-section-number">2.3</span> Conventions</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -359,7 +303,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Copilot instructions</h1>
+<h1 class="title">AI agent instructions</h1>
 </div>
 
 
@@ -376,306 +320,51 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>The developers sometimes use GitHub Copilot to assist in their work. To make this more effective, we supply custom instructions for this repository, as documented <a href="https://docs.github.com/en/copilot/how-tos/custom-instructions/adding-repository-custom-instructions-for-github-copilot">here</a>. These instructions are automatically used by Copilot.</p>
-<section id="current-repository-copilot-instructions" class="level1" data-number="1">
-<h1 data-number="1"><span class="header-section-number">1</span> Current repository Copilot instructions</h1>
+<p>The developers sometimes use AI coding agents such as GitHub Copilot and Claude Code to assist in their work. To make this more effective, we supply instructions for this repository in <a href="https://agents.md/"><code>AGENTS.md</code></a> at the root of the repository. Keep the instructions short and specific to this repository; generic advice makes agents slower and more expensive without making them better.</p>
+<section id="current-agent-instructions" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Current agent instructions</h1>
 </section>
-<section id="copilot-instructions" class="level1" data-number="2">
-<h1 data-number="2"><span class="header-section-number">2</span> Copilot instructions</h1>
-<p>This document provides essential information for AI coding assistants working on the Ribasim project.</p>
-<p>See also the developer docs at <code>docs/dev</code>.</p>
-<section id="project-overview" class="level2" data-number="2.1">
-<h2 data-number="2.1" class="anchored" data-anchor-id="project-overview"><span class="header-section-number">2.1</span> Project Overview</h2>
-<p><strong>Ribasim</strong> is a water resources modeling system. It’s a multi-language project with components in Julia (core), Python (utilities/API), and QGIS integration.</p>
+<section id="agent-instructions" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> Agent instructions</h1>
+<p>Ribasim is a water resources model. The simulation core is written in Julia, models are built with the Ribasim Python package, and there is a QGIS plugin. A model is a TOML config with a GeoPackage database (<code>database.gpkg</code>) of input tables; large input tables and the results are NetCDF files. See the developer docs in <code>docs/dev</code> and the user docs at https://ribasim.org/. Issues and PRs are on https://github.com/Deltares/Ribasim.</p>
+<section id="repository-layout" class="level2" data-number="2.1">
+<h2 data-number="2.1" class="anchored" data-anchor-id="repository-layout"><span class="header-section-number">2.1</span> Repository layout</h2>
 <ul>
-<li><strong>Primary Language</strong>: Julia (core simulation engine)</li>
-<li><strong>Secondary Languages</strong>: Python (model building, QGIS plugin)</li>
-<li><strong>Domain</strong>: Water resources modeling, hydrology, scientific computing</li>
-<li><strong>Architecture</strong>: Modular system with CLI, Python API, and QGIS plugin</li>
+<li><code>core/</code>: Julia package <code>Ribasim</code>, with tests in <code>core/test</code>, <code>core/integration_test</code> and <code>core/regression_test</code>.</li>
+<li><code>python/ribasim/</code>: Python package for building, reading and writing models.</li>
+<li><code>python/ribasim_api/</code>: Python wrapper around the BMI of the shared library.</li>
+<li><code>python/ribasim_testmodels/</code>: test model definitions, written to <code>generated_testmodels/</code>.</li>
+<li><code>ribasim_qgis/</code>: QGIS plugin.</li>
+<li><code>build/</code>: build scripts for the CLI and shared library.</li>
+<li><code>docs/</code>: Quarto docs, published to ribasim.org.</li>
+<li><code>utils/</code>: development scripts.</li>
+<li><code>models/</code>: local working directory, ignored by git.</li>
 </ul>
 </section>
-<section id="repository-structure" class="level2" data-number="2.2">
-<h2 data-number="2.2" class="anchored" data-anchor-id="repository-structure"><span class="header-section-number">2.2</span> Repository Structure</h2>
-<pre><code>├── core/                   # Julia core engine (main simulation code)
-│   ├── src/                # Core Julia source code
-│   ├── test/               # Julia unit tests
-│   └── Project.toml        # Julia package configuration
-├── python/                 # Python components
-│   ├── ribasim/            # Main Python package (model building)
-│   ├── ribasim_api/        # Python API for model interaction
-│   └── ribasim_testmodels/ # Test model generation
-├── ribasim_qgis/           # QGIS plugin for model visualization
-├── docs/                   # Documentation (Quarto-based)
-├── build/                  # Build scripts for CLI
-├── generated_testmodels/   # Generated test models
-├── models/                 # Working directory for models, ignored by git
-└── utils/                  # Utility scripts</code></pre>
+<section id="commands" class="level2" data-number="2.2">
+<h2 data-number="2.2" class="anchored" data-anchor-id="commands"><span class="header-section-number">2.2</span> Commands</h2>
+<p>Use the <a href="https://pixi.sh">Pixi</a> tasks from <code>pixi.toml</code> rather than calling tools directly:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run install              <span class="co"># set up all environments</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run test-ribasim-core    <span class="co"># Julia unit tests</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run test-ribasim-python  <span class="co"># Python tests</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run generate-testmodels  <span class="co"># write the test models used by the tests</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run codegen              <span class="co"># regenerate the Python schemas from the Julia schemas</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run check                <span class="co"># formatting and linting hooks (prek)</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run docs                 <span class="co"># preview the docs</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The first Julia run in a fresh process spends minutes compiling; that is not a hang. When a change may affect the allocation problems, delete <code>generated_testmodels/</code> and run <code>pixi run write-allocation-problems</code> to update the reference <code>.lp</code> files in <code>core/test/data/allocation_problems</code>.</p>
 </section>
-<section id="key-technologies-dependencies" class="level2" data-number="2.3">
-<h2 data-number="2.3" class="anchored" data-anchor-id="key-technologies-dependencies"><span class="header-section-number">2.3</span> Key Technologies &amp; Dependencies</h2>
-<section id="julia-stack-core" class="level3" data-number="2.3.1">
-<h3 data-number="2.3.1" class="anchored" data-anchor-id="julia-stack-core"><span class="header-section-number">2.3.1</span> Julia Stack (Core)</h3>
+<section id="conventions" class="level2" data-number="2.3">
+<h2 data-number="2.3" class="anchored" data-anchor-id="conventions"><span class="header-section-number">2.3</span> Conventions</h2>
 <ul>
-<li><strong>OrdinaryDiffEq.jl</strong>: Differential equation solving (primary solver)</li>
-<li><strong>JuMP.jl</strong>: Mathematical optimization modeling</li>
-<li><strong>HiGHS.jl</strong>: Linear/mixed-integer programming solver</li>
-<li><strong>Arrow.jl</strong>: Columnar data format for I/O</li>
-<li><strong>SQLite.jl</strong>: Database operations</li>
-<li><strong>MetaGraphsNext.jl</strong>: Graph data structures for network topology</li>
-<li><strong>SciML ecosystem</strong>: Scientific machine learning tools</li>
-</ul>
-</section>
-<section id="python-stack" class="level3" data-number="2.3.2">
-<h3 data-number="2.3.2" class="anchored" data-anchor-id="python-stack"><span class="header-section-number">2.3.2</span> Python Stack</h3>
-<ul>
-<li><strong>Pandas/GeoPandas</strong>: Data manipulation and geospatial processing</li>
-<li><strong>PyArrow</strong>: Arrow format integration with Julia</li>
-<li><strong>Pydantic/Pandera</strong>: Data modeling and validation</li>
-<li><strong>Matplotlib</strong>: Visualization and plotting</li>
-</ul>
-</section>
-<section id="build-development" class="level3" data-number="2.3.3">
-<h3 data-number="2.3.3" class="anchored" data-anchor-id="build-development"><span class="header-section-number">2.3.3</span> Build &amp; Development</h3>
-<ul>
-<li><strong>Pixi</strong>: Primary package/environment manager, also used to run e.g.&nbsp;tests via tasks. (see <code>pixi.toml</code>)</li>
-<li><strong>Julia Package Manager</strong>: For Julia dependencies. <code>Project.toml</code> has all dev dependencies and <code>core/Project.toml</code> the Ribasim core dependencies.</li>
-<li><strong>Prek</strong>: Code quality hooks</li>
-<li><strong>Pytest</strong>: Python testing</li>
-<li><strong>Quarto</strong>: Documentation generation</li>
-</ul>
-</section>
-</section>
-<section id="development-workflow" class="level2" data-number="2.4">
-<h2 data-number="2.4" class="anchored" data-anchor-id="development-workflow"><span class="header-section-number">2.4</span> Development Workflow</h2>
-<section id="environment-setup" class="level3" data-number="2.4.1">
-<h3 data-number="2.4.1" class="anchored" data-anchor-id="environment-setup"><span class="header-section-number">2.4.1</span> Environment Setup</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Use Pixi for environment management</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run install            <span class="co"># Install and configure all dependencies</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</section>
-<section id="key-commands" class="level3" data-number="2.4.2">
-<h3 data-number="2.4.2" class="anchored" data-anchor-id="key-commands"><span class="header-section-number">2.4.2</span> Key Commands</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Testing</span></span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run test-ribasim-python     <span class="co"># Python tests</span></span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run test-ribasim-core       <span class="co"># Julia tests</span></span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Documentation</span></span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run docs                    <span class="co"># Preview docs locally</span></span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Model Generation</span></span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run generate-testmodels     <span class="co"># Generate test models</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</section>
-</section>
-<section id="code-architecture-patterns" class="level2" data-number="2.5">
-<h2 data-number="2.5" class="anchored" data-anchor-id="code-architecture-patterns"><span class="header-section-number">2.5</span> Code Architecture Patterns</h2>
-<section id="julia-core-coresrc" class="level3" data-number="2.5.1">
-<h3 data-number="2.5.1" class="anchored" data-anchor-id="julia-core-coresrc"><span class="header-section-number">2.5.1</span> Julia Core (<code>core/src/</code>)</h3>
-<ul>
-<li><strong>Solver integration</strong>: Built around OrdinaryDiffEq.jl patterns with callbacks</li>
-<li><strong>Graph representation</strong>: Network topology using MetaGraphsNext.jl</li>
-</ul>
-</section>
-<section id="python-components" class="level3" data-number="2.5.2">
-<h3 data-number="2.5.2" class="anchored" data-anchor-id="python-components"><span class="header-section-number">2.5.2</span> Python Components</h3>
-<ul>
-<li><strong>Pydantic (pandera) models</strong>: Data validation and serialization</li>
-<li><strong>Pandas workflows</strong>: Data processing pipelines</li>
-<li><strong>Geospatial integration</strong>: Heavy use of GeoPandas for spatial operations</li>
-<li><strong>Arrow</strong>: Seamless data exchange with Julia core</li>
-</ul>
-</section>
-</section>
-<section id="common-patterns-conventions" class="level2" data-number="2.6">
-<h2 data-number="2.6" class="anchored" data-anchor-id="common-patterns-conventions"><span class="header-section-number">2.6</span> Common Patterns &amp; Conventions</h2>
-<p>We use the <code>GitHub</code> repository https://github.com/Deltares/Ribasim for issues and PRs.</p>
-<section id="julia-code-style" class="level3" data-number="2.6.1">
-<h3 data-number="2.6.1" class="anchored" data-anchor-id="julia-code-style"><span class="header-section-number">2.6.1</span> Julia Code Style</h3>
-<ul>
-<li>Follow Julia community conventions</li>
-<li>Use multiple dispatch extensively</li>
-<li>Prefer immutable structs where possible</li>
-<li>Use <code>@kwdef</code> for struct definitions with defaults</li>
-</ul>
-</section>
-<section id="python-code-style" class="level3" data-number="2.6.2">
-<h3 data-number="2.6.2" class="anchored" data-anchor-id="python-code-style"><span class="header-section-number">2.6.2</span> Python Code Style</h3>
-<ul>
-<li>Follow PEP 8</li>
-<li>Use ruff</li>
-<li>Use type hints extensively</li>
-<li>Pydantic models for data structures</li>
-<li>Pandas-style method chaining where appropriate</li>
-</ul>
-</section>
-<section id="file-naming" class="level3" data-number="2.6.3">
-<h3 data-number="2.6.3" class="anchored" data-anchor-id="file-naming"><span class="header-section-number">2.6.3</span> File Naming</h3>
-<ul>
-<li>Julia: <code>snake_case.jl</code></li>
-<li>Python: <code>snake_case.py</code></li>
-<li>Tests: <code>test_*.py</code> (Python), <code>*_test.jl</code> (Julia)</li>
-</ul>
-</section>
-</section>
-<section id="data-flow-formats" class="level2" data-number="2.7">
-<h2 data-number="2.7" class="anchored" data-anchor-id="data-flow-formats"><span class="header-section-number">2.7</span> Data Flow &amp; Formats</h2>
-<section id="primary-data-formats" class="level3" data-number="2.7.1">
-<h3 data-number="2.7.1" class="anchored" data-anchor-id="primary-data-formats"><span class="header-section-number">2.7.1</span> Primary Data Formats</h3>
-<ul>
-<li><strong>SQLite/GeoPackage</strong>: Model database storage</li>
-<li><strong>Arrow</strong>: Results or tables too large for SQLite</li>
-<li><strong>TOML</strong>: Configuration file</li>
-<li><strong>NetCDF</strong>: Conversion to NetCDF for interop</li>
-</ul>
-</section>
-<section id="key-data-structures" class="level3" data-number="2.7.2">
-<h3 data-number="2.7.2" class="anchored" data-anchor-id="key-data-structures"><span class="header-section-number">2.7.2</span> Key Data Structures</h3>
-<ul>
-<li><strong>Network Graph</strong>: Node-link representation of water system</li>
-<li><strong>TimeSeries</strong>: Time-dependent boundary conditions</li>
-<li><strong>Spatial Geometries</strong>: Basin area polygons, link linestrings</li>
-<li><strong>Control Logic</strong>: Rules for pumps, gates, etc.</li>
-</ul>
-</section>
-</section>
-<section id="common-tasks-helpers" class="level2" data-number="2.8">
-<h2 data-number="2.8" class="anchored" data-anchor-id="common-tasks-helpers"><span class="header-section-number">2.8</span> Common Tasks &amp; Helpers</h2>
-<section id="when-adding-new-node-types" class="level3" data-number="2.8.1">
-<h3 data-number="2.8.1" class="anchored" data-anchor-id="when-adding-new-node-types"><span class="header-section-number">2.8.1</span> When Adding New Node Types:</h3>
-<ol type="1">
-<li>Define Julia struct in <code>core/src/</code></li>
-<li>Add Python Pydantic model in <code>python/ribasim/</code></li>
-<li>Update schema validation</li>
-<li>Add to network topology handling</li>
-<li>Update documentation and tests</li>
-</ol>
-</section>
-<section id="when-modifying-solvers" class="level3" data-number="2.8.2">
-<h3 data-number="2.8.2" class="anchored" data-anchor-id="when-modifying-solvers"><span class="header-section-number">2.8.2</span> When Modifying Solvers:</h3>
-<ul>
-<li>Core solver logic in <code>core/src/solve.jl</code></li>
-<li>Integration tests in <code>core/integration_test/</code></li>
-<li>Regression tests for numerical stability</li>
-</ul>
-</section>
-<section id="when-adding-new-python-features" class="level3" data-number="2.8.3">
-<h3 data-number="2.8.3" class="anchored" data-anchor-id="when-adding-new-python-features"><span class="header-section-number">2.8.3</span> When Adding New Python Features:</h3>
-<ul>
-<li>Follow the pattern in <code>python/ribasim/</code></li>
-<li>Add comprehensive docstrings (used by quartodoc)</li>
-<li>Include examples in docstrings</li>
-<li>Add tests in <code>python/ribasim/tests/</code></li>
-</ul>
-</section>
-</section>
-<section id="testing-strategy" class="level2" data-number="2.9">
-<h2 data-number="2.9" class="anchored" data-anchor-id="testing-strategy"><span class="header-section-number">2.9</span> Testing Strategy</h2>
-<section id="julia-tests" class="level3" data-number="2.9.1">
-<h3 data-number="2.9.1" class="anchored" data-anchor-id="julia-tests"><span class="header-section-number">2.9.1</span> Julia Tests</h3>
-<ul>
-<li>Unit tests in <code>core/test/</code></li>
-<li>Integration tests in <code>core/integration_test/</code></li>
-<li>Regression tests in <code>core/regression_test/</code></li>
-</ul>
-</section>
-<section id="python-tests" class="level3" data-number="2.9.2">
-<h3 data-number="2.9.2" class="anchored" data-anchor-id="python-tests"><span class="header-section-number">2.9.2</span> Python Tests</h3>
-<ul>
-<li>Unit tests in <code>python/*/tests/</code></li>
-<li>Mark regression tests with <code>@pytest.mark.regression</code></li>
-</ul>
-</section>
-</section>
-<section id="performance-considerations" class="level2" data-number="2.10">
-<h2 data-number="2.10" class="anchored" data-anchor-id="performance-considerations"><span class="header-section-number">2.10</span> Performance Considerations</h2>
-<section id="julia-core" class="level3" data-number="2.10.1">
-<h3 data-number="2.10.1" class="anchored" data-anchor-id="julia-core"><span class="header-section-number">2.10.1</span> Julia Core</h3>
-<ul>
-<li>Avoid allocations during simulation</li>
-<li>Aim towards making it statically compilable</li>
-<li>Profile with <code>@profile</code> and <code>@benchmark</code></li>
-<li>PrecompileTools.jl for reducing startup time</li>
-<li>Avoid type instabilities (use <code>@code_warntype</code>)</li>
-</ul>
-</section>
-<section id="python-components-1" class="level3" data-number="2.10.2">
-<h3 data-number="2.10.2" class="anchored" data-anchor-id="python-components-1"><span class="header-section-number">2.10.2</span> Python Components</h3>
-<ul>
-<li>Use vectorized pandas operations</li>
-</ul>
-</section>
-</section>
-<section id="debugging-tips" class="level2" data-number="2.11">
-<h2 data-number="2.11" class="anchored" data-anchor-id="debugging-tips"><span class="header-section-number">2.11</span> Debugging Tips</h2>
-<section id="julia" class="level3" data-number="2.11.1">
-<h3 data-number="2.11.1" class="anchored" data-anchor-id="julia"><span class="header-section-number">2.11.1</span> Julia</h3>
-<ul>
-<li><code>@show</code> for quick variable inspection</li>
-<li>Julia debugger for step-through debugging</li>
-</ul>
-</section>
-<section id="python" class="level3" data-number="2.11.2">
-<h3 data-number="2.11.2" class="anchored" data-anchor-id="python"><span class="header-section-number">2.11.2</span> Python</h3>
-<ul>
-<li>Standard Python debugging tools work</li>
-<li>Use <code>breakpoint()</code> for PDB</li>
-<li>Rich error messages from Pydantic validation</li>
-</ul>
-</section>
-</section>
-<section id="integration-points" class="level2" data-number="2.12">
-<h2 data-number="2.12" class="anchored" data-anchor-id="integration-points"><span class="header-section-number">2.12</span> Integration Points</h2>
-<section id="julia-python" class="level3" data-number="2.12.1">
-<h3 data-number="2.12.1" class="anchored" data-anchor-id="julia-python"><span class="header-section-number">2.12.1</span> Julia ↔︎ Python</h3>
-<ul>
-<li>SQLite database and Arrow files for model storage</li>
-<li>Arrow format for data exchange</li>
-<li>Subprocess calls from Python to Julia CLI</li>
-</ul>
-</section>
-<section id="qgis-plugin" class="level3" data-number="2.12.2">
-<h3 data-number="2.12.2" class="anchored" data-anchor-id="qgis-plugin"><span class="header-section-number">2.12.2</span> QGIS Plugin</h3>
-<ul>
-<li>Reads/writes same formats as Python components</li>
-<li>Provides GUI for model visualization</li>
-<li>Generates compatible model files</li>
-</ul>
-</section>
-</section>
-<section id="documentation" class="level2" data-number="2.13">
-<h2 data-number="2.13" class="anchored" data-anchor-id="documentation"><span class="header-section-number">2.13</span> Documentation</h2>
-<ul>
-<li><strong>User docs</strong>: <code>docs/</code> (Quarto-based, published to ribasim.org)</li>
-<li><strong>API docs</strong>: Auto-generated from docstrings</li>
-<li><strong>Code comments</strong>: Focus on <em>why</em>, not <em>what</em></li>
-<li><strong>Examples</strong>: Include runnable examples in docstrings</li>
-</ul>
-</section>
-<section id="common-gotchas" class="level2" data-number="2.14">
-<h2 data-number="2.14" class="anchored" data-anchor-id="common-gotchas"><span class="header-section-number">2.14</span> Common Gotchas</h2>
-<ol type="1">
-<li><strong>Julia compilation</strong>: First run is slow due to compilation</li>
-<li><strong>Table schema</strong>: Ensure compatibility between Julia and Python table schemas</li>
-<li><strong>Coordinate systems</strong>: Be explicit about CRS in geospatial operations</li>
-<li><strong>Numerical precision</strong>: Water balance calculations require careful numerical handling</li>
-</ol>
-</section>
-<section id="getting-help" class="level2" data-number="2.15">
-<h2 data-number="2.15" class="anchored" data-anchor-id="getting-help"><span class="header-section-number">2.15</span> Getting Help</h2>
-<ul>
-<li><strong>Documentation</strong>: https://ribasim.org/</li>
-<li><strong>Issues</strong>: GitHub issues for bugs and feature requests</li>
-<li><strong>Code patterns</strong>: Look at existing similar components for patterns</li>
-<li><strong>Tests</strong>: Existing tests show expected usage patterns</li>
-</ul>
-</section>
-<section id="key-files-to-understand" class="level2" data-number="2.16">
-<h2 data-number="2.16" class="anchored" data-anchor-id="key-files-to-understand"><span class="header-section-number">2.16</span> Key Files to Understand</h2>
-<ul>
-<li><code>core/src/Ribasim.jl</code>: Main Julia module entry point</li>
-<li><code>python/ribasim/ribasim/model.py</code>: Core Python model class</li>
-<li><code>pixi.toml</code>: Development environment and task definitions</li>
-<li><code>Project.toml</code>: Julia development dependencies</li>
-<li><code>core/Project.toml</code>: Julia package dependencies</li>
-<li><code>python/ribasim/pyproject.toml</code>: Python package configuration</li>
+<li>Julia tests are <code>@testitem</code>s in <code>*_test.jl</code> files, run with TestItemRunner. Python tests are <code>test_*.py</code>; tests on models from older schema versions are marked <code>@pytest.mark.regression</code>.</li>
+<li>Table schemas are defined in Julia. <code>python/ribasim/ribasim/schemas.py</code> and <code>validation.py</code> are generated by <code>pixi run codegen</code>; don’t edit them by hand.</li>
+<li>A breaking schema change increments <code>__schema_version__</code> in <code>python/ribasim/ribasim/__init__.py</code> and adds a migration to <code>python/ribasim/ribasim/migrations.py</code>, so older models still load.</li>
+<li>The root <code>Project.toml</code> is the Julia development environment (<code>--project</code>, used by <code>utils/</code> scripts); <code>core/Project.toml</code> is the Ribasim package (<code>--project=core</code>).</li>
+<li>Python API docstrings are rendered in the docs by quartodoc.</li>
+<li>Avoid allocations and type instabilities in the Julia simulation code; the core is compiled into a shared library.</li>
+<li>Adding a node type touches Julia, Python, QGIS and the docs; follow <code>docs/dev/addnode.qmd</code>.</li>
+<li>User-facing changes get an entry in <code>docs/changelog.qmd</code>.</li>
+<li>Comments explain why, not what.</li>
 </ul>
 
 
