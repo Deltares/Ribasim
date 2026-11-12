@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 - Allocation: solve every problem from scratch, so that HiGHS uses presolve, which is much faster for large subnetworks. Start values made HiGHS construct a basis and then skip presolve. [#3387](https://github.com/Deltares/Ribasim/pull/3387)
+- Allocation: flow no longer switches between equally good routes from one timestep to the next. A last objective keeps the flows of allocation controlled nodes close to those of the previous timestep. [#3399](https://github.com/Deltares/Ribasim/issues/3399)
 
 ## [v2026.2.0-rc1] - 2026-11-11
 

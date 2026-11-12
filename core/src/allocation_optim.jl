@@ -37,6 +37,7 @@ function set_simulation_data!(
     set_simulation_data!(allocation_model, pump, p, u, du, t_level)
     set_simulation_data!(allocation_model, outlet, p, u, du, t_level)
     set_simulation_data!(allocation_model, user_demand, junction, t)
+    set_flow_change_rhs!(allocation_model, p.p_independent)
 
     if errors
         error(
@@ -451,6 +452,37 @@ function set_simulation_data!(
         for inflow_link_metadata in user_demand.inflow_links[node_id.idx]
             inflow = flow[inflow_link_metadata.link]
             JuMP.set_normalized_coefficient(constraint, inflow, -return_factor)
+        end
+    end
+    return nothing
+end
+
+"""
+Set the flows of the previous allocation timestep in the flow change constraints
+`flow_change ≥ ±(flow - previous_flow)`. The previous flow is the flow rate last set by
+allocation, or at the start of the simulation the one from the input.
+"""
+function set_flow_change_rhs!(
+        allocation_model::AllocationModel,
+        p_independent::ParametersIndependent,
+    )::Nothing
+    (; problem, scaling, allocation_controlled_flows) = allocation_model
+    (; pump, outlet, tabulated_rating_curve) = p_independent
+    isempty(allocation_controlled_flows) && return nothing
+    constraints = problem[:flow_change_constraint]
+
+    for node_id in keys(allocation_controlled_flows)
+        node = if node_id.type == NodeType.Pump
+            pump
+        elseif node_id.type == NodeType.Outlet
+            outlet
+        else
+            tabulated_rating_curve
+        end
+        previous_flow = node.flow_rate[node_id.idx] / scaling.flow
+        for sign in (-1, 1)
+            # flow_change - sign * flow ≥ -sign * previous_flow
+            JuMP.set_normalized_rhs(constraints[node_id, sign], -sign * previous_flow)
         end
     end
     return nothing
@@ -1606,9 +1638,12 @@ function rebuild_control_constraints!(
     delete_control_constraints!(allocation_model, :outlet_constraint)
     delete_control_constraints!(allocation_model, :tabulated_rating_curve_constraint)
     delete_control_constraints!(allocation_model, :tabulated_rating_curve_capacity_constraint)
+    delete_control_constraints!(allocation_model, :flow_change_constraint)
+    delete_control_constraints!(allocation_model, :flow_change)
     add_pump!(allocation_model, p_independent)
     add_outlet!(allocation_model, p_independent)
     add_tabulated_rating_curve!(allocation_model, p_independent)
+    add_flow_change!(allocation_model, p_independent)
     return nothing
 end
 

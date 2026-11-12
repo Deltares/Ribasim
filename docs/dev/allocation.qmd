@@ -586,6 +586,34 @@ end
 - Only affects routing, not how much is allocated
 - Higher weight = less preferred route (higher cost)
 
+### Flow Change Objective
+
+**Mathematical formulation:**
+$$\min \sum_{i=1}^n w_i \left| Q_i - Q_i^\text{prev} \right|, \quad w_i = 1 + 0.01 \frac{i - 1}{n - 1}$$
+
+over the allocation controlled nodes $i$, ordered by node type and node ID.
+
+**Code implementation:**
+
+```julia
+# From add_flow_change!, which update_control_states! calls every allocation timestep
+flow_change = JuMP.@variable(problem, [node_ids], lower_bound = 0.0)
+JuMP.@constraint(
+    problem,
+    [node_id = node_ids, sign = (-1, 1)],
+    flow_change[node_id] ≥ sign * allocation_controlled_flows[node_id],
+)
+# From set_flow_change_rhs!, called in set_simulation_data!:
+# flow_change - sign * flow ≥ -sign * previous_flow
+JuMP.set_normalized_rhs(constraints[node_id, sign], -sign * previous_flow)
+```
+
+**Key points:**
+- Optimized last, so it only chooses between solutions that are equally good for all other objectives
+- The previous flow is `flow_rate` of the node, which is where allocation writes its result
+- The slightly increasing weights make the objective itself generically have a unique optimum
+- The structure only depends on which nodes are allocation controlled; the previous flows are right hand sides
+
 ### Low Storage Factor Objective
 
 **Mathematical formulation:**

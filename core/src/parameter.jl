@@ -248,7 +248,7 @@ const IndexLookup = ConstantInterpolation{
     SearchProperties{Float64},
 }
 
-@enumx AllocationObjectiveType demand_flow demand_storage low_storage_factor route_priorities none
+@enumx AllocationObjectiveType demand_flow demand_storage low_storage_factor route_priorities flow_change none
 
 """
 The data associated with a single objective. Only demand objectives have demand priorities.
@@ -342,6 +342,7 @@ level_demand_area_sum: The sum of current Basin areas per active LevelDemand pri
 level_demand_count: The number of Basins per active LevelDemand priority
 level_demand_area_scale: The mean current Basin area per active LevelDemand priority
 temporary_constraints: Goal programming constraints; one is added after each optimization to retain their results
+allocation_controlled_flows: The flow variable through each allocation controlled node, set in `add_flow_change!`
 allocation_controlled: The allocation_controlled flags of the Pumps, Outlets and TabulatedRatingCurves in the
     subnetwork that the control constraints were built for, see update_control_states!
 """
@@ -363,6 +364,7 @@ allocation_controlled: The allocation_controlled flags of the Pumps, Outlets and
     level_demand_count::OrderedDict{Int32, Int} = OrderedDict()
     level_demand_area_scale::OrderedDict{Int32, Float64} = OrderedDict()
     temporary_constraints::Vector{JuMP.ConstraintRef} = JuMP.ConstraintRef[]
+    allocation_controlled_flows::OrderedDict{NodeID, JuMP.VariableRef} = OrderedDict()
     allocation_controlled::Vector{Bool} = Bool[]
 end
 
@@ -786,7 +788,7 @@ allocation_controlled: whether this TabulatedRatingCurve is controlled by alloca
     flow_demand_id::Vector{NodeID} =
         fill(NodeID(NodeType.FlowDemand, 0, 0), length(node_id))
     allocation_controlled::Vector{Bool} = fill(false, length(node_id))
-    flow_rate::Vector{Float64} = Vector{Float64}(undef, length(node_id))
+    flow_rate::Vector{Float64} = zeros(length(node_id))
 end
 
 """

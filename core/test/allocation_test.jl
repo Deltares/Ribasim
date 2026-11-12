@@ -611,6 +611,20 @@ end
     @test isfinite(last(pump_table.supplied))
 end
 
+@testitem "Tied routes" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/tied_routes/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    # Two Pumps with the same route priority supply one demand. Their flows (node x time)
+    # change little more than their sum, instead of switching between the Pumps
+    (; flow_rate) = Ribasim.allocation_control_data(model; table = false)
+    change = sum(abs, diff(flow_rate; dims = 2))
+    change_of_sum = sum(abs, diff(sum(flow_rate; dims = 1); dims = 2))
+    @test change < 3 * change_of_sum
+end
+
 @testitem "Allocation solves from scratch" begin
     import BasicModelInterface as BMI
     import JuMP
