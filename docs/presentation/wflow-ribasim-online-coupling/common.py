@@ -7,6 +7,7 @@ the default location. The coupled model must have been run (`pixi run wflow-coup
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
@@ -106,26 +107,50 @@ def setup_style() -> None:
     )
 
 
-SLIDE_WIDTH = 13.33  # in, a 16:9 slide; figures are scaled to this width
+# Area a figure fills on a slide of the Deltares template (13.33 x 7.5 in), in inches.
+# CONTENT_BOX is below the slide title and subtitle, FULL_SLIDE is a full-bleed image.
+CONTENT_BOX = (12.44, 5.45)
+HALF_CONTENT_BOX = (6.1, 5.45)
+FULL_SLIDE = (13.33, 7.5)
 MIN_SLIDE_FONTSIZE = 12.0  # pt, smallest text size as it appears on the slide
+# Titles go into the slide title field of the deck; set FIGURE_TITLES=1 to draw them instead
+DRAW_TITLES = os.environ.get("FIGURE_TITLES", "0") == "1"
+TITLES_FILE = OUT_DIR / "titles.json"
 
 
-def enforce_min_fontsize(fig, tight: bool = True) -> None:
-    """Enlarge texts that would be smaller than MIN_SLIDE_FONTSIZE when the figure fills a slide."""
-    for _ in range(2):  # the saved width can change after enlarging
-        fig.canvas.draw()
-        renderer = fig.canvas.get_renderer()
-        width = fig.get_tightbbox(renderer).width if tight else fig.get_figwidth()
-        minimum = MIN_SLIDE_FONTSIZE * width / SLIDE_WIDTH
+def displayed_width(fig, tight: bool, box: tuple[float, float]) -> float:
+    """Width in inches of the figure when scaled to fit `box` on the slide."""
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    bbox = fig.get_tightbbox(renderer) if tight else fig.bbox_inches
+    return min(box[0], box[1] * bbox.width / bbox.height), bbox.width
+
+
+def enforce_min_fontsize(fig, tight: bool = True, box=CONTENT_BOX) -> None:
+    """Enlarge texts that would be smaller than MIN_SLIDE_FONTSIZE on the slide."""
+    for _ in range(2):  # the saved size can change after enlarging
+        shown, width = displayed_width(fig, tight, box)
+        minimum = MIN_SLIDE_FONTSIZE * width / shown
         for text in fig.findobj(mpl.text.Text):
             if text.get_text().strip() and text.get_fontsize() < minimum:
                 text.set_fontsize(minimum)
 
 
-def save(fig, name: str, tight: bool = True) -> Path:
+def record_title(name: str, title: str, subtitle: str | None) -> None:
+    """Store the slide title of a figure in figures/titles.json for the deck builder."""
+    titles = json.loads(TITLES_FILE.read_text(encoding="utf-8")) if TITLES_FILE.exists() else {}
+    titles[name] = {"title": title, "subtitle": subtitle}
+    TITLES_FILE.write_text(
+        json.dumps(titles, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+
+
+def save(fig, name: str, tight: bool = True, box=CONTENT_BOX) -> Path:
     path = OUT_DIR / name
     path.parent.mkdir(parents=True, exist_ok=True)
-    enforce_min_fontsize(fig, tight)
+    if hasattr(fig, "slide_title"):
+        record_title(name, *fig.slide_title)
+    enforce_min_fontsize(fig, tight, box)
     # OneDrive or an image viewer can briefly lock the file; retry a few times
     for attempt in range(10):
         try:
@@ -148,6 +173,9 @@ def save(fig, name: str, tight: bool = True) -> Path:
 
 
 def slide_title(fig, title: str, subtitle: str | None = None) -> None:
+    fig.slide_title = (title, subtitle)
+    if not DRAW_TITLES:
+        return
     fig.text(
         0.02, 0.965, title, fontsize=28, fontweight="bold", color=C["dark"], va="top"
     )

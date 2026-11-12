@@ -174,4 +174,4 @@ ax.text(
     fontweight="bold",
 )
 
-save(fig, "05_coupled_timestep_cycle.png", tight=False)
+save(fig, "05_coupled_timestep_cycle.png")

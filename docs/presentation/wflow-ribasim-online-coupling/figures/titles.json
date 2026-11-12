@@ -1,0 +1,54 @@
+{
+  "01_combined_strengths.png": {
+    "title": "Two strengths, one coupled model",
+    "subtitle": "Wflow describes how water moves through the landscape; Ribasim how people store, steer and share it"
+  },
+  "03_piave_grid_to_network.png": {
+    "title": "From grid to network: the Piave catchment",
+    "subtitle": "Every Wflow river cell delivers its runoff to exactly one Ribasim node"
+  },
+  "04_irrigation_cells_to_userdemand.png": {
+    "title": "Irrigated cells become Ribasim UserDemands",
+    "subtitle": "Irrigated Wflow cells are grouped per Basin and allocation area; each group gets one UserDemand"
+  },
+  "05_coupled_timestep_cycle.png": {
+    "title": "One coupled day",
+    "subtitle": "Wflow and Ribasim take turns; only data is exchanged, each model keeps its own state"
+  },
+  "06_river_exchange.png": {
+    "title": "The river coupling works",
+    "subtitle": "Daily runoff exchange Wflow → Ribasim, Piave, July 2010"
+  },
+  "07_irrigation_loop.png": {
+    "title": "The irrigation loop works",
+    "subtitle": "Irrigation of UserDemand #53, Piave, July 2010: every day from Wflow to Ribasim and back"
+  },
+  "backup/b1_coupling_water_balance.png": {
+    "title": "Is water conserved across the coupling?",
+    "subtitle": "Daily exchange in the Piave run (July 2010)"
+  },
+  "backup/b2_modular_wflow.png": {
+    "title": "Next step: a modular Wflow",
+    "subtitle": "Ribasim should plug into Wflow components instead of the coupler copying Wflow code"
+  },
+  "backup/b3a_pr3324_mapping.png": {
+    "title": "Mapping Wflow river cells to Ribasim",
+    "subtitle": "QGIS view of the Piave proof of concept (PR #3324)"
+  },
+  "backup/b3b_pr3333_schematization.png": {
+    "title": "Irrigation in the coupled model",
+    "subtitle": "Test schematization in Ribasim's QGIS plugin (PR #3333)"
+  },
+  "backup/b3c_pr3333_results.png": {
+    "title": "Demand, allocated and realized irrigation",
+    "subtitle": "Result of the coupled Piave run, July 2010 (PR #3333)"
+  },
+  "backup/b4_irrigation_results.png": {
+    "title": "Results: water is conserved, irrigation is short when the river cannot deliver",
+    "subtitle": "Piave, July 2010: Ribasim allocates the Wflow demand, but physics decides what is really abstracted"
+  },
+  "backup/b5_roadmap.png": {
+    "title": "What's next: from proof of concept to a tool you can use",
+    "subtitle": "Planned steps, in order"
+  }
+}

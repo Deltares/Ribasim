@@ -4,20 +4,24 @@ This folder contains the Python generators and PNG figures for the
 Wflow-Ribasim online coupling presentation, including irrigation allocation.
 The talk is about 10 minutes, for modellers. The scripts are numbered in slide order:
 
-| Slide | Message | Figure |
-|---|---|---|
-| 1 | Title | |
-| 2 | Two strengths, one model: Wflow hydrology + Ribasim water management | `01_combined_strengths.png` |
-| 3 | The idea, step by step (one slide per build step) | `02a_concept_wflow.png`, `02b_concept_coupled.png`, `02c_concept_irrigation.png` |
-| 4 | From grid to network in the Piave | `03_piave_grid_to_network.png` |
-| 5 | Irrigated cells become Ribasim UserDemands | `04_irrigation_cells_to_userdemand.png` |
-| 6 | One coupled day | `05_coupled_timestep_cycle.png` |
-| 7 | Results: water is conserved, irrigation is short when the river cannot deliver | `06_irrigation_results.png` |
-| 8 | What's next | `07_roadmap.png` |
+The slide order, presenters and talking points are in `talking_points.md`.
+The figures have no titles of their own: each script records its slide title in
+`figures/titles.json` (set `FIGURE_TITLES=1` to draw them in the figure instead), and
+`save()` enlarges text that would be smaller than 12 pt on the slide.
 
-Backup slides are in `figures/backup`: the water balance of the exchange (`b1`), the
-modular Wflow architecture (`b2`) and the annotated original figures of PR #3324 and
-#3333 (`b3a`-`b3c`).
+| Figure | Slide |
+|---|---|
+| `01_combined_strengths.png` | Two strengths, one coupled model |
+| `02a`, `02b`, `02c_concept_*.png` | The idea, step by step (full-bleed) |
+| `03_piave_grid_to_network.png` | From grid to network in the Piave |
+| `06_river_exchange.png` | The river coupling works (right half; outflow comparison to follow) |
+| `04_irrigation_cells_to_userdemand.png` | Irrigated cells become Ribasim UserDemands |
+| `05_coupled_timestep_cycle.png` | One coupled day |
+| `07_irrigation_loop.png` | The irrigation loop works |
+
+Backup figures are in `figures/backup`: the water balance of the exchange (`b1`), the
+modular Wflow architecture (`b2`), the annotated original figures of PR #3324 and
+#3333 (`b3a`-`b3c`), the irrigation results per UserDemand (`b4`) and the roadmap (`b5`).
 
 Run all generators from the repository root with:
 
@@ -29,3 +33,11 @@ The scripts use the Piave proof-of-concept data in `wflow-coupled`. Set the
 `RIBASIM_REPO` environment variable when running them from another checkout.
 The `source_images` folder contains the original figures from the referenced
 pull requests used by the annotated presentation figures.
+
+Build the PowerPoint deck from the Deltares template (needs PowerPoint) with:
+
+```powershell
+& .\docs\presentation\wflow-ribasim-online-coupling\build_deck.ps1
+```
+
+It reads `template_2.pptx` and the DSD presenter bio template from `-TemplateDir`.

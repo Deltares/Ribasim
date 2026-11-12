@@ -236,4 +236,4 @@ fig.legend(
     handles=handles, loc="lower center", ncols=6, fontsize=13, bbox_to_anchor=(0.5, 0.0)
 )
 
-save(fig, "06_irrigation_results.png")
+save(fig, "backup/b4_irrigation_results.png")

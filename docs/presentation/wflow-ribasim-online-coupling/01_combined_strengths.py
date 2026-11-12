@@ -89,7 +89,7 @@ slide_title(
     "Wflow describes how water moves through the landscape; Ribasim how people store, steer and share it",
 )
 ax.set_xlim(0, 20)
-ax.set_ylim(1.2, 11)
+ax.set_ylim(0.7, 11)
 ax.set_aspect("equal")
 ax.set_axis_off()
 
@@ -208,8 +208,15 @@ ax.text(
 
 
 def label(x, y, text, color="white", fontsize=11, **kw):
+    """Process label inside the soil, in a regular weight so it does not dominate the drawing."""
     ax.text(
-        x, y, text, fontsize=fontsize, color=color, fontweight="bold", zorder=8, **kw
+        x,
+        y,
+        text,
+        fontsize=fontsize,
+        color=color,
+        zorder=8,
+        **kw,
     )
 
 
@@ -296,23 +303,11 @@ label(
 )
 label(
     x_left(0) + 0.12,
-    surface[0] - water_table_depth[0] + 0.15,
+    surface[0] - water_table_depth[0] - 0.12,
     "water table",
-    va="bottom",
+    va="top",
     fontsize=10,
 )
-ax.text(
-    ox,
-    surface[-1] - thickness - 0.3,
-    "every grid cell: one soil column with a moving water table;\n"
-    "water flows downslope over and through the soil to the river",
-    ha="left",
-    va="top",
-    fontsize=14,
-    color=C["wflow"],
-    fontweight="bold",
-)
-
 # ------------------------------------------------------------------ Ribasim
 panel(ax, 10.7, 3.0, 9.1, 7.8, "#EAF6EC")
 ax.text(11.1, 10.25, "Ribasim", fontsize=26, fontweight="bold", color=C["ribasim"])
@@ -446,32 +441,32 @@ ax.text(
 )
 ax.add_patch(
     FancyBboxPatch(
-        (2.5, 1.4),
-        15.0,
+        (0.2, 0.8),
+        19.6,
         1.4,
         boxstyle="round,pad=0,rounding_size=0.3",
-        facecolor=C["dark"],
+        facecolor=C["light"],
         edgecolor="none",
     )
 )
 ax.text(
     10.0,
-    2.35,
+    1.75,
     "Coupled: realistic runoff and irrigation demand from every cell,",
     ha="center",
     va="center",
     fontsize=18,
-    color="white",
+    color=C["dark"],
     fontweight="bold",
 )
 ax.text(
     10.0,
-    1.83,
+    1.23,
     "managed and allocated through the controlled surface water network",
     ha="center",
     va="center",
     fontsize=18,
-    color="white",
+    color=C["dark"],
     fontweight="bold",
 )
 

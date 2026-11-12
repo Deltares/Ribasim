@@ -8,7 +8,7 @@ from itertools import pairwise
 
 import matplotlib.pyplot as plt
 import numpy as np
-from common import C, arrow, badge, cloud, droplet, save, setup_style
+from common import FULL_SLIDE, C, arrow, badge, cloud, droplet, save, setup_style
 from matplotlib.lines import Line2D
 from matplotlib.offsetbox import AnnotationBbox
 from matplotlib.patches import Circle, FancyBboxPatch, Polygon
@@ -510,6 +510,7 @@ def draw(variant: str) -> None:
             "river": "02b_concept_coupled.png",
             "irrigation": "02c_concept_irrigation.png",
         }[variant],
+        box=FULL_SLIDE,  # shown full-bleed; the badge top right acts as the title
     )
 
 

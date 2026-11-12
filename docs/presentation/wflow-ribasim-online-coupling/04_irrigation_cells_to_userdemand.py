@@ -232,7 +232,9 @@ for node_id, ud in user_demands.iterrows():
         f"UserDemand #{node_id}\ntakes from Basin #{source}\n"
         f"for allocation area {int(ud.meta_allocation_area_id)}",
         (ud.geometry.x, ud.geometry.y),
-        xytext=(14, 14),
+        # The leftmost UserDemand gets its label to the left, so the labels do not overlap
+        xytext=(-14, 14) if node_id == user_demands.geometry.x.idxmin() else (14, 14),
+        ha="right" if node_id == user_demands.geometry.x.idxmin() else "left",
         textcoords="offset points",
         fontsize=13,
         fontweight="bold",
