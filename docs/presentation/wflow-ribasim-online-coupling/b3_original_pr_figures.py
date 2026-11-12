@@ -21,7 +21,7 @@ SLIDES = [
                 -75,
                 -30,
                 C["dark"],
-                "Each dot is a Wflow river cell.\nIts label is the Ribasim node\nthat receives its runoff.",
+                "Each dot is a Wflow river cell.\nIts label is the Ribasim node\nthat receives its inflow.",
             ),
             (
                 311,
@@ -29,7 +29,7 @@ SLIDES = [
                 55,
                 45,
                 C["water_dark"],
-                "Blue areas: Ribasim Basins.\nRiver cells inside add runoff\nto the Basin storage.",
+                "Blue areas: Ribasim Basins.\nRiver cells inside add their\ninflow to the Basin storage.",
             ),
             (
                 560,
@@ -37,7 +37,7 @@ SLIDES = [
                 35,
                 -40,
                 "#7B4FA0",
-                "Purple areas: FlowBoundaries.\nHeadwater runoff enters the\nnetwork as a boundary inflow.",
+                "Purple areas: FlowBoundaries.\nHeadwater river flow enters\nthe network as a boundary inflow.",
             ),
         ],
     ),

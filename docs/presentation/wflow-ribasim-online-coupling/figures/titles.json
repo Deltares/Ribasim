@@ -5,7 +5,7 @@
   },
   "03_piave_grid_to_network.png": {
     "title": "From grid to network: the Piave catchment",
-    "subtitle": "Every Wflow river cell delivers its runoff to exactly one Ribasim node"
+    "subtitle": "Every Wflow river cell delivers its inflow to exactly one Ribasim node"
   },
   "04_irrigation_cells_to_userdemand.png": {
     "title": "Irrigated cells become Ribasim UserDemands",
@@ -17,7 +17,7 @@
   },
   "06_river_exchange.png": {
     "title": "The river coupling works",
-    "subtitle": "Daily runoff exchange Wflow → Ribasim, Piave, July 2010"
+    "subtitle": "Daily overland & subsurface flow, Wflow → Ribasim, Piave, July 2010"
   },
   "07_irrigation_loop.png": {
     "title": "The irrigation loop works",

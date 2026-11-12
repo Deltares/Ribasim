@@ -102,7 +102,7 @@ MOUNTAINS = [
 
 
 def cell_runoff(ax, target):
-    """Runoff leaving a Wflow land cell towards the river (target in screen coordinates)."""
+    """Overland and subsurface flow leaving a Wflow land cell towards the river (target in screen coordinates)."""
     origin = np.mean(cell(7, 6), axis=0)
     ax.add_patch(
         Polygon(
@@ -128,7 +128,7 @@ def cell_runoff(ax, target):
     ax.text(
         origin[0] + 0.35,
         origin[1] - 0.05,
-        "runoff",
+        "overland &\nsubsurface flow",
         color=C["wflow"],
         fontsize=20,
         fontweight="bold",
@@ -311,16 +311,16 @@ def draw(variant: str) -> None:
     ]
 
     if not coupled:
-        # Wflow routes the runoff through its own river cells
+        # Wflow routes the overland and subsurface flow through its own river cells
         arrow(ax, (1.2, 5.6), (4.0, 4.55), C["wflow"], lw=4, rad=0.25, scale=28)
         ax.text(
-            0.5,
-            5.0,
-            "runoff",
+            0.3,
+            5.72,
+            "overland &\nsubsurface flow",
             color=C["wflow"],
             fontsize=20,
             fontweight="bold",
-            rotation=-25,
+            va="bottom",
             zorder=16,
         )
         cell_runoff(ax, project(8.0, 0.5))
@@ -358,7 +358,7 @@ def draw(variant: str) -> None:
             icon(ax, "ManningResistance", mid, size=105)
         for b in basins:
             icon(ax, "Basin", b, size=120)
-        # Headwater runoff from the mountains enters the network through a FlowBoundary
+        # Headwater inflow from the mountains enters the network through a FlowBoundary
         flow_boundary = (rx[2], ry[2] + 0.35)
         link(ax, flow_boundary, basins[0])
         icon(ax, "FlowBoundary", flow_boundary, size=95)
@@ -374,13 +374,13 @@ def draw(variant: str) -> None:
             shrinkB=22,
         )
         ax.text(
-            0.9,
-            6.15,
-            "runoff",
+            0.3,
+            6.02,
+            "overland &\nsubsurface flow",
             color=C["wflow"],
             fontsize=20,
             fontweight="bold",
-            rotation=-20,
+            va="bottom",
             zorder=16,
         )
         cell_runoff(ax, (basins[1][0] - 0.05, basins[1][1] + 0.05))
@@ -490,7 +490,7 @@ def draw(variant: str) -> None:
         ax,
         15.7,
         7.55,
-        "Wflow: rain, snow, soil & runoff on a grid",
+        "Wflow: rain, snow, soil & lateral flow on a grid",
         C["wflow"],
         fontsize=14,
         ha="right",

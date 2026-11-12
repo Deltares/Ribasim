@@ -44,7 +44,7 @@ stations = [
         C["wflow"],
         "hill",
         "Wflow → Ribasim",
-        "runoff of river cells\nenters the Basins",
+        "overland & subsurface\nflow enters the Basins",
     ),
 ]
 exchanges = [

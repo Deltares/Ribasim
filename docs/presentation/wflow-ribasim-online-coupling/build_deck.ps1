@@ -130,17 +130,9 @@ try {
     [void](Add-ContentSlide "03_piave_grid_to_network.png")
 
     $half = ($ContentWidth - 0.3 * $PT) / 2
-    $s = Add-ContentSlide "06_river_exchange.png" -subtitle "Left: 4-year outflow, coupled vs stand-alone Wflow. Right: daily runoff exchange, July 2010"
-    $s.Shapes($s.Shapes.Count).Delete()  # the full-width picture; re-added on the right half
-    $box = $s.Shapes.AddShape(5, $Margin, $ContentTop, $half, $ContentHeight)  # rounded rectangle
-    $box.Fill.ForeColor.RGB = $Light
-    $box.Line.ForeColor.RGB = $Grey
-    $box.Line.DashStyle = 4
-    $box.TextFrame.TextRange.Text = "Outflow at the Piave outlet, 4 years: coupled model vs stand-alone Wflow (same forcing)`r`rFigure follows from the validate_wflow-coupled branch (discharge only)"
-    $box.TextFrame.TextRange.Font.Name = "Arial"
-    $box.TextFrame.TextRange.Font.Size = 18
-    $box.TextFrame.TextRange.Font.Color.RGB = $Grey
-    $box.Name = "Outflow comparison placeholder"
+    $s = Add-ContentSlide "06_river_exchange.png" -subtitle "Left: monthly outflow at the Piave outlet, 2010-2014. Right: daily exchange Wflow to Ribasim, July 2010"
+    $s.Shapes($s.Shapes.Count).Delete()  # the full-width picture; re-added on both halves
+    [void](Add-Picture $s "08_outlet_discharge.png" $Margin $ContentTop $half $ContentHeight)
     [void](Add-Picture $s "06_river_exchange.png" ($Margin + $half + 0.3 * $PT) $ContentTop $half $ContentHeight)
 
     # ---------------------------------------------------------------- Bart
@@ -152,7 +144,7 @@ try {
     # Take-home messages: two cards with a numbered circle
     $s = Add-ContentSlide $null "Take-home messages" "Proof of concept on the Piave catchment"
     $messages = @(
-        @("Each model does its part", "Wflow computes runoff and irrigation demand per grid cell. Ribasim routes, manages and allocates the water."),
+        @("Each model does its part", "Wflow computes overland and subsurface flow and irrigation demand per grid cell. Ribasim routes, manages and allocates the water."),
         @("Water is conserved", "Everything Wflow hands over arrives in Ribasim, every day.")
     )
     $cardW = ($ContentWidth - 0.4 * $PT) / 2

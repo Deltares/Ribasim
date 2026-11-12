@@ -1,6 +1,6 @@
 """Piave proof of concept on real data: Wflow grid, Ribasim network, and the cell-to-node mapping.
 
-Recreates (and extends) the QGIS figure in PR #3324: every Wflow river cell sends its runoff to
+Recreates (and extends) the QGIS figure in PR #3324: every Wflow river cell sends its overland and subsurface flow to
 exactly one Ribasim Basin or FlowBoundary.
 """
 
@@ -56,7 +56,7 @@ fig.subplots_adjust(left=0.01, right=0.99, top=0.75, bottom=0.1, wspace=0.08)
 slide_title(
     fig,
     "From grid to network: the Piave catchment",
-    "Every Wflow river cell delivers its runoff to exactly one Ribasim node",
+    "Every Wflow river cell delivers its inflow to exactly one Ribasim node",
 )
 
 # (a) Wflow: elevation and river cells on the grid

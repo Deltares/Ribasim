@@ -23,7 +23,7 @@ DONE, NOW, NEXT = "done", "now", "next"
 # title, description, status, label, colour, icon
 MILESTONES = [
     (
-        "Wflow runoff\ninto Ribasim rivers",
+        "Wflow overland & subsurface\nflow into Ribasim rivers",
         "Wflow river cells feed\nRibasim Basins",
         DONE,
         "#3324 · merged",
@@ -117,7 +117,9 @@ for x, (title, description, status, label, color, icon) in zip(
         fontweight="bold",
         color=color,
     )
-    ax.text(x, y - 2.75, description, ha="center", va="top", fontsize=13.5, color=C["dark"])
+    ax.text(
+        x, y - 2.75, description, ha="center", va="top", fontsize=13.5, color=C["dark"]
+    )
     ax.text(
         x,
         y + 1.3,

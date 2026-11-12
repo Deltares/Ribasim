@@ -1,6 +1,6 @@
 """Download the original figures from the GitHub issues / pull requests into source_images/.
 
-Run once; the images are reused by b3_original_pr_figures.py.
+Run once; the images are reused by 01_combined_strengths.py and b3_original_pr_figures.py.
 """
 
 import ssl
@@ -15,6 +15,8 @@ IMAGES = {
     "pr3333_schematization.png": "https://github.com/user-attachments/assets/beeb518d-dd40-4137-92b0-2c6de3295200",
     # PR #3333: demand, allocated and realized irrigation per UserDemand
     "pr3333_userdemand_results.png": "https://github.com/user-attachments/assets/3cf52b13-4401-41e0-9031-f4d1d3853264",
+    # Wflow.jl documentation: the SBM concept figure (also at Wflow.jl/docs/images/), used in 01
+    "wflow_sbm_soil.png": "https://deltares.github.io/Wflow.jl/dev/images/wflow_sbm_soil.png",
 }
 
 SOURCE_IMAGES.mkdir(exist_ok=True)

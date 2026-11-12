@@ -26,7 +26,7 @@ slide_title(
     "Daily exchange in the Piave run (July 2010)",
 )
 
-# Runoff exchange: Wflow export (bars) vs Ribasim injected (dots)
+# Overland and subsurface flow exchange: Wflow export (bars) vs Ribasim injected (dots)
 ax = ax_runoff
 ax.bar(
     diag.date,
@@ -46,8 +46,8 @@ ax.scatter(
     zorder=3,
     label="received by Ribasim Basins + FlowBoundaries",
 )
-ax.set_ylabel("runoff  [m³/s]")
-ax.set_title("Wflow → Ribasim runoff", loc="left", color=C["wflow"])
+ax.set_ylabel("inflow  [m³/s]")
+ax.set_title("Wflow → Ribasim overland & subsurface flow", loc="left", color=C["wflow"])
 ax.legend(loc="upper right", bbox_to_anchor=(1.0, 0.85), fontsize=13)
 ax.grid(axis="y", color=C["light"])
 ax.set_ylim(0, diag.wflow_export_m3s.max() * 1.55)
@@ -113,7 +113,7 @@ for ax in (ax_runoff, ax_irrigation):
 fig.text(
     0.06,
     0.03,
-    f"Summed over the run, the exchange error is {relative_error:.0e} of the exported runoff (floating-point precision).",
+    f"Summed over the run, the exchange error is {relative_error:.0e} of the exported inflow (floating-point precision).",
     fontsize=13,
     color=C["muted"],
 )

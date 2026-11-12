@@ -1,4 +1,4 @@
-"""The river coupling works: every day, the runoff Wflow exports arrives in Ribasim.
+"""The river coupling works: every day, the overland and subsurface flow Wflow exports arrives in Ribasim.
 
 Uses `coupling_diagnostics.csv` written by online.jl, with one row per coupled timestep.
 Drawn for the right half of the results slide; the left half holds the outflow comparison.
@@ -28,7 +28,7 @@ fig, ax = plt.subplots(figsize=(8, 7))
 slide_title(
     fig,
     "The river coupling works",
-    "Daily runoff exchange Wflow → Ribasim, Piave, July 2010",
+    "Daily overland & subsurface flow, Wflow → Ribasim, Piave, July 2010",
 )
 ax.bar(
     diag.date,
@@ -48,7 +48,7 @@ ax.scatter(
     zorder=3,
     label="received by Ribasim",
 )
-ax.set_ylabel("runoff  [m³/s]")
+ax.set_ylabel("inflow  [m³/s]")
 ax.set_ylim(0, diag.wflow_export_m3s.max() * 1.6)
 ax.legend(loc="upper right", bbox_to_anchor=(1.0, 0.86), fontsize=14)
 ax.grid(axis="y", color=C["light"])
