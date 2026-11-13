@@ -148,13 +148,20 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     return nothing
 end
 
-const CUMULATIVE_FLOW_RESET_THRESHOLD = 1.0e12 # m³ s⁻¹
+"""
+The cumulative volume (m³) at which the cumulative flows are reset. The states are cumulative
+volumes, and the Newton iteration can't converge below their floating point rounding: at
+the rounding floor its updates no longer shrink, so every step fails until the run ends
+`Unstable`. Resetting before the rounding reaches a thousandth of `abstol` avoids this.
+"""
+cumulative_flow_reset_threshold(abstol::Real)::Float64 = 1.0e-3 * abstol / eps(1.0)
 
 function cumulative_flow_reset_condition(u, t, integrator)::Bool
     (; basin, flow_boundary) = integrator.p.p_independent
-    return any(volume -> abs(volume) >= CUMULATIVE_FLOW_RESET_THRESHOLD, u.flow) ||
-        any(volume -> abs(volume) >= CUMULATIVE_FLOW_RESET_THRESHOLD, basin.forcing.exact_cumulative_forcing_since_reset) ||
-        any(volume -> abs(volume) >= CUMULATIVE_FLOW_RESET_THRESHOLD, flow_boundary.cumulative_flow_since_reset)
+    threshold = cumulative_flow_reset_threshold(integrator.opts.abstol)
+    return any(volume -> abs(volume) >= threshold, u.flow) ||
+        any(volume -> abs(volume) >= threshold, basin.forcing.exact_cumulative_forcing_since_reset) ||
+        any(volume -> abs(volume) >= threshold, flow_boundary.cumulative_flow_since_reset)
 end
 
 function reset_cumulative_flows!(integrator)::Nothing
@@ -168,6 +175,7 @@ function reset_cumulative_flows!(integrator)::Nothing
     cumulative_flow_prev_allocation_dt .-= u.flow
     forcing.exact_cumulative_forcing_prev_saveat .-= forcing.exact_cumulative_forcing_since_reset
     flow_boundary.cumulative_flow_prev_saveat .-= flow_boundary.cumulative_flow_since_reset
+    shifted = shift_solver_history!(integrator.cache, u.flow)
 
     fill!(u.flow, 0.0)
     fill!(forcing.exact_cumulative_forcing_since_reset, 0.0)
@@ -175,9 +183,23 @@ function reset_cumulative_flows!(integrator)::Nothing
     fill!(time_dependent_cache.basin, 0.0)
     fill!(time_dependent_cache.flow_boundary.current_cumulative_boundary_flow, 0.0)
     p.p_mutable.new_time_dependent_cache = true
-    derivative_discontinuity!(integrator, true)
+    derivative_discontinuity!(integrator, !shifted)
     return nothing
 end
+
+"""
+Subtract the volumes that are reset from the solver history, so that the solver continues
+without a restart. This is valid because the right hand side depends on the cumulative flows
+only through the storages, which the reset doesn't change. Of the Nordsieck array only the
+first column holds the states; the others are scaled derivatives. Returns whether the
+history was shifted, otherwise the solver restarts.
+"""
+function shift_solver_history!(cache::OrdinaryDiffEqBDF.NordsieckBDFCache, flow)::Bool
+    first(cache.zn).flow .-= flow
+    return true
+end
+
+shift_solver_history!(cache, flow)::Bool = false
 
 function update_concentrations!(u, t, integrator)::Nothing
     (; p, tprev) = integrator
