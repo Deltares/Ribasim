@@ -127,7 +127,7 @@ In order to publish Ribasim Python or Ribasim API follow the following steps:
 4) The plugin will be available after manual approval from a QGIS plugin repository maintainer.
 
 The QGIS plugin repository [scans each upload](https://plugins.qgis.org/docs/security-scanning) and blocks it on any finding of Bandit or detect-secrets.
-Our prek hooks run the same checks on the plugin code, except for B101: we use `assert` to narrow types.
+Ruff checks the Bandit rules on the plugin code, except for B101: we use `assert` to narrow types.
 
 ## Update version numbers in docs
 
