@@ -1,3 +1,30 @@
+@testitem "Cumulative flows are reset before their rounding approaches abstol" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    (; integrator) = Ribasim.Model(toml_path)
+    threshold = Ribasim.cumulative_flow_reset_threshold(integrator.opts.abstol)
+    @test eps(threshold) <= 1.0e-3 * integrator.opts.abstol
+    u = copy(integrator.u)
+    u.flow[1] = prevfloat(threshold)
+    @test !Ribasim.cumulative_flow_reset_condition(u, 0.0, integrator)
+    u.flow[1] = threshold
+    @test Ribasim.cumulative_flow_reset_condition(u, 0.0, integrator)
+end
+
+@testitem "Resetting the cumulative flows doesn't restart the solver" begin
+    using Ribasim: BMI
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    model = Ribasim.Model(toml_path)
+    model_reset = Ribasim.Model(toml_path)
+    BMI.update_until(model, 86400.0)
+    BMI.update_until(model_reset, 86400.0)
+    Ribasim.reset_cumulative_flows!(model_reset.integrator)
+    BMI.update_until(model, 10 * 86400.0)
+    BMI.update_until(model_reset, 10 * 86400.0)
+    # A restart changes the trajectory within the solver tolerance, here by about 3e-6
+    @test BMI.get_value_ptr(model_reset, "basin.storage") ≈ BMI.get_value_ptr(model, "basin.storage") rtol = 1.0e-8
+end
+
 @testitem "Inner linear solve with changing zeros in the Jacobian" begin
     using SparseArrays: nonzeros, rowvals
     using LinearAlgebra: I, norm
