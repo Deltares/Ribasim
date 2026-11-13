@@ -122,8 +122,12 @@ In order to publish Ribasim Python or Ribasim API follow the following steps:
 
 1) Download the `ribasim_qgis.zip` from the [latest GitHub release assets](https://github.com/Deltares/Ribasim/releases/latest).
 2) Log in to the [QGIS plugin repository](https://plugins.qgis.org/).
-3) Go to [Upload a plugin](https://plugins.qgis.org/plugins/upload/) and upload the zip file.
+3) Go to [Upload a plugin](https://plugins.qgis.org/plugins/upload/) and select the zip file.
+   In the Security Rules panel below it, turn off B101 (Assert used), then upload.
 4) The plugin will be available after manual approval from a QGIS plugin repository maintainer.
+
+The QGIS plugin repository [scans each upload](https://plugins.qgis.org/docs/security-scanning) and blocks it on any finding of Bandit or detect-secrets.
+Ruff checks the Bandit rules on the plugin code, except for B101: we use `assert` to narrow types.
 
 ## Update version numbers in docs
 
