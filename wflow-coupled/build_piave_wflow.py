@@ -1,10 +1,28 @@
-"""Build a runnable Wflow Piave model from the HydroMT artifact data catalog."""
+"""Build a runnable Wflow Piave model from HydroMT data catalogs.
+
+The static maps come from the HydroMT artifact data catalog, which only has forcing for
+February 2010. The forcing is therefore taken from the Deltares data catalog, which requires
+access to the Deltares P: drive.
+"""
 
 from pathlib import Path
+from shutil import rmtree
+from urllib.request import urlretrieve
 
 from hydromt_wflow import WflowSbmModel
 
 MODEL_ROOT = Path("models/wflow_piave")
+DATA_DIR = Path("models/data")
+
+# July, so the non-paddy irrigation is triggered
+STARTTIME = "2010-07-01T00:00:00"
+ENDTIME = "2010-07-31T00:00:00"
+
+# The artifact data catalog has no irrigated area map, so we use the one from the
+# hydromt_wflow water demand example, which covers the Piave (1 = irrigated).
+IRRIGATED_AREA_URL = "https://raw.githubusercontent.com/Deltares/hydromt_wflow/v1.1.0/examples/data/demand/irrigated_area.tif"
+# GlobCover 2009 classes containing cropland, see globcover_mapping_default.
+GLOBCOVER_CROPLAND_CLASSES = [11, 14, 20, 30]
 REGION = {
     "subbasin": [12.2051, 45.8331],
     "strord": 4,
@@ -28,6 +46,9 @@ CONSTANT_PARAMETERS = {
 
 def main() -> None:
     """Build and write the complete Wflow SBM model."""
+    irrigated_area_path = download(IRRIGATED_AREA_URL, DATA_DIR)
+    # Start clean, otherwise the forcing update below also reads stale forcing
+    rmtree(MODEL_ROOT, ignore_errors=True)
     model = WflowSbmModel(root=str(MODEL_ROOT), mode="w+", data_libs=["artifact_data"])
     model.build(
         steps=[
@@ -35,8 +56,8 @@ def main() -> None:
                 "setup_config": {
                     "data": {
                         "wflow_version": "1.1",
-                        "time.starttime": "2010-02-02T00:00:00",
-                        "time.endtime": "2010-02-10T00:00:00",
+                        "time.starttime": STARTTIME,
+                        "time.endtime": ENDTIME,
                         "time.timestepsecs": 86400,
                         "model.reservoir__flag": False,
                         "model.glacier__flag": False,
@@ -83,6 +104,23 @@ def main() -> None:
                     "ptf_ksatver": "brakensiek",
                 }
             },
+            {"setup_constant_pars": CONSTANT_PARAMETERS},
+            {"setup_allocation_areas": {"waterareas_fn": "gadm_level2"}},
+            {
+                "setup_irrigation": {
+                    "irrigated_area_fn": str(irrigated_area_path),
+                    "irrigation_value": [1],
+                    "cropland_class": GLOBCOVER_CROPLAND_CLASSES,
+                }
+            },
+        ]
+    )
+    # A separate update, so that only the forcing sources come from the Deltares catalog
+    forcing_model = WflowSbmModel(
+        root=str(MODEL_ROOT), mode="r+", data_libs=["deltares_data"]
+    )
+    forcing_model.update(
+        steps=[
             {"setup_precip_forcing": {"precip_fn": "era5"}},
             {
                 "setup_temp_pet_forcing": {
@@ -91,10 +129,18 @@ def main() -> None:
                     "pet_method": "debruin",
                 }
             },
-            {"setup_constant_pars": CONSTANT_PARAMETERS},
         ]
     )
     migrate_config(MODEL_ROOT / "wflow_sbm.toml")
+
+
+def download(url: str, directory: Path) -> Path:
+    """Download a file to a directory, unless it is already there."""
+    path = directory / url.rsplit("/", 1)[-1]
+    if not path.exists():
+        directory.mkdir(parents=True, exist_ok=True)
+        urlretrieve(url, path)  # noqa: S310, only called with a fixed https URL
+    return path
 
 
 # hydromt_wflow 1.1.0 writes standard names that were changed on Wflow main.
