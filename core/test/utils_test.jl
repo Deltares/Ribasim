@@ -592,7 +592,7 @@ end
 end
 
 @testitem "@threaded" begin
-    using Ribasim: @threaded, parallel_foreach
+    using Ribasim: @threaded, parallel_foreach, parallel_chunks, chunk_range
 
     # Each index is visited exactly once, also with more chunks than threads
     for indices in (1:1, 1:7, 5:104, 1:1000), n_chunks in (1, 3, 16)
@@ -600,6 +600,23 @@ end
         parallel_foreach(i -> visits[i] += 1, indices, n_chunks)
         @test visits == [i in indices ? 1 : 0 for i in 1:1000]
     end
+
+    # The chunks of several loops cover each of them once, also an empty one, and each chunk
+    # is taken once
+    chunk_visits = zeros(Int, 16)
+    a_visits = zeros(Int, 100)
+    b_visits = zeros(Int, 5)
+    empty_chunks = zeros(Bool, 16)
+    parallel_chunks(16) do k
+        chunk_visits[k] += 1
+        foreach(i -> a_visits[i] += 1, chunk_range(1:100, k, 16))
+        foreach(i -> b_visits[i] += 1, chunk_range(1:5, k, 16))
+        empty_chunks[k] = isempty(chunk_range(1:0, k, 16))
+    end
+    @test all(==(1), chunk_visits)
+    @test all(==(1), a_visits)
+    @test all(==(1), b_visits)
+    @test all(empty_chunks)
 
     # `continue` skips to the next index, both in a plain loop and in parallel tasks
     for min_chunk_size in (1, 1000)
@@ -615,15 +632,17 @@ end
         @test visits == [isodd(i) ? 1 : 0 for i in 1:100]
     end
 
-    # An error in the first chunk, which runs on the calling task, is only thrown once the
-    # other chunks have finished
+    # An error in a chunk is only thrown once no task writes anymore, since the other chunks
+    # may still be writing
     finished = zeros(Bool, 100)
     @test_throws "error in first chunk" parallel_foreach(1:100, 4) do i
         i == 1 && error("error in first chunk")
         sleep(0.001)
         finished[i] = true
     end
-    @test all(finished[26:100])
+    finished_at_throw = copy(finished)
+    sleep(0.1)
+    @test finished == finished_at_throw
 
     # An error in another chunk is thrown as well
     @test_throws "error in last chunk" parallel_foreach(1:100, 4) do i

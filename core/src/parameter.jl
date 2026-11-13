@@ -1309,6 +1309,23 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
 end
 
 """
+A level in the order in which `formulate_controlled_flows!` computes the flows and variables that
+can depend on other flows, see `set_control_order!`. Everything in a level only depends on the
+flows that are not controlled by PidControl or ContinuousControl and on the earlier levels.
+
+user_demand_idx: the UserDemand nodes in Junction subgraphs whose flows are needed in a later level
+compound_idx: the ContinuousControl nodes whose compound variable is computed
+pid_idx: the PidControl nodes whose controlled flow is computed
+continuous_idx: the ContinuousControl nodes whose controlled flow is computed
+"""
+@kwdef struct ControlOrderLevel
+    user_demand_idx::Vector{Int} = Int[]
+    compound_idx::Vector{Int} = Int[]
+    pid_idx::Vector{Int} = Int[]
+    continuous_idx::Vector{Int} = Int[]
+end
+
+"""
 node_id: node IDs of all Junction nodes
 routed_ids: the Junction nodes that divide the flow or supply a UserDemand (they have rows in `Junction / static`).
     These stay in the simulation as nodes without storage, the other Junction nodes are removed from the
@@ -1614,6 +1631,8 @@ an immutable struct.
     const reduced_implicit_solve::Bool
     # Matrix which aggregates flows into the basin storages
     const incidence_matrix::SparseMatrixCSC{Float64, Int}
+    # The transpose of the incidence matrix, of which a column holds the flows of a Basin
+    const incidence_matrix_transpose::SparseMatrixCSC{Float64, Int} = permutedims(incidence_matrix)
     # Per flow state the Basins it flows into via Junction nodes, with the weights, see `set_routing!`
     const routed_basins::Vector{Vector{Tuple{Int, Float64}}}
     # The indices of the flow states with a nonempty `routed_basins`
@@ -1638,6 +1657,8 @@ an immutable struct.
     # Per state the node whose level is the downstream level, see `set_downstream_level_ids!`
     const downlink_level_id::FlowCVector{NodeID}
     const state_id::FlowCVector{NodeID}
+    # The order in which the controlled flows are computed, see `set_control_order!`
+    const control_order::Vector{ControlOrderLevel} = ControlOrderLevel[]
     # Linear system for the implicit tracer transport between Basins
     const tracer_transport::TracerTransport =
         TracerTransport(inflow_id, outflow_id, basin, do_concentration)

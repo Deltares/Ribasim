@@ -9,8 +9,8 @@ The `ContinuousControl` node allows for fine control of a controllable property 
 2. Define a piecewise linear function by providing datapoints which get interpolated. The controlled parameter is then set to the outcome of this function given the value of the compound variable.
 
 :::{.callout-note}
-Having `ContinuousControl` nodes depend on eachother or `PidControl` nodes does *not* work.
-For instance, if one `ContinuousControl` node sets the flow rate of a pump, this flow rate cannot be used as the input of another `ContinuousControl` node. This will not throw an error but will produce incorrect results.
+A `ContinuousControl` node can listen to a flow that is set by another `ContinuousControl` or `PidControl` node, also via a [Junction](/reference/node/junction.qmd): the listened flow is computed first.
+A circular dependency, for instance two `ContinuousControl` nodes that listen to the flow the other one sets, is an error.
 :::
 
 # Tables

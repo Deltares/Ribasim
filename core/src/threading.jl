@@ -6,10 +6,10 @@
         ...
     end
 
-Run a `for` loop over a range of indices in parallel tasks, at most one per thread, each
-with a contiguous chunk of at least `min_chunk_size` (default 256) indices. With a single
-thread, or too few indices for two chunks, it runs as a plain loop, so small models don't pay
-for task overhead. Cheap iterations need a larger `min_chunk_size` to benefit.
+Run a `for` loop over a range of indices in parallel tasks, at most one per thread, which take
+contiguous chunks of at least `min_chunk_size` (default 256) indices, see `parallel_chunks`.
+With a single thread, or too few indices for two chunks, it runs as a plain loop, so small models
+don't pay for task overhead. Cheap iterations need a larger `min_chunk_size` to benefit.
 
 The body may run concurrently for different `i`, so it may only write data belonging to `i`.
 It can use `continue`, but not `break` or `return`.
@@ -26,13 +26,12 @@ macro threaded(args...)
     f = Expr(:->, i, continue_to_return(body))
     return quote
         local indices = $(esc(range))
-        local min_chunk_size = $(esc(min_chunk_size))
-        if Threads.nthreads() == 1 || length(indices) ÷ 2 < min_chunk_size
+        local n_chunks = parallel_chunk_count(length(indices), $(esc(min_chunk_size)))
+        if n_chunks == 1
             for $(esc(i)) in indices
                 $(esc(body))
             end
         else
-            local n_chunks = min(Threads.nthreads(), length(indices) ÷ min_chunk_size)
             parallel_foreach($(esc(f)), indices, n_chunks)
         end
         nothing
@@ -55,23 +54,63 @@ vectors, which only benefit from multiple threads for the largest models.
 const CHEAP_LOOP_MIN_CHUNK_SIZE = 8192
 
 """
+The number of chunks per thread. With more chunks than threads, a thread that is slower, such
+as an efficiency core, or has more expensive indices, takes fewer chunks.
+"""
+const CHUNKS_PER_THREAD = 4
+
+"""
+The number of chunks for `n` indices with at least `min_chunk_size` indices per chunk: 1 with a
+single thread or too few indices for two chunks, otherwise at most `CHUNKS_PER_THREAD` per thread.
+"""
+function parallel_chunk_count(n::Int, min_chunk_size::Int)::Int
+    nthreads = Threads.nthreads()
+    (nthreads == 1 || n ÷ 2 < min_chunk_size) && return 1
+    return min(CHUNKS_PER_THREAD * nthreads, n ÷ min_chunk_size)
+end
+
+"The `k`-th of `n_chunks` contiguous chunks of `indices`, which differ at most 1 in length."
+function chunk_range(indices::AbstractUnitRange{<:Integer}, k::Int, n_chunks::Int)::UnitRange{Int}
+    n = length(indices)
+    offset = first(indices) - 1
+    return (offset + ((k - 1) * n) ÷ n_chunks + 1):(offset + (k * n) ÷ n_chunks)
+end
+
+"""
+Call `f(k)` for each chunk `k` in `1:n_chunks`, in parallel tasks, at most one per thread. Each
+task takes the next chunk when it finishes the previous one, which balances the work over the
+threads. A function can process the `k`-th `chunk_range` of several loops, so that they share
+one set of tasks.
+"""
+function parallel_chunks(f::F, n_chunks::Int)::Nothing where {F}
+    next_chunk = Threads.Atomic{Int}(1)
+    function take_chunks()
+        while true
+            k = Threads.atomic_add!(next_chunk, 1)
+            k > n_chunks && return nothing
+            f(k)
+        end
+        return
+    end
+    tasks = [Threads.@spawn take_chunks() for _ in 2:min(Threads.nthreads(), n_chunks)]
+    try
+        take_chunks()
+    finally
+        # Wait for all tasks, also when a chunk throws, since the others may still be writing
+        waitall(tasks; failfast = false)
+    end
+    return nothing
+end
+
+"""
 Call `f(i)` for each `i` in `indices`, divided into `n_chunks` contiguous chunks that run as
-parallel tasks, see `@threaded`.
+parallel tasks, see `parallel_chunks`.
 """
 function parallel_foreach(
         f::F,
         indices::AbstractUnitRange{<:Integer},
         n_chunks::Int,
     )::Nothing where {F}
-    n = length(indices)
-    offset = first(indices) - 1
-    chunk(k) = (offset + ((k - 1) * n) ÷ n_chunks + 1):(offset + (k * n) ÷ n_chunks)
-    tasks = [Threads.@spawn foreach(f, chunk(k)) for k in 2:n_chunks]
-    try
-        foreach(f, chunk(1))
-    finally
-        # Wait for all tasks, also when a chunk throws, since the others may still be writing
-        waitall(tasks; failfast = false)
-    end
+    parallel_chunks(k -> foreach(f, chunk_range(indices, k, n_chunks)), n_chunks)
     return nothing
 end
