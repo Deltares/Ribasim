@@ -136,9 +136,14 @@ function set_current_basin_properties!(flow::FlowCVector, p::Parameters, t::Numb
         id = node_id[idx]
         s = current_storage[idx]
         (s == storage_prev_call[idx]) && continue
-        h = get_level(s, p, id, t; force_evaluation = true)
-        Ah = level_to_area[idx]
-        A = Ah(h)
+        level_and_area = basin_level_and_area(basin.profiles, idx, s)
+        h, A = if isnothing(level_and_area)
+            # Below the profile the interpolations extrapolate
+            h = get_level(s, p, id, t; force_evaluation = true)
+            h, level_to_area[idx](h)
+        else
+            level_and_area
+        end
         ϕ = low_storage_factor(s, basin, idx)
 
         current_level[idx] = h
@@ -520,7 +525,6 @@ function tabulated_rating_curve_flow(
         t::Number;
         apply_low_storage_factor::Bool = true,
     )::Number
-    (; current_interpolation_index, interpolations) = tabulated_rating_curve
     (; level_difference_threshold) = p.p_independent
     inflow_link = tabulated_rating_curve.inflow_link[node_id.idx]
     downstream_id = tabulated_rating_curve.downstream_level_id[node_id.idx]
@@ -531,9 +535,7 @@ function tabulated_rating_curve_flow(
     Δh = h_a - h_b
 
     factor = apply_low_storage_factor ? get_low_storage_factor(s_a, p, inflow_id) : 1.0
-    interpolation_index = current_interpolation_index[node_id.idx](t)
-    qh = interpolations[interpolation_index]
-    q = factor * qh(h_a)
+    q = factor * rating_curve_flow(tabulated_rating_curve, node_id.idx, h_a)
     q *= reduction_factor(Δh, level_difference_threshold)
     max_downstream_level = tabulated_rating_curve.max_downstream_level[node_id.idx]
     q *= reduction_factor(max_downstream_level - h_b, level_difference_threshold)
@@ -855,13 +857,8 @@ function pump_or_outlet_flow_rate(
 
     return if control_type == ContinuousControlType.None
         if isassigned(node.time_dependent_flow_rate, node_idx)
-            eval_time_interpolation(
-                node.time_dependent_flow_rate[node_idx],
-                component_cache.current_flow_rate_setpoint,
-                id.idx,
-                p,
-                t
-            )
+            # Evaluated in `update_time_dependent_cache!`
+            component_cache.current_flow_rate_setpoint[id.idx]
         else
             node.flow_rate[node_idx]
         end
@@ -901,10 +898,6 @@ function pump_or_outlet_flow(
     node_idx = node_id.idx
     inflow_id = node.inflow_link[node_idx].link[1]
     downstream_id = node.downstream_level_id[node_idx]
-    min_flow_rate = node.min_flow_rate[node_idx]
-    max_flow_rate = node.max_flow_rate[node_idx]
-    min_upstream_level = node.min_upstream_level[node_idx]
-    max_downstream_level = node.max_downstream_level[node_idx]
 
     src_level = get_level(s_a, p, inflow_id, t)
     dst_level = get_level(s_b, p, downstream_id, t)
@@ -912,10 +905,9 @@ function pump_or_outlet_flow(
     q = flow_rate
     apply_low_storage_factor && (q *= get_low_storage_factor(s_a, p, inflow_id))
 
-    lower_bound =
-        eval_time_interpolation(min_flow_rate, current_min_flow_rate, node_idx, p, t)
-    upper_bound =
-        eval_time_interpolation(max_flow_rate, current_max_flow_rate, node_idx, p, t)
+    # The time series are evaluated in `update_time_dependent_cache!`
+    lower_bound = current_min_flow_rate[node_idx]
+    upper_bound = current_max_flow_rate[node_idx]
 
     # When allocation is not active, set the flow demand directly as a lower bound on the
     # pump or outlet flow rate
@@ -949,22 +941,10 @@ function pump_or_outlet_flow(
         q *= reduction_factor(Δlevel, level_difference_threshold)
     end
 
-    min_upstream_level_ = eval_time_interpolation(
-        min_upstream_level,
-        current_min_upstream_level,
-        node_idx,
-        p,
-        t,
-    )
+    min_upstream_level_ = current_min_upstream_level[node_idx]
     q *= reduction_factor(src_level - min_upstream_level_, level_difference_threshold)
 
-    max_downstream_level_ = eval_time_interpolation(
-        max_downstream_level,
-        current_max_downstream_level,
-        node_idx,
-        p,
-        t,
-    )
+    max_downstream_level_ = current_max_downstream_level[node_idx]
     q *= reduction_factor(max_downstream_level_ - dst_level, level_difference_threshold)
 
     return q
