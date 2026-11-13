@@ -361,7 +361,7 @@ Adjusting the weight per Basin is also the idea of the local-theta schemes 21 an
 With instantaneously mixed Basins $\theta_i = 1/2$ is more accurate, since an explicit step in which the full storage of a Basin flows out moves all of its water to the next Basin without mixing.
 
 The ResidenceTime tracer has the integral of the storage over the timestep as a source in $F_i$, which also uses the trapezoidal rule.
-The UserDemand return flows are part of $F_i$ as well, with the concentrations of the Basins they came from at the start of the timestep.
+The UserDemand return flows are part of $F_i$ as well, with the concentrations of the Basins they came from at the start of the timestep, plus those of the `UserDemand / concentration` table.
 
 Only the volume of a flow over a timestep is used, in its net direction, so effectively flows are constant over a timestep.
 The concentrations and loads from the input are constant over a timestep as well, since the solver stops at each time they change, so a pulse in one of these is followed exactly.
