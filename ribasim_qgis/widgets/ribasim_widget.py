@@ -46,8 +46,8 @@ class RibasimWidget(QWidget):
 
         # And restore the setting it after the project is closed
         project = QgsProject.instance()
-        if project is not None:
-            project.aboutToBeCleared.connect(self.warn_on_closing)
+        assert project is not None
+        project.aboutToBeCleared.connect(self.warn_on_closing)
 
     def warn_on_closing(self, value: bool | None = None) -> None:
         """Set user warning on closing project if memory layers are present."""
@@ -135,10 +135,10 @@ class RibasimWidget(QWidget):
     # QGIS layers
     # -----------
     def create_subgroup(self, name: str, subgroup: str, visible=True) -> None:
-        if self.group is None:
-            raise RuntimeError("Create the Ribasim group before its subgroups.")
         try:
-            value = cast(QgsLayerTreeGroup, self.group.addGroup(subgroup))
+            assert self.group is not None
+            value = self.group.addGroup(subgroup)
+            assert value is not None
             value.setItemVisibilityChecked(visible)
             self.groups[subgroup] = value
         except RuntimeError as e:
@@ -150,14 +150,15 @@ class RibasimWidget(QWidget):
     def create_groups(self, name: str) -> None:
         """Create an empty legend group in the QGIS Layers Panel."""
         project = QgsProject.instance()
-        root = project.layerTreeRoot() if project is not None else None
-        if root is None:
-            raise RuntimeError("The QGIS project has no layer tree.")
+        assert project is not None
+        root = project.layerTreeRoot()
+        assert root is not None
         self.group = root.insertGroup(
             group_position_var.get(), name
         )  # insert at the top
         self.create_subgroup(name, "Input")
         self.create_subgroup(name, "Results", visible=False)
+        assert self.group is not None
 
     def add_to_group(self, maplayer: Any, destination: str, on_top: bool):
         """Try to add to a group.
@@ -209,11 +210,9 @@ class RibasimWidget(QWidget):
             return None
         add_to_legend = self.group is None
         project = QgsProject.instance()
-        if project is None:
-            return None
-        maplayer = project.addMapLayer(layer, add_to_legend)
-        if maplayer is None:
-            return None
+        assert project is not None
+        maplayer = cast(QgsVectorLayer, project.addMapLayer(layer, add_to_legend))
+        assert maplayer is not None
         if labels is not None:
             layer.setLabeling(labels)
             layer.setLabelsEnabled(True)

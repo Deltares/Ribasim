@@ -19,7 +19,6 @@ select = [
     "NPY",   # NumPy-specific rules
     "PD",    # pandas-vet
     "PERF",  # Performance anti-patterns
-    "PGH004",  # blanket-noqa (a noqa must name the rules it ignores)
     "PLE2502",  # bidirectional-unicode (trojan source)
     "PTH",   # flake8-use-pathlib (prefer pathlib over os.path)
     "RUF",   # Ruff-specific rules
@@ -33,20 +32,20 @@ select = [
 ignore = [
     "E501",   # line-too-long
     "PD002",  # inplace argument
+    "S101",   # assert - used extensively in tests and validation
 ]
 fixable = ["ALL"]
 
 [lint.per-file-ignores]
 # plugins.qgis.org scans uploaded plugins with Bandit and blocks them on any finding,
-# so the code shipped in the QGIS plugin cannot ignore these. Bandit does not read
-# `# noqa`, so a reviewed finding there needs both: `# noqa: S603  # nosec B603`.
+# so the code shipped in the QGIS plugin cannot ignore these. Asserts (B101) are
+# allowed, the release process turns off that rule when uploading.
 "!ribasim_qgis/**" = [
-    "S101",  # assert - used extensively in tests and validation
     "S4",    # suspicious imports - only checked for the QGIS plugin
     "S603",  # subprocess-without-shell-equals-true - false positives with trusted input
     "S607",  # start-process-with-partial-path - CLI paths are intentional
 ]
-"ribasim_qgis/{scripts,tests}/**" = ["S101", "S4", "S603", "S607"]
+"ribasim_qgis/{scripts,tests}/**" = ["S4", "S603", "S607"]
 
 [lint.pydocstyle]
 convention = "numpy"

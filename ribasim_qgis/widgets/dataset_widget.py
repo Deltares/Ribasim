@@ -227,9 +227,9 @@ class DatasetWidget:
         rel.addFieldPair(fk, fk)
         rel.generateId()
         instance = QgsProject.instance()
-        rel_manager = instance.relationManager() if instance is not None else None
-        if rel_manager is None:
-            return
+        assert instance is not None
+        rel_manager = instance.relationManager()
+        assert rel_manager is not None
         rel_manager.addRelation(rel)
 
         # Also use the relationship as an editor widget
@@ -268,6 +268,7 @@ class DatasetWidget:
 
         # Connect node and link layer to derive connectivities.
         self.node_layer = node.layer
+        assert self.node_layer is not None
         self.link_layer = link.layer
 
         def filterbyrel(relationships, feature_ids):
@@ -288,14 +289,15 @@ class DatasetWidget:
         # When the Node selection changes, filter all related tables
         link_rels = []
         instance = QgsProject.instance()
-        rel_manager = instance.relationManager() if instance is not None else None
-        relations = rel_manager.relations().values() if rel_manager is not None else []
-        for rel in relations:
+        assert instance is not None
+        rel_manager = instance.relationManager()
+        assert rel_manager is not None
+        for rel in rel_manager.relations().values():
             # Link relations are special, they have two references to the Node table
             referencing = rel.referencingLayer()
             referenced = rel.referencedLayer()
-            if referencing is None or referenced is None:
-                continue
+            assert referencing is not None
+            assert referenced is not None
 
             if referencing.name() == "Link":
                 link_rels.append(rel)
@@ -341,9 +343,9 @@ class DatasetWidget:
     @staticmethod
     def is_layer_visible(layer: QgsMapLayer):
         instance = QgsProject.instance()
-        layer_tree_root = instance.layerTreeRoot() if instance is not None else None
-        if layer_tree_root is None:
-            return False
+        assert instance is not None
+        layer_tree_root = instance.layerTreeRoot()
+        assert layer_tree_root is not None
         layer_tree_layer = layer_tree_root.findLayer(layer)
         if layer_tree_layer is None:
             return False
@@ -352,9 +354,9 @@ class DatasetWidget:
     @staticmethod
     def set_layer_visible(layer: QgsMapLayer, visible: bool = True):
         instance = QgsProject.instance()
-        layer_tree_root = instance.layerTreeRoot() if instance is not None else None
-        if layer_tree_root is None:
-            return False
+        assert instance is not None
+        layer_tree_root = instance.layerTreeRoot()
+        assert layer_tree_root is not None
         layer_tree_layer = layer_tree_root.findLayer(layer)
         if layer_tree_layer is None:
             return False
@@ -372,9 +374,7 @@ class DatasetWidget:
     def run_action(self, path: str, group) -> None:
         """Run Ribasim model using QgsTask with progress bar and output dialog."""
         message_bar = self.ribasim_widget.iface.messageBar()
-        task_manager = QgsApplication.taskManager()
-        if message_bar is None or task_manager is None:
-            return
+        assert message_bar is not None
 
         model_path = Path(path)
         # "path/to/basic/ribasim.toml" -> "basic/ribasim"
@@ -435,6 +435,7 @@ class DatasetWidget:
                 text_edit.appendPlainText(line)
             # Auto-scroll to bottom
             scrollbar = text_edit.verticalScrollBar()
+            assert scrollbar is not None
             scrollbar.setValue(scrollbar.maximum())
 
         def on_finished(success: bool):
@@ -453,6 +454,8 @@ class DatasetWidget:
 
         # Track and start the task
         self.running_tasks[path] = task
+        task_manager = QgsApplication.taskManager()
+        assert task_manager is not None
         task_manager.addTask(task)
         text_edit.appendPlainText("Launching Ribasim.\n")
         dialog.show()
@@ -627,9 +630,10 @@ class DatasetWidget:
         self._set_node_results()
         self._set_link_results()
         canvas = self.ribasim_widget.iface.mapCanvas()
-        temporalController = canvas.temporalController() if canvas is not None else None
-        if temporalController is not None:
-            temporalController.updateTemporalRange.connect(self._update_result_layers)
+        assert canvas is not None
+        temporalController = canvas.temporalController()
+        assert temporalController is not None
+        temporalController.updateTemporalRange.connect(self._update_result_layers)
 
         # Connect node/link selection to plot updates
         if self.node_layer is not None:
@@ -640,9 +644,9 @@ class DatasetWidget:
     def get_current_time(self) -> datetime:
         """Retrieve the current (frame) time from the temporal controller."""
         canvas = self.ribasim_widget.iface.mapCanvas()
-        temporalController = canvas.temporalController() if canvas is not None else None
-        if temporalController is None:
-            raise RuntimeError("The QGIS map canvas has no temporal controller.")
+        assert canvas is not None
+        temporalController = canvas.temporalController()
+        assert temporalController is not None
         temporalController = cast(QgsTemporalNavigationObject, temporalController)
         f = temporalController.currentFrameNumber()
         currentDateTimeRange = temporalController.dateTimeRangeForFrameNumber(f)
@@ -653,9 +657,9 @@ class DatasetWidget:
         toml = get_toml_dict(self.path)
 
         canvas = self.ribasim_widget.iface.mapCanvas()
-        temporalController = canvas.temporalController() if canvas is not None else None
-        if canvas is None or temporalController is None:
-            return
+        assert canvas is not None
+        temporalController = canvas.temporalController()
+        assert temporalController is not None
         temporalController = cast(QgsTemporalNavigationObject, temporalController)
 
         trange = QgsDateTimeRange(
@@ -774,8 +778,7 @@ class DatasetWidget:
 
     def _set_node_results(self) -> None:
         node_layer = self.ribasim_widget.node_layer
-        if node_layer is None:
-            return
+        assert node_layer is not None
 
         result = self.results.get("basin")
         if result is not None:
@@ -809,8 +812,7 @@ class DatasetWidget:
 
     def _set_link_results(self) -> None:
         link_layer = self.ribasim_widget.link_layer
-        if link_layer is None:
-            return
+        assert link_layer is not None
 
         result = self.results.get("flow")
         if result is not None:
@@ -957,10 +959,6 @@ class DatasetWidget:
         ):
             return
 
-        dataprovider = layer.dataProvider()
-        if dataprovider is None:
-            return
-
         # Find nearest time index via searchsorted
         time_idx = int(result.time.searchsorted(time))
         if time_idx >= len(result.time):
@@ -980,6 +978,9 @@ class DatasetWidget:
             layer.endEditCommand()
             layer.commitChanges()
             return
+
+        dataprovider = layer.dataProvider()
+        assert dataprovider is not None
 
         # Build column-id mapping once
         col_ids: dict[str, int] = {}

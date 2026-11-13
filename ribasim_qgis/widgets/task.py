@@ -43,7 +43,8 @@ class RibasimTask(QgsTask):
             # Hide console window on Windows
             creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
-            # Safe: no shell, and the user chose both the Ribasim CLI and the model
+            # Safe: no shell, and the user chose both the Ribasim CLI and the model.
+            # The plugins.qgis.org upload checks run Bandit, which ignores noqa: needs nosec.
             with subprocess.Popen(  # noqa: S603  # nosec B603
                 [self.cli, self.toml_path],
                 stdout=subprocess.PIPE,

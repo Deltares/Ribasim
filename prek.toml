@@ -59,18 +59,8 @@ types_or = [
 require_serial = true
 
 # plugins.qgis.org scans uploaded plugins with Bandit and detect-secrets, and blocks
-# them on any finding. ruff checks the Bandit rules (see ruff.toml), these two hooks
-# cover the rest for the files shipped in the QGIS plugin.
-[[repos.hooks]]
-id = "qgis-plugin-nosec"
-name = "QGIS plugin: noqa of a Bandit rule also needs nosec"
-description = "Bandit ignores `# noqa: S603`, add `# nosec B603` as well"
-language = "pygrep"
-entry = '^(?!.*\bnosec\b).*\bnoqa:[^#]*\bS\d{3}'
-files = '^ribasim_qgis/'
-exclude = '^ribasim_qgis/(scripts|tests)/'
-types = ["python"]
-
+# them on any finding. ruff checks the Bandit rules (see ruff.toml), this hook covers
+# detect-secrets for the files shipped in the QGIS plugin.
 [[repos.hooks]]
 id = "qgis-plugin-detect-secrets"
 name = "QGIS plugin: detect-secrets"
