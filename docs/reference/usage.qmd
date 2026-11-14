@@ -131,6 +131,7 @@ The following can be set in the configuration in the `[logging]` section.
 entry             | type   | description
 ----------------- | ------ | -----------
 verbosity         | String | Verbosity level: debug, info, warn, or error.
+progress          | Bool   | Show a progress bar in the terminal, defaulting to true. The `RIBASIM_PROGRESS` environment variable takes precedence over this setting; it accepts the same values as Julia's own Boolean environment variables, such as `true`/`false`, `yes`/`no` and `1`/`0`. Disable it when the output is written to a log, where each update becomes a new line.
 
 If verbosity is set to debug, the used `Basin / profile` dimensions (level, area and storage) are written to a CSV file in the results folder. This can be useful if you only provide 2 of the 3 columns and want to inspect the dimensions used in the computation.
 

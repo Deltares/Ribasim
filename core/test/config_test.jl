@@ -121,6 +121,30 @@ end
     @test_throws ErrorException is_adaptive(0.0)
 end
 
+@testitem "show_progress" begin
+    using Ribasim: Logging, show_progress
+
+    withenv("RIBASIM_PROGRESS" => nothing) do
+        @test show_progress(Logging())
+        @test !show_progress(Logging(; progress = false))
+    end
+    withenv("RIBASIM_PROGRESS" => "false") do
+        @test !show_progress(Logging())
+        # The environment variable takes precedence over the config
+        @test !show_progress(Logging(; progress = true))
+    end
+    withenv("RIBASIM_PROGRESS" => "yes") do
+        @test show_progress(Logging(; progress = false))
+    end
+    withenv("RIBASIM_PROGRESS" => "") do
+        @test show_progress(Logging())
+        @test !show_progress(Logging(; progress = false))
+    end
+    withenv("RIBASIM_PROGRESS" => "maybe") do
+        @test_throws ArgumentError show_progress(Logging())
+    end
+end
+
 @testitem "snake_case" begin
     using Ribasim: NodeType, snake_case
     @test snake_case("CamelCase") == "camel_case"
