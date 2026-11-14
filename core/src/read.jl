@@ -1483,14 +1483,25 @@ end
 function UserDemand(db::DB, config::Config, graph::MetaGraph)
     static = fill_demand_priority!(load_structvector(db, config, Schema.UserDemand.Static))
     time = fill_demand_priority!(load_structvector(db, config, Schema.UserDemand.Time))
+    concentration_time = load_structvector(db, config, Schema.UserDemand.Concentration)
     node_id = get_node_ids(db, NodeType.UserDemand)
     cyclic_times = get_cyclic_time(db, "UserDemand")
     demand_priorities = get_all_demand_priorities(db, config)
 
     substances = get_substances(db, config)
+    concentration_itp = get_concentration_itp(
+        concentration_time,
+        node_id,
+        substances,
+        nothing,
+        cyclic_times,
+        config;
+        continuity_tracer = false,
+    )
 
     user_demand = UserDemand(;
         node_id,
+        concentration_itp,
         demand_priorities,
         return_mass = zeros(length(substances), length(node_id)),
     )
@@ -2592,6 +2603,7 @@ function get_substances(db::DB, config::Config)::OrderedSet{Symbol}
             Schema.Basin.MassLoad,
             Schema.FlowBoundary.Concentration,
             Schema.LevelBoundary.Concentration,
+            Schema.UserDemand.Concentration,
         ]
         data = load_structvector(db, config, table)
         for row in data

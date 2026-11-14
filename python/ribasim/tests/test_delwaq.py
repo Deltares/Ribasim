@@ -160,8 +160,12 @@ def test_offline_delwaq_coupling_user_demand(tmp_path):
         index=["time", "node_id"], columns="substance", values="concentration"
     )
     assert np.allclose(df["Continuity"], 1.0)
-    # Without the return flows, a UserDemand would be a source of water in Basin #6
     assert np.allclose(df["FlowBoundary"] + df["Initial"], 1.0)
+    # The `UserDemand / concentration` table of UserDemand #3 adds 10 g/m³ of Cl to its
+    # return flow of 0.25 m³/s into Basin #2, which has a net outflow of 1 m³/s.
+    # The Cl reaches Basin #6 through the Pump and the return flow of UserDemand #7.
+    final = df.loc[df.index.get_level_values("time").max()]
+    assert np.allclose(final["Cl"], 2.5, rtol=0.05)
 
 
 @pytest.mark.parametrize("name", ["Foo;123", "π", 'Double"Quote'])
@@ -195,7 +199,7 @@ def test_junction_tracer_network():
         delwaq_dir.parents[2] / "generated_testmodels/junction_tracer/ribasim.toml"
     )
     model = Model.read(toml_path)
-    G, node_mapping, _link_mapping, _basin_mapping = _setup_graph(
+    G, node_mapping, _link_mapping, _basin_mapping, _ = _setup_graph(
         model.node,
         model.link,
         evaporate_mass=model.solver.evaporate_mass,
@@ -226,7 +230,9 @@ def test_junction_tracer_network():
 
 def test_junction_group_one_basin():
     model = junction_bidirectional()
-    G, _, _, basin_mapping = _setup_graph(model.node, model.link, evaporate_mass=False)
+    G, _, _, basin_mapping, user_demand_returns = _setup_graph(
+        model.node, model.link, evaporate_mass=False
+    )
     df_link = model.link.df
     assert df_link is not None
 
@@ -260,6 +266,7 @@ def test_junction_group_one_basin():
     )
     ratio = ([link_id(9, 3)], [link_id(3, 9)])
     assert consumption["terms"] == [(link_id(3, 9), [ratio], -1)]
+    assert user_demand_returns == [(9, 1, {"id": [link_id(9, 3)], "terms": []})]
     # The links of the group with the Basin and between its Junctions have no flow of their own
     assert not {link_id(1, 2), link_id(3, 2)} & (in_ids | out_ids)
     assert not any(data["type"] == "Junction" for _, data in G.nodes(data=True))

@@ -1283,6 +1283,8 @@ return_factor: the factor in [0,1] of how much of the abstracted water is given 
 min_level: The level of the source Basin below which the UserDemand does not abstract
     (not applied to inflow from Junction nodes, which have no level)
 cumulative_inflow: The summed inflow since the start of the simulation
+concentration_itp: per UserDemand per substance the timeseries interpolation of the concentration
+    that it adds to its return flow
 in_routed_subgraph: whether the UserDemand node is part of one of the Junction subgraphs,
     in which case its flows are computed in `formulate_junction_flow!`
 return_mass: The mass per substance in the return flow in the last timestep (substance, node), only computed
@@ -1306,6 +1308,7 @@ return_mass: The mass per substance in the return flow in the last timestep (sub
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
     min_level::Vector{Float64} = zeros(length(node_id))
     cumulative_inflow::Vector{Float64} = zeros(length(node_id))
+    concentration_itp::Vector{Vector{ScalarConstantInterpolation}}
     in_routed_subgraph::Vector{Bool} = fill(false, length(node_id))
     return_mass::Matrix{Float64} = zeros(0, length(node_id))
 end
