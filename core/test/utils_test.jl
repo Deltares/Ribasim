@@ -13,6 +13,37 @@
     @test convert(Int32, id) === Int32(2)
     @test hash(id) === hash(id.value)
     @test id in Set(Int32[2, 3])
+    # A NodeID indexes by its ID, not by its index within the node type
+    @test [10, 20, 30][id] == 20
+
+    node_ids = [NodeID(:Basin, 2, 1), NodeID(:Pump, 5, 1)]
+    @test NodeID(5, node_ids) === node_ids[2]
+    # An unknown ID is not found, also if it is not larger than all known IDs
+    for value in (1, 3, 6)
+        @test_logs (:error, "Node ID #$value is not in the Node table.") @test_throws "Node ID not found" NodeID(
+            value, node_ids,
+        )
+        @test_logs (:error, "Node ID Pump #$value is not in the Node table.") @test_throws "Node ID not found" NodeID(
+            :Pump, value, node_ids,
+        )
+    end
+    @test NodeID(:Pump, 5, node_ids) === node_ids[2]
+end
+
+@testitem "NodeType conversion" begin
+    using Ribasim: NodeType
+
+    @test convert(NodeType.T, "Basin") === NodeType.Basin
+    @test convert(NodeType.T, :Pump) === NodeType.Pump
+    @test NodeType.T(NodeType.Outlet) === NodeType.Outlet
+end
+
+@testitem "findsorted" begin
+    using Ribasim: findsorted
+
+    @test findsorted([1, 3, 5], 3) == 2
+    @test findsorted([1, 3, 5], 4) === nothing
+    @test_throws "Multiple occurrences of 3 found." findsorted([1, 3, 3], 3)
 end
 
 @testitem "bottom" begin

@@ -644,7 +644,7 @@ function TabulatedRatingCurve(db::DB, config::Config, graph::MetaGraph)
                     itp_first = rating_curve.interpolations[first(lookup_index)]
                     itp_last = rating_curve.interpolations[last(lookup_index)]
                     if !((itp_first.t == itp_last.t) && (itp_first.u == itp_last.u))
-                        @error "For $node_id with cyclic_time the first and last rating curves are not equal."
+                        @error "For $id with cyclic_time the first and last rating curves are not equal."
                         errors = true
                     end
                     lookup_index[end] = first(lookup_index)
@@ -1272,6 +1272,8 @@ function continuous_control_functions(db, config, ids)
         if length(function_rows) < 2
             @error "There must be at least 2 data points in a ContinuousControl function."
             errors = true
+            # No interpolation can be constructed, the errors are thrown by the caller
+            continue
         elseif length(unique_controlled_variable) !== 1
             @error "There must be a unique 'controlled_variable' in a ContinuousControl function."
             errors = true
@@ -1939,14 +1941,17 @@ function Subgrid(db::DB, config::Config, basin::Basin)
         end
     end
 
-    errors && @error("Errors encountered when parsing Basin Subgrid data.")
-
     interpolation_index = 0
 
     for group in IterTools.groupby(row -> row.subgrid_id, time)
         first_row = first(group)
         subgrid_id = first_row.subgrid_id
         node_id = first_row.node_id
+        if !haskey(node_to_basin, node_id)
+            @error "The node_id of the Basin / subgrid_time does not exist." node_id subgrid_id
+            errors = true
+            continue
+        end
         cyclic_time = cyclic_times[node_to_basin[node_id].idx]
 
         # Push the new subgrid_id and basin ID and extend level
@@ -1981,6 +1986,9 @@ function Subgrid(db::DB, config::Config, basin::Basin)
             end
         end
 
+        # Without valid tables there is nothing to interpolate, the errors are thrown below
+        isempty(lookup_index) && continue
+
         if cyclic_time
             itp_first = subgrid.interpolations_time[first(lookup_index)]
             itp_last = subgrid.interpolations_time[last(lookup_index)]
@@ -2014,7 +2022,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)
         findsorted.(Ref(subgrid_ids), subgrid.subgrid_id_time),
     )
 
-    errors && @error("Errors encountered when parsing Basin Subgrid time data.")
+    errors && error("Errors encountered when parsing Basin subgrid data.")
 
     return subgrid
 end
@@ -2513,6 +2521,9 @@ function typed_columntable(table, ::Type{T})::NamedTuple where {T <: Table}
         end
         col = table[name]
         if eltype(col) !== target_type
+            if !(Missing <: target_type) && any(ismissing, col)
+                throw(ArgumentError("Missing values in required column $(name) for table $(T)."))
+            end
             target = Vector{target_type}(undef, length(col))
             target .= col
             table[name] = target

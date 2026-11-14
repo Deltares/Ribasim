@@ -371,10 +371,11 @@ function update_scaling!(p::Parameters, t::Float64, Δt::Float64, t_known::Float
     return
 end
 
+# MathOptAnalyzer reports the indices of the JuMP model, not those of the optimizer
 function constraint_ref_from_index(problem::JuMP.Model, constraint_index)
     for other_constraint in
         JuMP.all_constraints(problem; include_variable_in_set_constraints = true)
-        if JuMP.optimizer_index(other_constraint) == constraint_index
+        if JuMP.index(other_constraint) == constraint_index
             return other_constraint
         end
     end
@@ -383,7 +384,7 @@ end
 
 function variable_ref_from_index(problem::JuMP.Model, variable_index)
     for other_variable in JuMP.all_variables(problem)
-        if JuMP.optimizer_index(other_variable) == variable_index
+        if JuMP.index(other_variable) == variable_index
             return other_variable
         end
     end

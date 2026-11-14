@@ -138,7 +138,7 @@ end
 function NodeID(node_type, value::Integer, node_ids::Vector{NodeID})::NodeID
     node_type = NodeType.T(node_type)
     index = searchsortedfirst(node_ids, value; by = Int32)
-    if index == lastindex(node_ids) + 1
+    if index == lastindex(node_ids) + 1 || node_ids[index].value != value
         @error "Node ID $node_type #$value is not in the Node table."
         error("Node ID not found")
     end
@@ -152,7 +152,7 @@ end
 
 function NodeID(value::Integer, node_ids::Vector{NodeID})::NodeID
     index = searchsortedfirst(node_ids, value; by = Int32)
-    if index == lastindex(node_ids) + 1
+    if index == lastindex(node_ids) + 1 || node_ids[index].value != value
         @error "Node ID #$value is not in the Node table."
         error("Node ID not found")
     end

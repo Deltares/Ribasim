@@ -76,6 +76,11 @@ end
     # Offset-aware indexing
     @test v.bar[1] == 6.0
     @test v.bar[5] == 10.0
+    @test v.bar[1:2] == [6.0, 7.0]
+    @test v.bar[:] == 6.0:10.0
+    @test v.bar[[1, 5]] == [6.0, 10.0]
+    v.bar[4:5] = [-9.0, -10.0]
+    @test data2 == [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, -9.0, -10.0]
 end
 
 @testitem "Contiguity" begin
