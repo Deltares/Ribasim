@@ -474,19 +474,13 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
 end
 
 """
-Whether to show the progress bar. The `[logging] progress` setting takes precedence,
-if it is not set the `RIBASIM_SHOW_PROGRESS` environment variable is used, defaulting to true.
+Whether to show the progress bar. The `RIBASIM_PROGRESS` environment variable takes precedence,
+since whether a progress bar is useful depends on where the output goes. If it is not set,
+the `[logging] progress` setting is used, defaulting to true.
 """
 function show_progress(logging::Logging)::Bool
-    isnothing(logging.progress) || return logging.progress
-    value = lowercase(strip(get(ENV, "RIBASIM_SHOW_PROGRESS", "")))
-    value in ("", "true", "1") && return true
-    value in ("false", "0") && return false
-    throw(
-        ArgumentError(
-            "RIBASIM_SHOW_PROGRESS=$value not supported, choose one of: true false 1 0.",
-        ),
-    )
+    default = something(logging.progress, true)
+    return Base.get_bool_env("RIBASIM_PROGRESS", default; throw = true)::Bool
 end
 
 """

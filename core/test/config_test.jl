@@ -124,19 +124,23 @@ end
 @testitem "show_progress" begin
     using Ribasim: Logging, show_progress
 
-    withenv("RIBASIM_SHOW_PROGRESS" => nothing) do
+    withenv("RIBASIM_PROGRESS" => nothing) do
         @test show_progress(Logging())
         @test !show_progress(Logging(; progress = false))
     end
-    withenv("RIBASIM_SHOW_PROGRESS" => "false") do
+    withenv("RIBASIM_PROGRESS" => "false") do
         @test !show_progress(Logging())
-        # The config takes precedence over the environment variable
-        @test show_progress(Logging(; progress = true))
+        # The environment variable takes precedence over the config
+        @test !show_progress(Logging(; progress = true))
     end
-    withenv("RIBASIM_SHOW_PROGRESS" => "") do
+    withenv("RIBASIM_PROGRESS" => "yes") do
+        @test show_progress(Logging(; progress = false))
+    end
+    withenv("RIBASIM_PROGRESS" => "") do
         @test show_progress(Logging())
+        @test !show_progress(Logging(; progress = false))
     end
-    withenv("RIBASIM_SHOW_PROGRESS" => "maybe") do
+    withenv("RIBASIM_PROGRESS" => "maybe") do
         @test_throws ArgumentError show_progress(Logging())
     end
 end
