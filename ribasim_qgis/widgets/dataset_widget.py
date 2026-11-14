@@ -44,7 +44,11 @@ from qgis.PyQt.QtWidgets import (
     QWidget,
 )
 
-from ribasim_qgis.core.junctions import link_towards_basin, read_junctions_in_static
+from ribasim_qgis.core.junctions import (
+    FlowGraph,
+    node_flow_links,
+    read_junctions_in_static,
+)
 from ribasim_qgis.core.model import (
     get_database_path_from_model_file,
     get_directory_path_from_model_file,
@@ -62,6 +66,10 @@ from ribasim_qgis.core.nodes import (
     load_nodes_from_geopackage,
 )
 from ribasim_qgis.core.observations import Observations, read_observations
+from ribasim_qgis.core.tracer_flow import (
+    BoundaryConcentrations,
+    read_boundary_concentrations,
+)
 from ribasim_qgis.widgets.plot_widget import PlotData, PlotWidget, Trace, VariableTraces
 from ribasim_qgis.widgets.task import RibasimTask
 
@@ -156,8 +164,10 @@ class DatasetWidget:
 
         # Observation input data (read from the GeoPackage, not the results).
         self.observations: Observations | None = None
-        # The Junctions with rows in Junction / static, read from the GeoPackage
+        # The Junctions with rows in Junction / static
         self.junctions_in_static: frozenset[int] = frozenset()
+        # The concentrations of the FlowBoundary and LevelBoundary input
+        self.boundary_concentrations = BoundaryConcentrations()
 
         # Plot widget for timeseries
         self.plot_widget = PlotWidget(
@@ -167,6 +177,7 @@ class DatasetWidget:
             concentration_for_node_getter=self._get_concentration_for_node,
             flow_for_link_getter=self._get_flow_for_link,
             junctions_in_static_getter=lambda: self.junctions_in_static,
+            boundary_concentration_getter=self._get_boundary_concentration,
         )
 
         # Track running simulations by model path
@@ -626,6 +637,7 @@ class DatasetWidget:
         self._load_netcdf_results()
         self._load_observations()
         self._load_junctions_in_static()
+        self._load_boundary_concentrations()
         self._preload_plot_variables()
         self._set_node_results()
         self._set_link_results()
@@ -697,8 +709,18 @@ class DatasetWidget:
         )
 
     def _load_junctions_in_static(self) -> None:
-        """Load which Junctions have rows in Junction / static from the GeoPackage."""
+        """Load which Junctions have rows in Junction / static."""
+        model_path = self.ribasim_widget.path
+        netcdf_file = get_toml_dict(model_path).get("junction", {}).get("static")
+        input_dir = get_directory_path_from_model_file(model_path, property="input_dir")
         self.junctions_in_static = read_junctions_in_static(
+            input_dir / "database.gpkg",
+            None if netcdf_file is None else input_dir / netcdf_file,
+        )
+
+    def _load_boundary_concentrations(self) -> None:
+        """Load the concentrations of the FlowBoundary and LevelBoundary input."""
+        self.boundary_concentrations = read_boundary_concentrations(
             get_database_path_from_model_file(self.ribasim_widget.path)
         )
 
@@ -760,6 +782,13 @@ class DatasetWidget:
         return {
             sub: (time_strings, arr[:, idx]) for sub, arr in result.variables.items()
         }
+
+    def _get_boundary_concentration(self, node_id: int) -> dict[str, np.ndarray] | None:
+        """Return the input concentrations of a boundary node at the flow result times."""
+        result = self.results.get("flow")
+        if result is None:
+            return None
+        return self.boundary_concentrations.at(node_id, result.time.to_numpy())
 
     def _get_flow_for_link(self, link_id: int) -> Trace | None:
         """Return the flow_rate trace for a single *link_id*."""
@@ -1218,9 +1247,8 @@ class DatasetWidget:
                 columns.append(flow_arr[:, idx])
         return columns
 
-    @classmethod
+    @staticmethod
     def _junction_flow_column(
-        cls,
         link_layer: Any,
         node_layer: Any,
         node_id: int,
@@ -1236,19 +1264,14 @@ class DatasetWidget:
         flow on the link that leads to that Basin, positive in the direction of that
         link. In other groups it is the sum of the flows on the incoming links.
         """
-        link_id = link_towards_basin(
-            link_layer,
-            lambda i: cls._node_type_of(node_layer, i),
-            node_id,
-            junctions_in_static,
-        )
-        if link_id is not None:
-            idx = link_id_to_idx.get(link_id)
-            return None if idx is None else flow_arr[:, idx]
-        incoming = cls._connected_flow_columns(
-            link_layer, node_id, "to", link_id_to_idx, flow_arr
-        )
-        return np.sum(incoming, axis=0) if incoming else None
+        graph = FlowGraph(node_layer, link_layer, junctions_in_static)
+        columns = []
+        for link in node_flow_links(graph, node_id):
+            idx = link_id_to_idx.get(link.link_id)
+            if idx is None:
+                return None
+            columns.append(flow_arr[:, idx])
+        return np.sum(columns, axis=0) if columns else None
 
     def _inject_observation_traces(
         self,

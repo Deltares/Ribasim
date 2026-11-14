@@ -880,11 +880,13 @@ def junction_into_junction_model() -> Model:
     which drains into LevelBoundary #9, so it is a Junction group with one Basin.
     The rows of Junction #2 name #4 and #5, and apply to the links that replace them.
     The `Junction / static` table is written to NetCDF rather than the database.
+    Tracers are enabled, so QGIS can plot the fractional flow through these Junctions.
     """
     model = Model(
         starttime=datetime(2020, 1, 1),
         endtime=datetime(2020, 1, 10),
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     def basin_tables() -> list:

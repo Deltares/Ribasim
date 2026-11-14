@@ -3,12 +3,22 @@
 import sqlite3
 from typing import Any
 
+import netCDF4 as nc4
 import numpy as np
 import pytest
 from qgis.core import QgsFeature, QgsVectorLayer
 from qgis.PyQt.QtWidgets import QCheckBox, QWidgetAction
 
-from ribasim_qgis.core.junctions import JUNCTION_STATIC_TABLE, read_junctions_in_static
+from ribasim_qgis.core.junctions import (
+    JUNCTION_STATIC_TABLE,
+    FlowGraph,
+    read_junctions_in_static,
+)
+from ribasim_qgis.core.tracer_flow import (
+    BoundaryConcentrations,
+    TracerFlows,
+    read_boundary_concentrations,
+)
 from ribasim_qgis.widgets.dataset_widget import DatasetWidget
 from ribasim_qgis.widgets.plot_widget import (
     PlotData,
@@ -641,351 +651,6 @@ def test_plot_widget_fractional_storage_distinct_from_regular_concentration(
             assert trace.stackgroup is None
 
 
-def test_plot_widget_fractional_flow_plots_multiplied_values(monkeypatch):
-    captured_figures = []
-
-    def _capture_plot(fig, **kwargs):
-        captured_figures.append(fig)
-        return "<div></div>"
-
-    monkeypatch.setattr("ribasim_qgis.widgets.plot_widget.po.plot", _capture_plot)
-
-    time = np.array(["2020-01-01", "2020-01-02"])
-
-    def _conc_getter(node_id):
-        if node_id == 5:
-            return {
-                "LevelBoundary": (time, np.array([0.4, 0.5])),
-                "FlowBoundary": (time, np.array([0.6, 0.5])),
-            }
-        return None
-
-    widget = PlotWidget(concentration_for_node_getter=_conc_getter)
-    widget._fractional_flow_enabled = True
-
-    # Patch layer lookups: link 42 goes from Basin 5 → Basin 6.
-    monkeypatch.setattr(PlotWidget, "_get_link_endpoints", lambda self, lid: (5, 6))
-    monkeypatch.setattr(
-        PlotWidget,
-        "_endpoint_concentration",
-        lambda self, nid, lid, n, ft: _conc_getter(nid),
-    )
-
-    widget.set_data(
-        {
-            "flow": {
-                "flow_rate": {"Link #42": (time, np.array([10.0, 20.0]))},
-            },
-        },
-        units={"flow": {"flow_rate": "m3 s-1"}},
-    )
-
-    assert len(captured_figures) == 1
-    fig = captured_figures[0]
-    names = {trace.name for trace in fig.data}
-    assert names == {"LevelBoundary", "FlowBoundary", "flow_rate"}
-    stacked = [t for t in fig.data if t.name != "flow_rate"]
-    # Positive flows don't need a stack for negative values.
-    assert all(trace.stackgroup == "positive" for trace in stacked)
-
-    # Verify multiplication: concentration * flow_rate
-    for trace in fig.data:
-        if trace.name == "LevelBoundary":
-            assert np.allclose(trace.y, np.array([4.0, 10.0]))
-        elif trace.name == "FlowBoundary":
-            assert np.allclose(trace.y, np.array([6.0, 10.0]))
-        elif trace.name == "flow_rate":
-            assert trace.line.color == "black"
-            assert np.allclose(trace.y, np.array([10.0, 20.0]))
-
-    assert fig.layout.yaxis.title.text == "m3 s-1"
-    assert fig.layout.hovermode == "x unified"
-
-
-def test_plot_widget_fractional_flow_requires_single_link():
-    widget = PlotWidget()
-    widget._fractional_flow_enabled = True
-
-    time = np.array(["2020-01-01", "2020-01-02"])
-    widget.set_data(
-        {
-            "flow": {
-                "flow_rate": {
-                    "Link #1": (time, np.array([5.0, 6.0])),
-                    "Link #2": (time, np.array([3.0, 4.0])),
-                },
-            },
-        },
-    )
-
-    assert widget._placeholder.isVisibleTo(widget)
-    assert not widget._web_view.isVisibleTo(widget)
-
-
-def test_plot_widget_fractional_flow_junction(monkeypatch):
-    """Fractional flow through a Junction aggregates source basin concentrations."""
-    captured_figures = []
-
-    def _capture_plot(fig, **kwargs):
-        captured_figures.append(fig)
-        return "<div></div>"
-
-    monkeypatch.setattr("ribasim_qgis.widgets.plot_widget.po.plot", _capture_plot)
-
-    time = np.array(["2020-01-01", "2020-01-02"])
-
-    # Network: Basin(10) --link20--> Junction(50) --link1--> Basin(60)
-    #          Basin(11) --link21-->
-    # Selected link: link 1 (from Junction 50 to Basin 60).
-    # Basin 10 has LevelBoundary=0.6, Basin 11 has LevelBoundary=0.4.
-    # Flow on link 20: [6.0, 12.0], flow on link 21: [4.0, 8.0].
-    # Total inflow to junction: [10.0, 20.0] (matches selected link flow).
-    # Effective concentration at junction:
-    #   (0.6*6 + 0.4*4) / (6+4) = 5.2/10 = 0.52  at t=0
-    #   (0.6*12 + 0.4*8) / (12+8) = 10.4/20 = 0.52  at t=1
-    # Fractional values = effective_conc * selected_flow = [0.52*10, 0.52*20] = [5.2, 10.4]
-
-    def _conc_getter(node_id):
-        if node_id == 10:
-            return {"LevelBoundary": (time, np.array([0.6, 0.6]))}
-        if node_id == 11:
-            return {"LevelBoundary": (time, np.array([0.4, 0.4]))}
-        if node_id == 60:
-            return {"LevelBoundary": (time, np.array([1.0, 1.0]))}
-        return None
-
-    def _flow_getter(link_id):
-        if link_id == 20:
-            return (time, np.array([6.0, 12.0]))
-        if link_id == 21:
-            return (time, np.array([4.0, 8.0]))
-        return None
-
-    widget = PlotWidget(
-        concentration_for_node_getter=_conc_getter,
-        flow_for_link_getter=_flow_getter,
-    )
-    widget._fractional_flow_enabled = True
-
-    monkeypatch.setattr(PlotWidget, "_get_link_endpoints", lambda self, lid: (50, 60))
-    monkeypatch.setattr(
-        PlotWidget,
-        "_get_node_type",
-        lambda self, nid: {
-            50: "Junction",
-            60: "Basin",
-            10: "Basin",
-            11: "Basin",
-        }.get(nid),
-    )
-    monkeypatch.setattr(
-        PlotWidget,
-        "_resolve_junction_sources",
-        lambda self, jid, lid: [(10, 20, 1), (11, 21, 1)],
-    )
-
-    widget.set_data(
-        {
-            "flow": {
-                "flow_rate": {"Link #1": (time, np.array([10.0, 20.0]))},
-            },
-        },
-        units={"flow": {"flow_rate": "m3 s-1"}},
-    )
-
-    assert len(captured_figures) == 1
-    fig = captured_figures[0]
-    names = {trace.name for trace in fig.data}
-    assert "LevelBoundary" in names
-    assert "flow_rate" in names
-
-    for trace in fig.data:
-        if trace.name == "LevelBoundary":
-            assert np.allclose(trace.y, np.array([5.2, 10.4]))
-        elif trace.name == "flow_rate":
-            assert np.allclose(trace.y, np.array([10.0, 20.0]))
-
-
-def test_plot_widget_fractional_flow_traverses_connector(monkeypatch):
-    """Fractional flow should traverse a connector node to find the Basin."""
-    captured_figures = []
-
-    def _capture_plot(fig, **kwargs):
-        captured_figures.append(fig)
-        return "<div></div>"
-
-    monkeypatch.setattr("ribasim_qgis.widgets.plot_widget.po.plot", _capture_plot)
-
-    time = np.array(["2020-01-01", "2020-01-02"])
-
-    def _conc_getter(node_id):
-        if node_id == 10:
-            return {
-                "LevelBoundary": (time, np.array([0.3, 0.7])),
-            }
-        return None
-
-    widget = PlotWidget(concentration_for_node_getter=_conc_getter)
-    widget._fractional_flow_enabled = True
-
-    # Link 1: from ManningResistance(2) → Basin(3).
-    # _endpoint_concentration traverses connector 2 to find Basin 10.
-    def _endpoint_conc(self, nid, lid, n, ft):
-        if nid == 2:
-            return _conc_getter(10)
-        if nid == 3:
-            return _conc_getter(3)  # None — no concentration for Basin 3
-        return None
-
-    monkeypatch.setattr(PlotWidget, "_get_link_endpoints", lambda self, lid: (2, 3))
-    monkeypatch.setattr(PlotWidget, "_endpoint_concentration", _endpoint_conc)
-
-    widget.set_data(
-        {
-            "flow": {
-                "flow_rate": {"Link #1": (time, np.array([10.0, 20.0]))},
-            },
-        },
-    )
-
-    assert len(captured_figures) == 1
-    fig = captured_figures[0]
-    # With positive flow, source is from-side Basin 10.
-    for trace in fig.data:
-        if trace.name == "LevelBoundary":
-            assert np.allclose(trace.y, np.array([3.0, 14.0]))
-
-
-def test_plot_widget_fractional_flow_sign_flip(monkeypatch):
-    """When flow_rate sign flips, the source basin should switch."""
-    captured_figures = []
-
-    def _capture_plot(fig, **kwargs):
-        captured_figures.append(fig)
-        return "<div></div>"
-
-    monkeypatch.setattr("ribasim_qgis.widgets.plot_widget.po.plot", _capture_plot)
-
-    time = np.array(["2020-01-01", "2020-01-02"])
-
-    def _conc_getter(node_id):
-        if node_id == 5:
-            return {"LevelBoundary": (time, np.array([0.4, 0.4]))}
-        if node_id == 6:
-            return {"LevelBoundary": (time, np.array([0.8, 0.8]))}
-        return None
-
-    widget = PlotWidget(concentration_for_node_getter=_conc_getter)
-    widget._fractional_flow_enabled = True
-
-    monkeypatch.setattr(PlotWidget, "_get_link_endpoints", lambda self, lid: (5, 6))
-    monkeypatch.setattr(
-        PlotWidget,
-        "_endpoint_concentration",
-        lambda self, nid, lid, n, ft: _conc_getter(nid),
-    )
-
-    # flow_rate: +10 at t0 (source=from=5), -10 at t1 (source=to=6)
-    widget.set_data(
-        {
-            "flow": {
-                "flow_rate": {"Link #1": (time, np.array([10.0, -10.0]))},
-            },
-        },
-    )
-
-    assert len(captured_figures) == 1
-    fig = captured_figures[0]
-    positive, negative = (t for t in fig.data if t.name == "LevelBoundary")
-    # t0: 0.4 * 10 = 4.0,  t1: 0.8 * -10 = -8.0
-    assert np.allclose(positive.y, np.array([4.0, 0.0]))
-    assert np.allclose(negative.y, np.array([0.0, -8.0]))
-    # The hover label of the first trace has the signed value of both.
-    assert np.allclose(positive.customdata, np.array([4.0, -8.0]))
-
-
-def test_plot_widget_fractional_flow_connector_to_junction(monkeypatch):
-    """Fractional flow through ManningResistance → Junction resolves sources."""
-    captured_figures = []
-
-    def _capture_plot(fig, **kwargs):
-        captured_figures.append(fig)
-        return "<div></div>"
-
-    monkeypatch.setattr("ribasim_qgis.widgets.plot_widget.po.plot", _capture_plot)
-
-    time = np.array(["2020-01-01", "2020-01-02"])
-
-    # Network:
-    #   Basin(10) --link20--> Junction(50) --link30--> Manning(60) --link1--> Basin(70)
-    #   Basin(11) --link21-->
-    # Selected link: link 1 (Manning 60 → Basin 70).
-    # _endpoint_concentration for Manning(60) traverses to Junction(50),
-    # then resolves junction sources.
-
-    def _conc_getter(node_id):
-        if node_id == 10:
-            return {"Tracer": (time, np.array([0.8, 0.8]))}
-        if node_id == 11:
-            return {"Tracer": (time, np.array([0.2, 0.2]))}
-        if node_id == 70:
-            return {"Tracer": (time, np.array([1.0, 1.0]))}
-        return None
-
-    def _flow_getter(link_id):
-        if link_id == 20:
-            return (time, np.array([8.0, 16.0]))
-        if link_id == 21:
-            return (time, np.array([2.0, 4.0]))
-        return None
-
-    widget = PlotWidget(
-        concentration_for_node_getter=_conc_getter,
-        flow_for_link_getter=_flow_getter,
-    )
-    widget._fractional_flow_enabled = True
-
-    monkeypatch.setattr(PlotWidget, "_get_link_endpoints", lambda self, lid: (60, 70))
-
-    node_types = {
-        60: "ManningResistance",
-        70: "Basin",
-        50: "Junction",
-        10: "Basin",
-        11: "Basin",
-    }
-    monkeypatch.setattr(
-        PlotWidget, "_get_node_type", lambda self, nid: node_types.get(nid)
-    )
-    # Manning(60) traversal: arrived on link 1, other link is link 30 to Junction(50).
-    monkeypatch.setattr(
-        PlotWidget, "_traverse_connector", lambda self, nid, lid: (50, 30)
-    )
-    monkeypatch.setattr(
-        PlotWidget,
-        "_resolve_junction_sources",
-        lambda self, jid, lid: [(10, 20, 1), (11, 21, 1)],
-    )
-
-    widget.set_data(
-        {
-            "flow": {
-                "flow_rate": {"Link #1": (time, np.array([10.0, 20.0]))},
-            },
-        },
-        units={"flow": {"flow_rate": "m3 s-1"}},
-    )
-
-    assert len(captured_figures) == 1
-    fig = captured_figures[0]
-
-    # Junction effective conc: (0.8*8 + 0.2*2)/(8+2) = 6.8/10 = 0.68
-    # Fractional values: 0.68 * [10, 20] = [6.8, 13.6]
-    for trace in fig.data:
-        if trace.name == "Tracer":
-            assert np.allclose(trace.y, np.array([6.8, 13.6]))
-
-
 def _memory_layer(fields: str, rows: list[tuple[Any, ...]]) -> QgsVectorLayer:
     layer = QgsVectorLayer(f"None?{fields}", "layer", "memory")
     features = []
@@ -999,66 +664,288 @@ def _memory_layer(fields: str, rows: list[tuple[Any, ...]]) -> QgsVectorLayer:
     return layer
 
 
-def _fractional_tracer_flow(
-    monkeypatch,
-    node_types: dict[int, str],
-    links: dict[int, tuple[int, int]],
-    concentrations: dict[int, float],
-    flows: dict[int, list[float]],
-    link_id: int,
-    selected_flow: list[float],
-    junctions_in_static: frozenset[int] = frozenset(),
-) -> tuple[Any, ...]:
-    """Plot the fractional flow of one link, on real layers, and return its traces."""
-    captured_figures = []
-
-    def _capture_plot(fig, **kwargs):
-        captured_figures.append(fig)
-        return "<div></div>"
-
-    monkeypatch.setattr("ribasim_qgis.widgets.plot_widget.po.plot", _capture_plot)
-
-    time = np.array(["2020-01-01", "2020-01-02"])
+def _layers(
+    node_types: dict[int, str], links: dict[int, tuple[int, int]]
+) -> tuple[QgsVectorLayer, QgsVectorLayer]:
+    """Return a node and a link layer with flow links."""
     node_layer = _memory_layer(
-        "field=node_id:integer&field=node_type:string",
-        list(node_types.items()),
+        "field=node_id:integer&field=node_type:string", list(node_types.items())
     )
     link_layer = _memory_layer(
-        "field=link_id:integer&field=from_node_id:integer&field=to_node_id:integer",
-        [(lid, from_id, to_id) for lid, (from_id, to_id) in links.items()],
+        "field=link_id:integer&field=from_node_id:integer"
+        "&field=to_node_id:integer&field=link_type:string",
+        [(lid, from_id, to_id, "flow") for lid, (from_id, to_id) in links.items()],
     )
+    return node_layer, link_layer
 
-    def _conc_getter(node_id):
-        if node_id not in concentrations:
+
+_TIME = np.array(["2020-01-01", "2020-01-02"])
+
+
+def _tracer(concentration: float) -> dict[str, list[float]]:
+    """Return the concentrations of a Basin: Tracer and the Other rest of the water."""
+    return {
+        "Continuity": [1.0, 1.0],
+        "Tracer": [concentration] * 2,
+        "Other": [1.0 - concentration] * 2,
+    }
+
+
+def _tracer_flows(
+    node_types: dict[int, str],
+    links: dict[int, tuple[int, int]],
+    flows: dict[int, list[float]],
+    concentrations: dict[int, dict[str, list[float]]],
+    junctions_in_static: frozenset[int] = frozenset(),
+    boundary_concentrations: dict[int, dict[str, list[float]]] | None = None,
+) -> TracerFlows:
+    """Return the tracer flows of a network with flows and Basin concentrations."""
+
+    def _as_arrays(
+        values: dict[int, dict[str, list[float]]], node_id: int
+    ) -> dict[str, np.ndarray] | None:
+        if node_id not in values:
             return None
-        tracer = np.full(2, concentrations[node_id])
-        return {"Tracer": (time, tracer), "Other": (time, 1.0 - tracer)}
+        return {s: np.array(v) for s, v in values[node_id].items()}
 
-    def _flow_getter(lid):
-        if lid not in flows:
-            return None
-        return (time, np.array(flows[lid]))
-
-    widget = PlotWidget(
-        node_layer_getter=lambda: node_layer,
-        link_layer_getter=lambda: link_layer,
-        concentration_for_node_getter=_conc_getter,
-        flow_for_link_getter=_flow_getter,
-        junctions_in_static_getter=lambda: junctions_in_static,
-    )
-    widget._fractional_flow_enabled = True
-    widget.set_data(
-        {"flow": {"flow_rate": {f"Link #{link_id}": (time, np.array(selected_flow))}}},
-        units={"flow": {"flow_rate": "m3 s-1"}},
+    return TracerFlows(
+        FlowGraph(*_layers(node_types, links), junctions_in_static),
+        lambda link_id: np.array(flows[link_id]) if link_id in flows else None,
+        lambda node_id: _as_arrays(concentrations, node_id),
+        n_time=2,
+        boundary_concentration=lambda node_id: _as_arrays(
+            boundary_concentrations or {}, node_id
+        ),
     )
 
-    assert len(captured_figures) == 1
-    return captured_figures[0].data
+
+def _assert_tracers(
+    tracers: dict[str, np.ndarray] | None,
+    expected: dict[str, list[float]],
+    total: Any,
+) -> None:
+    """Check the tracer flows, and that the Continuity tracer adds up to the total."""
+    assert tracers is not None
+    for name in {"FlowBoundary", "LevelBoundary", "Tracer", "Other", *expected}:
+        assert np.allclose(tracers.get(name, 0.0), expected.get(name, [0.0, 0.0])), name
+    assert np.allclose(tracers["Continuity"], total)
 
 
-def _signed_values(traces: tuple[Any, ...], name: str) -> np.ndarray:
-    """Add up the positive and negative stack of a tracer."""
-    return np.sum([t.y for t in traces if t.name == name], axis=0)
+# Junction 2 has rows, and divides the flow of FlowBoundary 1 over Junction 4 and 5, which
+# have none. Junction 4 joins it with FlowBoundary 3 into Basin 6. Junction 5 connects Basin 7
+# with LinearResistance 8, which drains Basin 7 into LevelBoundary 9 and then reverses.
+#
+#   FlowBoundary 1 --1--> Junction 2 --2--> Junction 4 --4--> Basin 6
+#   FlowBoundary 3 --3--> Junction 4
+#   Junction 2 --5--> Junction 5 --6--> Basin 7
+#   Junction 5 --7--> LinearResistance 8 --8--> LevelBoundary 9
+_INTO_NETWORK = (
+    {
+        1: "FlowBoundary",
+        2: "Junction",
+        3: "FlowBoundary",
+        4: "Junction",
+        5: "Junction",
+        6: "Basin",
+        7: "Basin",
+        8: "LinearResistance",
+        9: "LevelBoundary",
+    },
+    {
+        1: (1, 2),
+        2: (2, 4),
+        3: (3, 4),
+        4: (4, 6),
+        5: (2, 5),
+        6: (5, 7),
+        7: (5, 8),
+        8: (8, 9),
+    },
+    {
+        1: [10.0, 10.0],
+        2: [4.0, 4.0],
+        3: [5.0, 5.0],
+        4: [9.0, 9.0],
+        5: [6.0, 6.0],
+        6: [5.0, 7.0],
+        7: [1.0, -1.0],
+        8: [1.0, -1.0],
+    },
+    {6: _tracer(0.5), 7: _tracer(0.2)},
+    frozenset({2}),
+)
+# The net flow of the group of Junction 5 to Basin 7: the inflow from Junction 2, minus the
+# outflow of Basin 7 over the LinearResistance, which reverses to bring in the LevelBoundary.
+_INTO_BASIN_7 = {
+    "FlowBoundary": [6.0, 6.0],
+    "Tracer": [-0.2, 0.0],
+    "Other": [-0.8, 0.0],
+    "LevelBoundary": [0.0, 1.0],
+}
+_INTO_LINEAR_RESISTANCE = {
+    "Tracer": [0.2, 0.0],
+    "Other": [0.8, 0.0],
+    "LevelBoundary": [0.0, -1.0],
+}
+
+
+@pytest.mark.parametrize(
+    ("link_id", "expected"),
+    [
+        # The Junction with rows passes on the water of FlowBoundary 1
+        (2, {"FlowBoundary": [4.0, 4.0]}),
+        # The group of Junction 4 only brings FlowBoundary water to Basin 6
+        (4, {"FlowBoundary": [9.0, 9.0]}),
+        (6, _INTO_BASIN_7),
+        (8, _INTO_LINEAR_RESISTANCE),
+    ],
+)
+def test_tracer_flows_junction_into_junction_link(link_id, expected):
+    tracer_flows = _tracer_flows(*_INTO_NETWORK)
+    _assert_tracers(tracer_flows.link(link_id), expected, _INTO_NETWORK[2][link_id])
+
+
+@pytest.mark.parametrize(
+    ("node_id", "expected_total", "expected"),
+    [
+        # A connector node has the flow of its outflow link
+        (8, [1.0, -1.0], _INTO_LINEAR_RESISTANCE),
+        # A Junction with rows has its total inflow
+        (2, [10.0, 10.0], {"FlowBoundary": [10.0, 10.0]}),
+        # A Junction without rows has the flow on its link towards the Basin
+        (5, [5.0, 7.0], _INTO_BASIN_7),
+    ],
+)
+def test_tracer_flows_junction_into_junction_node(node_id, expected_total, expected):
+    node_flows = _tracer_flows(*_INTO_NETWORK).node(node_id)
+    assert node_flows is not None
+    total, tracers = node_flows
+    assert np.allclose(total, expected_total)
+    _assert_tracers(tracers, expected, total)
+
+
+# UserDemand 4 abstracts from Junction 3, which passes the rest of the Pump flow on to
+# Basin 6. Its return flow joins FlowBoundary 7 in Junction 5, which flows into Basin 6, and
+# into Terminal 8 with a flow that is zero within the solver tolerance.
+#
+#   Basin 1 --1--> Pump 2 --2--> Junction 3 --3--> UserDemand 4 --4--> Junction 5 --7--> Basin 6
+#                                Junction 3 --5--> Basin 6
+#   FlowBoundary 7 --6--> Junction 5 --8--> Terminal 8
+_USER_DEMAND_NETWORK = (
+    {
+        1: "Basin",
+        2: "Pump",
+        3: "Junction",
+        4: "UserDemand",
+        5: "Junction",
+        6: "Basin",
+        7: "FlowBoundary",
+        8: "Terminal",
+    },
+    {
+        1: (1, 2),
+        2: (2, 3),
+        3: (3, 4),
+        4: (4, 5),
+        5: (3, 6),
+        6: (7, 5),
+        7: (5, 6),
+        8: (5, 8),
+    },
+    {
+        1: [4.0, 4.0],
+        2: [4.0, 4.0],
+        3: [3.0, 3.0],
+        4: [1.5, 1.5],
+        5: [1.0, 1.0],
+        6: [0.5, 0.5],
+        7: [2.0, 2.0],
+        8: [0.0, -1e-12],
+    },
+    {1: _tracer(0.4), 6: _tracer(0.9)},
+    frozenset({3, 5}),
+    {7: {"Foo": [2.0, 2.0]}},
+)
+
+
+def test_tracer_flows_user_demand_return():
+    tracer_flows = _tracer_flows(*_USER_DEMAND_NETWORK)
+    # The return flow has the water of Basin 1, which mixes with the FlowBoundary water
+    # and the substance of its input table
+    expected = {
+        "Tracer": [0.6, 0.6],
+        "Other": [0.9, 0.9],
+        "FlowBoundary": [0.5, 0.5],
+        "Foo": [1.0, 1.0],
+    }
+    _assert_tracers(tracer_flows.link(7), expected, [2.0, 2.0])
+    # The total inflow of the Junction is the same water
+    node_flows = tracer_flows.node(5)
+    assert node_flows is not None
+    _assert_tracers(node_flows[1], expected, [2.0, 2.0])
+    # A UserDemand has its abstraction
+    node_flows = tracer_flows.node(4)
+    assert node_flows is not None
+    _assert_tracers(node_flows[1], {"Tracer": [1.2, 1.2], "Other": [1.8, 1.8]}, 3.0)
+    # A flow out of a Terminal brings no tracers
+    tracers = tracer_flows.link(8)
+    assert tracers is not None
+    assert np.allclose(tracers["Continuity"], 0.0)
+
+
+def test_tracer_flows_junction_group_without_one_basin():
+    """A group with two Basins connects them to the UserDemand, mixing their water."""
+    # Basin 1 --1--> Junction 3 --3--> UserDemand 4 --4--> Basin 5
+    # Basin 2 --2--> Junction 3
+    tracer_flows = _tracer_flows(
+        {1: "Basin", 2: "Basin", 3: "Junction", 4: "UserDemand", 5: "Basin"},
+        {1: (1, 3), 2: (2, 3), 3: (3, 4), 4: (4, 5)},
+        {1: [6.0, 12.0], 2: [4.0, 8.0], 3: [10.0, 20.0], 4: [5.0, 10.0]},
+        {1: _tracer(0.6), 2: _tracer(0.4), 5: _tracer(1.0)},
+    )
+    # (0.6 * 6 + 0.4 * 4) / 10 = 0.52 of the abstraction, also in the return flow
+    _assert_tracers(
+        tracer_flows.link(3),
+        {"Tracer": [5.2, 10.4], "Other": [4.8, 9.6]},
+        [10.0, 20.0],
+    )
+    _assert_tracers(
+        tracer_flows.link(4),
+        {"Tracer": [2.6, 5.2], "Other": [2.4, 4.8]},
+        [5.0, 10.0],
+    )
+
+
+@pytest.mark.parametrize("node_id", [2, 3])
+def test_tracer_flows_chained_junctions(node_id):
+    """Chained Junctions without rows have the flow on their link towards the Basin."""
+    # Basin 1 --1--> Junction 2 --2--> Junction 3 --3--> LinearResistance 4 --5--> Basin 6
+    #                                  Junction 3 --4--> LinearResistance 5 --6--> Basin 7
+    node_flows = _tracer_flows(
+        {
+            1: "Basin",
+            2: "Junction",
+            3: "Junction",
+            4: "LinearResistance",
+            5: "LinearResistance",
+            6: "Basin",
+            7: "Basin",
+        },
+        {1: (1, 2), 2: (2, 3), 3: (3, 4), 4: (3, 5), 5: (4, 6), 6: (5, 7)},
+        {
+            1: [3.0, 3.0],
+            2: [3.0, 3.0],
+            3: [1.0, 1.0],
+            4: [2.0, 2.0],
+            5: [1.0, 1.0],
+            6: [2.0, 2.0],
+        },
+        {1: _tracer(0.1), 6: _tracer(0.5), 7: _tracer(0.5)},
+    ).node(node_id)
+    assert node_flows is not None
+    total, tracers = node_flows
+    assert np.allclose(total, [3.0, 3.0])
+    _assert_tracers(tracers, {"Tracer": [0.3, 0.3], "Other": [2.7, 2.7]}, total)
 
 
 # One Junction tree connects the inflows and outflows of Basin 1:
@@ -1091,27 +978,43 @@ _TREE_LINKS = {
     9: (3, 8),
     10: (8, 13),
 }
-_TREE_CONCENTRATIONS = {1: 0.1, 10: 0.2, 11: 0.9, 12: 0.4, 13: 0.9}
+_TREE_CONCENTRATIONS = {
+    1: _tracer(0.1),
+    10: _tracer(0.2),
+    11: _tracer(0.9),
+    12: _tracer(0.4),
+    13: _tracer(0.9),
+}
 # At the first time the inflows dominate, at the second the outflows, and the
 # connector with an inflow to Junction 2 reverses.
-_TREE_FLOWS = {4: [6.0, -1.0], 5: [3.0, 3.0], 8: [2.0, 2.0], 9: [1.0, 5.0]}
+_TREE_FLOWS = {
+    1: [-4.0, 7.0],
+    2: [1.0, -3.0],
+    3: [6.0, -1.0],
+    4: [6.0, -1.0],
+    5: [3.0, 3.0],
+    6: [3.0, 3.0],
+    7: [2.0, 2.0],
+    8: [2.0, 2.0],
+    9: [1.0, 5.0],
+    10: [1.0, 5.0],
+}
 
 
 @pytest.mark.parametrize(
-    ("link_id", "selected_flow", "expected"),
+    ("link_id", "expected"),
     [
         # An outflow is water from Basin 1, not mixed with the inflow at Junction 2.
-        (5, [3.0, 3.0], [0.1 * 3.0, 0.1 * 3.0]),
+        (5, [0.1 * 3.0, 0.1 * 3.0]),
         # Also behind the connector.
-        (6, [3.0, 3.0], [0.1 * 3.0, 0.1 * 3.0]),
+        (6, [0.1 * 3.0, 0.1 * 3.0]),
         # A connector with an inflow takes water from Basin 1 if it reverses.
-        (4, [6.0, -1.0], [0.2 * 6.0, 0.1 * -1.0]),
+        (4, [0.2 * 6.0, 0.1 * -1.0]),
         # A link points towards Basin 1 and has the net tracer flow behind it.
-        (2, [1.0, -3.0], [0.4 * 2.0 - 0.1 * 1.0, 0.4 * 2.0 - 0.1 * 5.0]),
+        (2, [0.4 * 2.0 - 0.1 * 1.0, 0.4 * 2.0 - 0.1 * 5.0]),
         # The link of Basin 1 points away from it and has all neighbors behind it.
         (
             1,
-            [-4.0, 7.0],
             [
                 -(0.2 * 6.0 - 0.1 * 3.0 + 0.4 * 2.0 - 0.1 * 1.0),
                 -(0.1 * -1.0 - 0.1 * 3.0 + 0.4 * 2.0 - 0.1 * 5.0),
@@ -1119,59 +1022,20 @@ _TREE_FLOWS = {4: [6.0, -1.0], 5: [3.0, 3.0], 8: [2.0, 2.0], 9: [1.0, 5.0]}
         ),
     ],
 )
-def test_plot_widget_fractional_flow_junction_tree(
-    monkeypatch, link_id, selected_flow, expected
-):
+def test_tracer_flows_junction_tree(link_id, expected):
     """A Junction group with one Basin doesn't mix its inflows with its outflows."""
-    traces = _fractional_tracer_flow(
-        monkeypatch,
-        _TREE_NODE_TYPES,
-        _TREE_LINKS,
-        _TREE_CONCENTRATIONS,
-        _TREE_FLOWS,
-        link_id,
-        selected_flow,
-    )
-    assert np.allclose(_signed_values(traces, "Tracer"), expected)
+    tracers = _tracer_flows(
+        _TREE_NODE_TYPES, _TREE_LINKS, _TREE_FLOWS, _TREE_CONCENTRATIONS
+    ).link(link_id)
+    assert tracers is not None
+    assert np.allclose(tracers["Tracer"], expected)
     # The tracers add up to the net flow of the link.
-    total = _signed_values(traces, "Tracer") + _signed_values(traces, "Other")
-    assert np.allclose(total, selected_flow)
+    assert np.allclose(tracers["Tracer"] + tracers["Other"], _TREE_FLOWS[link_id])
 
 
-def test_plot_widget_fractional_flow_opposite_signs(monkeypatch):
-    """Tracer flows with opposite signs are stacked on either side of zero."""
-    traces = _fractional_tracer_flow(
-        monkeypatch,
-        _TREE_NODE_TYPES,
-        _TREE_LINKS,
-        _TREE_CONCENTRATIONS,
-        _TREE_FLOWS,
-        2,
-        [1.0, -3.0],
-    )
-    # At the second time the net flow is negative, but the Tracer flow is positive.
-    tracer = [t for t in traces if t.name == "Tracer"]
-    assert len(tracer) == 1
-    assert tracer[0].stackgroup == "positive"
-    assert np.allclose(tracer[0].y, [0.7, 0.3])
-
-    positive, negative = (t for t in traces if t.name == "Other")
-    assert (positive.stackgroup, negative.stackgroup) == ("positive", "negative")
-    assert np.allclose(positive.y, [0.3, 0.0])
-    assert np.allclose(negative.y, [0.0, -3.3])
-    assert np.allclose(positive.customdata, [0.3, -3.3])
-    # Both parts look like one tracer.
-    assert positive.line.color == negative.line.color
-    assert positive.line.color != tracer[0].line.color
-    assert positive.legendgroup == negative.legendgroup
-    assert negative.showlegend is False
-    assert negative.hoverinfo == "skip"
-
-
-def test_plot_widget_fractional_flow_connector_between_junction_groups(monkeypatch):
+def test_tracer_flows_connector_between_junction_groups():
     """A connector takes its water from the one Basin of the group upstream of it."""
-    traces = _fractional_tracer_flow(
-        monkeypatch,
+    tracers = _tracer_flows(
         {
             1: "Basin",
             2: "Junction",
@@ -1193,35 +1057,247 @@ def test_plot_widget_fractional_flow_connector_between_junction_groups(monkeypat
             7: (8, 9),
             8: (9, 4),
         },
-        {1: 0.1, 5: 0.9, 6: 0.7, 8: 0.5},
-        {3: [2.0, 2.0], 6: [4.0, 4.0], 8: [2.0, 2.0]},
-        4,
-        [4.0, 4.0],
-    )
+        {3: [2.0, 2.0], 4: [4.0, 4.0], 6: [4.0, 4.0], 8: [2.0, 2.0]},
+        {1: _tracer(0.1), 5: _tracer(0.9), 6: _tracer(0.7), 8: _tracer(0.5)},
+    ).link(4)
     # The inflow of Basin 6 to the upstream group goes to Basin 1, not over the Pump.
     # 0.1 * 2 + 0.5 * 2 = 1.2
-    assert np.allclose(_signed_values(traces, "Tracer"), [1.2, 1.2])
+    assert tracers is not None
+    assert np.allclose(tracers["Tracer"], [1.2, 1.2])
 
 
-def test_plot_widget_fractional_flow_junction_in_static(monkeypatch):
+@pytest.mark.parametrize(
+    ("junctions_in_static", "expected"),
+    [
+        # All water over the link to Basin 4 comes from Basin 1: 0.2 * 3
+        (frozenset({3}), [0.6, 0.6]),
+        # Without rows it is a Junction group with one Basin, where the UserDemand
+        # abstracts from Basin 4: 0.2 * 5 - 0.8 * 2
+        (frozenset(), [-0.6, -0.6]),
+    ],
+)
+def test_tracer_flows_junction_in_static(junctions_in_static, expected):
     """A Junction in Junction / static mixes its inflows, also next to one Basin."""
     # Basin 1 --1--> Pump 2 --2--> Junction 3 --3--> Basin 4
     #                              Junction 3 --4--> UserDemand 5 --5--> Basin 4
-    network = (
+    tracers = _tracer_flows(
         {1: "Basin", 2: "Pump", 3: "Junction", 4: "Basin", 5: "UserDemand"},
         {1: (1, 2), 2: (2, 3), 3: (3, 4), 4: (3, 5), 5: (5, 4)},
-        {1: 0.2, 4: 0.8},
-        {2: [5.0, 5.0], 4: [2.0, 2.0]},
-        3,
-        [3.0, 3.0],
+        {2: [5.0, 5.0], 3: [3.0, 3.0], 4: [2.0, 2.0]},
+        {1: _tracer(0.2), 4: _tracer(0.8)},
+        junctions_in_static,
+    ).link(3)
+    assert tracers is not None
+    assert np.allclose(tracers["Tracer"], expected)
+
+
+def _fractional_flow(
+    monkeypatch,
+    node_types: dict[int, str],
+    links: dict[int, tuple[int, int]],
+    flows: dict[int, list[float]],
+    concentrations: dict[int, dict[str, list[float]]],
+    traces: list[str],
+    available: dict[str, list[str]] | None = None,
+    junctions_in_static: frozenset[int] = frozenset(),
+) -> tuple[PlotWidget, Any]:
+    """Plot the fractional flow of the selected link or node on real layers.
+
+    *traces* are the names of the flow traces of the selection, as the DatasetWidget
+    names them. Returns the widget and the figure, or ``None`` for a placeholder.
+    """
+    captured_figures = []
+
+    def _capture_plot(fig, **kwargs):
+        captured_figures.append(fig)
+        return "<div></div>"
+
+    monkeypatch.setattr("ribasim_qgis.widgets.plot_widget.po.plot", _capture_plot)
+
+    node_layer, link_layer = _layers(node_types, links)
+    widget = PlotWidget(
+        node_layer_getter=lambda: node_layer,
+        link_layer_getter=lambda: link_layer,
+        concentration_for_node_getter=lambda node_id: (
+            {s: (_TIME, np.array(v)) for s, v in concentrations[node_id].items()}
+            if node_id in concentrations
+            else None
+        ),
+        flow_for_link_getter=lambda link_id: (
+            (_TIME, np.array(flows[link_id])) if link_id in flows else None
+        ),
+        junctions_in_static_getter=lambda: junctions_in_static,
     )
-    # All water over the link to Basin 4 comes from Basin 1: 0.2 * 3
-    traces = _fractional_tracer_flow(monkeypatch, *network, frozenset({3}))
-    assert np.allclose(_signed_values(traces, "Tracer"), [0.6, 0.6])
-    # Without rows it is a Junction group with one Basin, where the UserDemand
-    # abstracts from Basin 4: 0.2 * 5 - 0.8 * 2
-    traces = _fractional_tracer_flow(monkeypatch, *network)
-    assert np.allclose(_signed_values(traces, "Tracer"), [-0.6, -0.6])
+    widget.preload_variables(
+        available or {"flow": ["flow_rate"], "concentration": ["Tracer", "Other"]}
+    )
+    widget._fractional_flow_enabled = True
+    selection = {
+        name: (
+            _TIME,
+            np.array(flows[int(name.removeprefix("Link #"))])
+            if name.startswith("Link #")
+            else np.zeros(2),
+        )
+        for name in traces
+    }
+    widget.set_data(
+        {"flow": {"flow_rate": selection}}, units={"flow": {"flow_rate": "m3 s-1"}}
+    )
+    if not widget._web_view.isVisibleTo(widget):
+        return widget, None
+    return widget, captured_figures[-1]
+
+
+def _signed_values(traces: tuple[Any, ...], name: str) -> np.ndarray:
+    """Add up the positive and negative stack of a tracer."""
+    return np.sum([t.y for t in traces if t.name == name], axis=0)
+
+
+# Basin 5 --1--> LinearResistance 7 --2--> Basin 6
+_RESISTANCE_NETWORK = (
+    {5: "Basin", 6: "Basin", 7: "LinearResistance"},
+    {1: (5, 7), 2: (7, 6)},
+)
+
+
+def test_plot_widget_fractional_flow_plots_multiplied_values(monkeypatch):
+    _, fig = _fractional_flow(
+        monkeypatch,
+        *_RESISTANCE_NETWORK,
+        {1: [10.0, 20.0], 2: [10.0, 20.0]},
+        {
+            5: {"LevelBoundary": [0.4, 0.5], "FlowBoundary": [0.6, 0.5]},
+            6: {"LevelBoundary": [1.0, 1.0], "FlowBoundary": [0.0, 0.0]},
+        },
+        ["Link #1"],
+        {"flow": ["flow_rate"], "concentration": ["LevelBoundary", "FlowBoundary"]},
+    )
+    assert fig is not None
+    names = {trace.name for trace in fig.data}
+    assert names == {"LevelBoundary", "FlowBoundary", "flow_rate"}
+    stacked = [t for t in fig.data if t.name != "flow_rate"]
+    # Positive flows don't need a stack for negative values.
+    assert all(trace.stackgroup == "positive" for trace in stacked)
+
+    # Verify multiplication: concentration * flow_rate
+    for trace in fig.data:
+        if trace.name == "LevelBoundary":
+            assert np.allclose(trace.y, np.array([4.0, 10.0]))
+        elif trace.name == "FlowBoundary":
+            assert np.allclose(trace.y, np.array([6.0, 10.0]))
+        elif trace.name == "flow_rate":
+            assert trace.line.color == "black"
+            assert np.allclose(trace.y, np.array([10.0, 20.0]))
+
+    assert fig.layout.yaxis.title.text == "m3 s-1"
+    assert fig.layout.hovermode == "x unified"
+
+
+def test_plot_widget_fractional_flow_sign_flip(monkeypatch):
+    """When flow_rate sign flips, the source basin should switch."""
+    _, fig = _fractional_flow(
+        monkeypatch,
+        *_RESISTANCE_NETWORK,
+        {1: [10.0, -10.0], 2: [10.0, -10.0]},
+        {5: {"LevelBoundary": [0.4, 0.4]}, 6: {"LevelBoundary": [0.8, 0.8]}},
+        ["Link #1"],
+        {"flow": ["flow_rate"], "concentration": ["LevelBoundary"]},
+    )
+    assert fig is not None
+    positive, negative = (t for t in fig.data if t.name == "LevelBoundary")
+    # t0: 0.4 * 10 = 4.0,  t1: 0.8 * -10 = -8.0
+    assert np.allclose(positive.y, np.array([4.0, 0.0]))
+    assert np.allclose(negative.y, np.array([0.0, -8.0]))
+    # The hover label of the first trace has the signed value of both.
+    assert np.allclose(positive.customdata, np.array([4.0, -8.0]))
+
+
+def test_plot_widget_fractional_flow_opposite_signs(monkeypatch):
+    """Tracer flows with opposite signs are stacked on either side of zero."""
+    _, fig = _fractional_flow(
+        monkeypatch,
+        _TREE_NODE_TYPES,
+        _TREE_LINKS,
+        _TREE_FLOWS,
+        _TREE_CONCENTRATIONS,
+        ["Link #2"],
+    )
+    assert fig is not None
+    traces = fig.data
+    # At the second time the net flow is negative, but the Tracer flow is positive.
+    tracer = [t for t in traces if t.name == "Tracer"]
+    assert len(tracer) == 1
+    assert tracer[0].stackgroup == "positive"
+    assert np.allclose(tracer[0].y, [0.7, 0.3])
+
+    positive, negative = (t for t in traces if t.name == "Other")
+    assert (positive.stackgroup, negative.stackgroup) == ("positive", "negative")
+    assert np.allclose(positive.y, [0.3, 0.0])
+    assert np.allclose(negative.y, [0.0, -3.3])
+    assert np.allclose(positive.customdata, [0.3, -3.3])
+    # Both parts look like one tracer.
+    assert positive.line.color == negative.line.color
+    assert positive.line.color != tracer[0].line.color
+    assert positive.legendgroup == negative.legendgroup
+    assert negative.showlegend is False
+    assert negative.hoverinfo == "skip"
+
+
+def test_plot_widget_fractional_flow_user_demand(monkeypatch):
+    """A UserDemand has two flow traces and shows the tracers of its abstraction."""
+    node_types, links, flows, concentrations, junctions_in_static, _ = (
+        _USER_DEMAND_NETWORK
+    )
+    _, fig = _fractional_flow(
+        monkeypatch,
+        node_types,
+        links,
+        flows,
+        concentrations,
+        ["UserDemand #4 inflow_rate", "UserDemand #4 outflow_rate"],
+        junctions_in_static=junctions_in_static,
+    )
+    assert fig is not None
+    total = next(t for t in fig.data if t.line.color == "black")
+    assert total.name == "inflow_rate"
+    assert np.allclose(total.y, [3.0, 3.0])
+    assert np.allclose(_signed_values(fig.data, "Tracer"), [1.2, 1.2])
+
+
+@pytest.mark.parametrize(
+    ("traces", "available", "placeholder"),
+    [
+        # Two selected links
+        (
+            ["Link #1", "Link #2"],
+            None,
+            "Fractional flow requires exactly one link or node selection",
+        ),
+        # A node with a flow in both directions
+        (["LevelBoundary #9 outflow_rate"], None, "other than a Basin, LevelBoundary"),
+        # No concentration results
+        (["Link #1"], {"flow": ["flow_rate"]}, "requires concentration results"),
+        # Basin 6 has no concentration
+        (["Link #4"], None, "could not determine where the water"),
+    ],
+)
+def test_plot_widget_fractional_flow_placeholder(
+    monkeypatch, traces, available, placeholder
+):
+    node_types, links, flows, _, junctions_in_static = _INTO_NETWORK
+    widget, fig = _fractional_flow(
+        monkeypatch,
+        node_types,
+        links,
+        flows,
+        {},
+        traces,
+        available,
+        junctions_in_static,
+    )
+    assert fig is None
+    assert placeholder in widget._placeholder.text()
 
 
 def _junction_flow_column(
@@ -1352,6 +1428,68 @@ def test_read_junctions_in_static(tmp_path):
     con.commit()
     con.close()
     assert read_junctions_in_static(path) == frozenset({6, 22})
+
+    # Like the core, read the table from NetCDF if the TOML names a file for it
+    netcdf_path = tmp_path / "junction-static.nc"
+    with nc4.Dataset(netcdf_path, "w") as ds:
+        ds.createDimension("node_id", 2)
+        ds.createVariable("node_id", "i4", ("node_id",))[:] = [2, 2]
+        ds.createVariable("to_node_id", "i4", ("node_id",))[:] = [4, 5]
+    assert read_junctions_in_static(path, netcdf_path) == frozenset({2})
+
+
+def test_read_boundary_concentrations(tmp_path):
+    path = tmp_path / "database.gpkg"
+    con = sqlite3.connect(path)
+    con.execute("CREATE TABLE Node (node_id INTEGER, node_type TEXT, cyclic_time BOOL)")
+    con.executemany(
+        "INSERT INTO Node VALUES (?, ?, ?)",
+        [(1, "FlowBoundary", False), (2, "LevelBoundary", True)],
+    )
+    rows = {
+        "FlowBoundary / concentration": [
+            (1, "2020-01-04 00:00:00", "Foo", 3.0),
+            (1, "2020-01-02 00:00:00", "Foo", 2.0),
+            (1, "2020-01-02 00:00:00", "Bar", None),
+        ],
+        "LevelBoundary / concentration": [
+            (2, "2020-01-01 00:00:00", "Foo", 1.0),
+            (2, "2020-01-02 00:00:00", "Foo", 5.0),
+            (2, "2020-01-03 00:00:00", "Foo", 1.0),
+        ],
+    }
+    for table, table_rows in rows.items():
+        con.execute(
+            f'CREATE TABLE "{table}" (fid INTEGER PRIMARY KEY, node_id INTEGER, '
+            "time DATETIME, substance TEXT, concentration REAL)"
+        )
+        con.executemany(
+            # The table names are constants in this test, not user input.
+            f'INSERT INTO "{table}" (node_id, time, substance, concentration) '  # noqa: S608
+            "VALUES (?, ?, ?, ?)",
+            table_rows,
+        )
+    con.commit()
+    con.close()
+
+    concentrations = read_boundary_concentrations(path)
+    times = np.array(
+        ["2020-01-01", "2020-01-02", "2020-01-03", "2020-01-04", "2020-01-05"],
+        dtype="datetime64[ns]",
+    )
+    # Block interpolation, with the first and last value outside the series
+    flow_boundary = concentrations.at(1, times)
+    assert flow_boundary is not None
+    assert flow_boundary.keys() == {"Foo"}
+    assert np.allclose(flow_boundary["Foo"], [2.0, 2.0, 2.0, 3.0, 3.0])
+    # A cyclic series repeats
+    level_boundary = concentrations.at(2, times)
+    assert level_boundary is not None
+    assert np.allclose(level_boundary["Foo"], [1.0, 5.0, 1.0, 5.0, 1.0])
+    assert concentrations.at(3, times) is None
+    assert read_boundary_concentrations(tmp_path / "missing.gpkg") == (
+        BoundaryConcentrations()
+    )
 
 
 def test_plot_widget_observation_grouped_with_results():

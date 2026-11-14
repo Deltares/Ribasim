@@ -1,25 +1,51 @@
-"""Walk connected groups of Junctions in the link layer.
+"""The flow links of a model, and how the core treats its Junctions.
 
 A Junction with rows in the ``Junction / static`` table divides the flow it receives.
 It stays in the simulation as a node, so it is not part of a group: to a group it is
 a neighbor like any other node.
+
+The core removes the other Junctions, and replaces each connected group of them by links
+between the neighbors of the group. With exactly one Basin as a neighbor, each other
+neighbor connects to that Basin, in the direction of its own link with the group, so the
+group and the Basin form a tree. Otherwise each upstream neighbor connects to each
+downstream neighbor that the links of the group lead to.
 """
 
-from collections.abc import Callable, Collection
+from collections.abc import Collection
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from qgis.core import QgsFeatureRequest
 
 from ribasim_qgis.core.geopackage import sqlite3_cursor
-
-NodeTypeGetter = Callable[[int], str | None]
+from ribasim_qgis.core.netcdf import read_netcdf_variable
 
 JUNCTION_STATIC_TABLE = "Junction / static"
 
+# Nodes with one inflow and one outflow link, which pass on the water they receive.
+CONNECTOR_NODE_TYPES: frozenset[str] = frozenset(
+    {
+        "TabulatedRatingCurve",
+        "Outlet",
+        "Pump",
+        "LinearResistance",
+        "ManningResistance",
+    }
+)
 
-def read_junctions_in_static(gpkg_path: Path) -> frozenset[int]:
-    """Return the IDs of the Junctions with rows in the ``Junction / static`` table."""
+
+def read_junctions_in_static(
+    gpkg_path: Path, netcdf_path: Path | None = None
+) -> frozenset[int]:
+    """Return the IDs of the Junctions with rows in the ``Junction / static`` table.
+
+    Like the core, the table is read from *netcdf_path* if the TOML names a file for it,
+    and otherwise from the GeoPackage.
+    """
+    if netcdf_path is not None:
+        node_ids = read_netcdf_variable(netcdf_path, "node_id")
+        return frozenset() if node_ids is None else frozenset(map(int, node_ids))
     if not gpkg_path.is_file():
         return frozenset()
     with sqlite3_cursor(gpkg_path) as cursor:
@@ -33,92 +59,205 @@ def read_junctions_in_static(gpkg_path: Path) -> frozenset[int]:
         return frozenset(int(row[0]) for row in cursor.fetchall())
 
 
-def junction_neighbours(
-    link_layer: Any, junction_id: int
-) -> list[tuple[int, int, int]]:
-    """Return ``(far_node_id, link_id, inflow_sign)`` for the links of a Junction.
+@dataclass(frozen=True)
+class FlowLink:
+    """A flow link, drawn from ``from_node_id`` to ``to_node_id``."""
 
-    *inflow_sign* is ``+1`` when positive flow on the link means flow towards
-    *junction_id*, and ``-1`` otherwise.
+    link_id: int
+    from_node_id: int
+    to_node_id: int
+
+    def other(self, node_id: int) -> int:
+        """Return the node at the other end of the link."""
+        return self.to_node_id if node_id == self.from_node_id else self.from_node_id
+
+    def inflow_sign(self, node_id: int) -> int:
+        """Return ``1`` if positive flow on the link goes towards *node_id*, else ``-1``."""
+        return 1 if node_id == self.to_node_id else -1
+
+
+@dataclass(frozen=True)
+class JunctionGroup:
+    """A connected group of Junctions without rows in ``Junction / static``."""
+
+    junctions: frozenset[int]
+    basins: frozenset[int]
+
+    @property
+    def basin(self) -> int | None:
+        """Return the Basin of the group, if it has exactly one."""
+        return next(iter(self.basins)) if len(self.basins) == 1 else None
+
+
+class FlowGraph:
+    """The flow links and node types of a model, read from the QGIS layers when needed.
+
+    What is read is kept, so use a new instance to see changes in the layers.
     """
-    expr = f'"from_node_id" = {int(junction_id)} OR "to_node_id" = {int(junction_id)}'
-    request = QgsFeatureRequest().setFilterExpression(expr)
-    # Materialise the iterator so nested getFeatures calls on the same
-    # layer don't interfere with the outer iteration.
-    neighbours: list[tuple[int, int, int]] = []
-    for feat in link_layer.getFeatures(request):
-        lid = int(feat["link_id"])
-        from_id = int(feat["from_node_id"])
-        to_id = int(feat["to_node_id"])
-        if from_id == junction_id:
-            neighbours.append((to_id, lid, -1))
-        else:
-            neighbours.append((from_id, lid, 1))
-    return neighbours
 
+    def __init__(
+        self,
+        node_layer: Any,
+        link_layer: Any,
+        junctions_in_static: Collection[int] = frozenset(),
+    ):
+        self._node_layer = node_layer
+        self._link_layer = link_layer
+        self.junctions_in_static = frozenset(junctions_in_static)
+        self._node_types: dict[int, str | None] = {}
+        self._links: dict[int, tuple[FlowLink, ...]] = {}
+        self._groups: dict[int, JunctionGroup] = {}
 
-def junction_side(
-    link_layer: Any,
-    node_type_of: NodeTypeGetter,
-    junction_id: int,
-    skipped_link_id: int | None = None,
-    junctions_in_static: Collection[int] = frozenset(),
-) -> tuple[set[int], list[tuple[int, int, int]]]:
-    """Walk the Junctions reachable from *junction_id* without *skipped_link_id*.
+    def _flow_links(self, expression: str) -> tuple[FlowLink, ...]:
+        request = QgsFeatureRequest().setFilterExpression(
+            f"({expression}) AND \"link_type\" = 'flow'"
+        )
+        return tuple(
+            FlowLink(
+                int(feat["link_id"]),
+                int(feat["from_node_id"]),
+                int(feat["to_node_id"]),
+            )
+            for feat in self._link_layer.getFeatures(request)
+        )
 
-    Returns the Basins next to these Junctions, and the other neighbors as
-    ``(node_id, link_id, inflow_sign)``, see :func:`junction_neighbours`.
-    The walk stops at the Junctions in *junctions_in_static*, which are other
-    neighbors. Returns nothing if *junction_id* itself is one of them.
-    """
-    basins: set[int] = set()
-    others: list[tuple[int, int, int]] = []
-    if junction_id in junctions_in_static:
+    def node_type(self, node_id: int) -> str | None:
+        """Return the node type, or ``None`` if the node is not found."""
+        if node_id not in self._node_types:
+            request = QgsFeatureRequest().setFilterExpression(
+                f'"node_id" = {int(node_id)}'
+            )
+            node_type = None
+            for feat in self._node_layer.getFeatures(request):
+                node_type = str(feat["node_type"])
+                break
+            self._node_types[node_id] = node_type
+        return self._node_types[node_id]
+
+    def links(self, node_id: int) -> tuple[FlowLink, ...]:
+        """Return the flow links of a node."""
+        if node_id not in self._links:
+            self._links[node_id] = self._flow_links(
+                f'"from_node_id" = {int(node_id)} OR "to_node_id" = {int(node_id)}'
+            )
+        return self._links[node_id]
+
+    def link(self, link_id: int) -> FlowLink | None:
+        """Return a flow link, or ``None`` if it is not found."""
+        links = self._flow_links(f'"link_id" = {int(link_id)}')
+        return links[0] if links else None
+
+    def is_plain_junction(self, node_id: int) -> bool:
+        """Return whether the core removes this node: a Junction without rows."""
+        return (
+            node_id not in self.junctions_in_static
+            and self.node_type(node_id) == "Junction"
+        )
+
+    def junction_group(self, junction_id: int) -> JunctionGroup:
+        """Return the group of Junctions without rows that *junction_id* belongs to."""
+        if junction_id not in self._groups:
+            junctions = frozenset(self._walk(junction_id, None))
+            basins, _ = self.behind(junction_id, None)
+            group = JunctionGroup(junctions, frozenset(basins))
+            for member in junctions:
+                self._groups[member] = group
+        return self._groups[junction_id]
+
+    def _walk(self, junction_id: int, skipped: FlowLink | None) -> list[int]:
+        """Return the Junctions without rows reachable from *junction_id*.
+
+        The walk does not cross *skipped*, and ignores the direction of the links.
+        """
+        junctions = [junction_id]
+        visited = {junction_id}
+        stack = [junction_id]
+        while stack:
+            node_id = stack.pop()
+            for link in self.links(node_id):
+                far_node = link.other(node_id)
+                if (
+                    link != skipped
+                    and far_node not in visited
+                    and self.is_plain_junction(far_node)
+                ):
+                    junctions.append(far_node)
+                    visited.add(far_node)
+                    stack.append(far_node)
+        return junctions
+
+    def behind(
+        self, junction_id: int, skipped: FlowLink | None
+    ) -> tuple[set[int], list[tuple[int, FlowLink]]]:
+        """Walk the Junctions without rows reachable from *junction_id*.
+
+        The walk does not cross *skipped*. Returns the Basins next to these Junctions,
+        and the links to their other neighbors, each with the Junction it starts at.
+        """
+        basins: set[int] = set()
+        others: list[tuple[int, FlowLink]] = []
+        if not self.is_plain_junction(junction_id):
+            return basins, others
+        junctions = self._walk(junction_id, skipped)
+        members = set(junctions)
+        for node_id in junctions:
+            for link in self.links(node_id):
+                far_node = link.other(node_id)
+                if link == skipped or far_node in members:
+                    continue
+                if self.node_type(far_node) == "Basin":
+                    basins.add(far_node)
+                else:
+                    others.append((node_id, link))
         return basins, others
-    visited = {junction_id}
-    stack = [junction_id]
-    while stack:
-        for neighbour in junction_neighbours(link_layer, stack.pop()):
-            far_node, lid, _ = neighbour
-            if lid == skipped_link_id:
-                continue
-            far_type = node_type_of(far_node)
-            if far_type == "Basin":
-                basins.add(far_node)
-            elif far_type != "Junction" or far_node in junctions_in_static:
-                others.append(neighbour)
-            elif far_node not in visited:
-                visited.add(far_node)
-                stack.append(far_node)
-    return basins, others
 
+    def link_towards_basin(self, junction_id: int) -> FlowLink | None:
+        """Return the link of a Junction that leads to the Basin of its group.
 
-def link_towards_basin(
-    link_layer: Any,
-    node_type_of: NodeTypeGetter,
-    junction_id: int,
-    junctions_in_static: Collection[int] = frozenset(),
-) -> int | None:
-    """Return the link of a Junction that leads to the Basin of its group.
-
-    Returns ``None`` if the connected group of Junctions does not have exactly one
-    Basin as a neighbor, or if the Junction is in *junctions_in_static*.
-    Otherwise the group is a tree, so there is one such link.
-    """
-    basins, _ = junction_side(
-        link_layer, node_type_of, junction_id, None, junctions_in_static
-    )
-    if len(basins) != 1:
+        Returns ``None`` for a Junction with rows, and if the group of the Junction does
+        not have exactly one Basin as a neighbor. Otherwise the group is a tree, so there
+        is one such link.
+        """
+        if not self.is_plain_junction(junction_id):
+            return None
+        basin = self.junction_group(junction_id).basin
+        if basin is None:
+            return None
+        for link in self.links(junction_id):
+            far_node = link.other(junction_id)
+            if far_node == basin or (
+                self.is_plain_junction(far_node) and self.behind(far_node, link)[0]
+            ):
+                return link
         return None
-    for far_node, lid, _ in junction_neighbours(link_layer, junction_id):
-        far_type = node_type_of(far_node)
-        if far_type == "Basin":
-            return lid
-        if (
-            far_type == "Junction"
-            and junction_side(
-                link_layer, node_type_of, far_node, lid, junctions_in_static
-            )[0]
-        ):
-            return lid
-    return None
+
+
+# Nodes whose flow rate in `node_flow_links` is their inflow.
+INFLOW_RATE_NODE_TYPES: frozenset[str] = frozenset({"UserDemand", "Terminal"})
+# Nodes that have a flow rate in `node_flow_links`.
+FLOW_RATE_NODE_TYPES: frozenset[str] = (
+    CONNECTOR_NODE_TYPES | INFLOW_RATE_NODE_TYPES | {"Junction", "FlowBoundary"}
+)
+
+
+def node_flow_links(graph: FlowGraph, node_id: int) -> list[FlowLink]:
+    """Return the links whose flows add up to the flow rate of a node.
+
+    This is the flow rate as QGIS plots it. A connector node or FlowBoundary has the flow
+    of its outflow link. A Junction has the flow rate the core gives it: the flow on the
+    link that leads to the Basin of its group, or else the sum of its inflow links. For
+    a UserDemand or Terminal it is the sum of its inflow links, so the abstraction of a
+    UserDemand. Returns an empty list for other nodes.
+    """
+    node_type = graph.node_type(node_id)
+    links = graph.links(node_id)
+    inflow_links = [link for link in links if link.to_node_id == node_id]
+    if node_type in CONNECTOR_NODE_TYPES or node_type == "FlowBoundary":
+        outflow_links = [link for link in links if link.from_node_id == node_id]
+        return outflow_links[:1]
+    if node_type == "Junction":
+        towards_basin = graph.link_towards_basin(node_id)
+        return [towards_basin] if towards_basin is not None else inflow_links
+    if node_type in INFLOW_RATE_NODE_TYPES:
+        return inflow_links
+    return []
