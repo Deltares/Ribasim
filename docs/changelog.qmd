@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
-- QGIS: Plot the fractional flow of a selected node, such as a Pump or a Junction.
+- QGIS: Plot the fractional flow of a selected node, such as a Pump or a Junction. [#3446](https://github.com/Deltares/Ribasim/pull/3446)
 - Add `[logging] progress` TOML option and `RIBASIM_PROGRESS` environment variable, which takes precedence, to disable the progress bar, which avoids repeated progress lines in logs and documentation. [#3111](https://github.com/Deltares/Ribasim/issues/3111)
 
 ### Changed
@@ -14,7 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Allocation: flow no longer switches between equally good routes from one timestep to the next. A last objective keeps the flows of allocation controlled nodes close to those of the previous timestep. [#3399](https://github.com/Deltares/Ribasim/issues/3399)
 
 ### Fixed
-- QGIS: The fractional flow plot follows the water through Junctions with rows in `Junction / static`, also into Junctions without rows, and takes the tracers of FlowBoundary, LevelBoundary and UserDemand nodes into account. Without concentration results it says that it needs them, instead of that it could not find a Basin.
+- QGIS: The fractional flow plot follows the water through Junctions with rows in `Junction / static`, also into Junctions without rows, and takes the tracers of FlowBoundary, LevelBoundary and UserDemand nodes into account. Without concentration results it says that it needs them, instead of that it could not find a Basin. [#3446](https://github.com/Deltares/Ribasim/pull/3446)
 
 ## [v2026.2.0-rc1] - 2026-11-11
 
