@@ -476,7 +476,7 @@ window.Quarto = {
 <section id="allowed-connectivity" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> Allowed connectivity</h1>
 <p>The diagram below shows which node types are allowed directly upstream (left) and downstream (right) of this node. This is a connectivity illustration, not a valid simulation model.</p>
-<div id="8025256a" class="cell" data-execution_count="1">
+<div id="44cbb8f3" class="cell" data-execution_count="1">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="op">%</span>run ..<span class="op">/</span>..<span class="op">/</span>..<span class="op">/</span>utils<span class="op">/</span>plot_node_connectivity.py</span>
@@ -500,7 +500,7 @@ window.Quarto = {
 <p>This table is optional. A Junction that isn’t in the table only connects its neighbors, see <a href="#equations">Equations</a>. A Junction that is in the table divides the flow it receives.</p>
 <p>The fractions are defined per link from the Junction <code>node_id</code> to the node <code>to_node_id</code>. All outflow links of the Junction have a fraction, except the link to a UserDemand node, which gets the abstraction instead. A single outflow link gets the whole flow, so a row with a fraction of 1 or no fraction is enough for a Junction with one outflow, for instance to supply a UserDemand from it.</p>
 <p>The <code>to_node_id</code> can be a Junction that isn’t in the table. The row then applies to the node that Junction passes the flow on to, or to the Basin of its group. Such a Junction cannot divide the flow it receives from a Junction in the table, since nothing says how: add it to the table as well, or name the nodes downstream of it directly.</p>
-<div id="d61621dc" class="cell" data-execution_count="2">
+<div id="69dc4874" class="cell" data-execution_count="2">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="op">%</span>run ..<span class="op">/</span>..<span class="op">/</span>gen_docs_table.py</span>
