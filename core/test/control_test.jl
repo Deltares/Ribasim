@@ -455,7 +455,7 @@ end
 
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/pump_discrete_control/ribasim.toml")
-    @test ispath(toml_path) skip = true
+    @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
     (; p, u, t) = model.integrator
     (; pump) = p.p_independent
