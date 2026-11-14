@@ -177,3 +177,56 @@ end
     @test table_name(table_type) === :concentration_external
     @test sql_table_name(table_type) === "Basin / concentration_external"
 end
+
+@testitem "Config validation" begin
+    using Dates: DateTime
+    using Ribasim: Config, valid_config
+
+    toml_path = normpath(@__DIR__, "data", "config_test.toml")
+    @test valid_config(Config(toml_path))
+
+    for (kwargs, message) in (
+            ((; endtime = DateTime(2019)), r"starttime must be before the endtime"),
+            (
+                (; solver_algorithm = "Rosenbrock23", solver_reduced_implicit_solve = true),
+                r"reduced implicit solve is not supported by solver algorithm Rosenbrock23, only by .*QNDF",
+            ),
+            ((; allocation_intervention_interval = 0.0), r"intervention_interval must be positive and finite"),
+            ((; allocation_intervention_interval = Inf), r"intervention_interval must be positive and finite"),
+            ((; allocation_dt = -1.0), r"fixed allocation timestep dt must be positive"),
+        )
+        config = Config(toml_path; kwargs...)
+        @test !(@test_logs (:error, message) match_mode = :any valid_config(config))
+    end
+
+    # The TOML itself is validated when it is read
+    @test_logs (:error, r"Given solver algorithm DoesntExist not supported") match_mode = :any @test_throws ErrorException Config(
+        toml_path; solver_algorithm = "DoesntExist"
+    )
+
+    # An invalid config and a missing database are caught before the model is read
+    dir = mktempdir()
+    cp(toml_path, joinpath(dir, "ribasim.toml"))
+    config = Config(joinpath(dir, "ribasim.toml"); endtime = DateTime(2019))
+    @test_logs (:error,) match_mode = :any @test_throws "Invalid configuration in TOML." Ribasim.Model(config)
+    @test_logs (:error, "Database file not found") match_mode = :any @test_throws "Database file not found" Ribasim.Model(
+        joinpath(dir, "ribasim.toml")
+    )
+end
+
+@testitem "Logging verbosity" begin
+    using Logging: Debug, Info, Warn, Error
+
+    source = read(normpath(@__DIR__, "data", "config_test.toml"), String)
+    function verbosity(level)
+        toml_path = joinpath(mktempdir(), "ribasim.toml")
+        write(toml_path, source * "\n[logging]\nverbosity = \"$level\"\n")
+        return Ribasim.Config(toml_path).logging.verbosity
+    end
+
+    @test verbosity("debug") == Debug
+    @test verbosity("info") == Info
+    @test verbosity("warn") == Warn
+    @test verbosity("error") == Error
+    @test_throws "verbosity trace not supported" verbosity("trace")
+end

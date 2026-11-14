@@ -476,3 +476,192 @@ end
     @test haskey(lookup, Int32(5))
     @test length(lookup[Int32(5)]) == 1
 end
+
+@testitem "Data in both or neither of the Static and Time tables" setup = [ModelEdit] begin
+    using .ModelEdit: edited_model, error_messages
+
+    toml_path = edited_model("outlet", """UPDATE "Outlet / time" SET node_id = 2""")
+    messages = error_messages(toml_path, "Errors encountered when parsing Outlet data.")
+    @test issubset(
+        [
+            "flow_rate for Outlet #2 was supplied in both Static and Time tables.",
+            "flow_rate for Outlet #4 was supplied in neither Static nor Time table.",
+            "Data for Outlet #2 found in both Static and Time tables.",
+        ],
+        messages,
+    )
+
+    toml_path = edited_model("cyclic_time", """DELETE FROM "LevelBoundary / time" """)
+    messages = error_messages(toml_path, "Errors encountered when parsing LevelBoundary data.")
+    @test messages == ["Data for LevelBoundary #3 found in neither Static nor Time table."]
+
+    toml_path = edited_model(
+        "tabulated_rating_curve",
+        """UPDATE "TabulatedRatingCurve / time" SET node_id = 2""",
+    )
+    messages = error_messages(toml_path, "Errors occurred when parsing TabulatedRatingCurve data.")
+    # Reported for the rating curves and for each of the other parameters
+    @test unique(messages) == [
+        "Data for TabulatedRatingCurve #2 found in both Static and Time tables.",
+        "Data for TabulatedRatingCurve #3 found in neither Static nor Time table.",
+    ]
+
+    toml_path = edited_model("minimal_subnetwork", """UPDATE "UserDemand / time" SET node_id = 5""")
+    messages = error_messages(toml_path, "Errors encountered when parsing UserDemand data.")
+    @test unique(messages) == [
+        "Data for UserDemand #5 found in both Static and Time tables.",
+        "Data for UserDemand #6 found in neither Static nor Time table.",
+    ]
+end
+
+@testitem "Invalid node parameters" setup = [ModelEdit] begin
+    using .ModelEdit: edited_model, error_messages
+
+    # (model, SQL statement, thrown error, logged error)
+    for (model_name, statement, error_message, message) in (
+            (
+                "flow_boundary_terminal",
+                """UPDATE "FlowBoundary / static" SET flow_rate = -1.0""",
+                "Errors encountered when parsing FlowBoundary data.",
+                "Currently negative flow rates for FlowBoundary are not supported.",
+            ),
+            (
+                "tabulated_rating_curve",
+                """DELETE FROM "TabulatedRatingCurve / time" WHERE fid >= 6""",
+                "Errors occurred when parsing TabulatedRatingCurve data.",
+                "For TabulatedRatingCurve #3 with cyclic_time the first and last rating curves are not equal.",
+            ),
+            (
+                "trivial",
+                """UPDATE "Basin / subgrid" SET subgrid_level = 0.0 WHERE subgrid_id = 11""",
+                "Errors encountered when parsing Basin subgrid data.",
+                "Invalid Basin static subgrid table for 6.",
+            ),
+            (
+                "two_basin",
+                """UPDATE "Basin / subgrid_time" SET subgrid_level = 0.0""",
+                "Errors encountered when parsing Basin subgrid data.",
+                "Invalid Basin time subgrid table for 3, time = 2020-01-01T00:00:00.",
+            ),
+            (
+                "two_basin",
+                """UPDATE "Basin / subgrid_time" SET node_id = 99""",
+                "Errors encountered when parsing Basin subgrid data.",
+                "The node_id of the Basin / subgrid_time does not exist.",
+            ),
+            (
+                "basic",
+                """UPDATE "Basin / concentration_external" SET concentration = -1.0""",
+                "Errors encountered when parsing Basin concentration data.",
+                "Found negative concentration(s) in `Basin / concentration_external`.",
+            ),
+            (
+                "multi_level_demand",
+                """UPDATE "LevelDemand / time" SET min_level = 2.0 WHERE demand_priority = 3""",
+                "Errors encountered when parsing LevelDemand data.",
+                "The minimum and maximum levels for subsequent LevelDemand demand priorities do not define nested windows",
+            ),
+        )
+        messages = error_messages(edited_model(model_name, statement), error_message)
+        @test any(occursin(message, m) for m in messages)
+    end
+end
+
+@testitem "Invalid control tables" setup = [ModelEdit] begin
+    using .ModelEdit: edited_model, error_messages
+
+    # (model, SQL statement, thrown error, logged error)
+    for (model_name, statement, error_message, message) in (
+            (
+                "flow_condition",
+                """UPDATE "DiscreteControl / condition" SET node_id = 99""",
+                "Problems encountered when parsing DiscreteControl variables and conditions.",
+                "Condition data references unknown DiscreteControl node.",
+            ),
+            (
+                "flow_condition",
+                """UPDATE "DiscreteControl / condition" SET compound_variable_id = 2""",
+                "Problems encountered when parsing DiscreteControl variables and conditions.",
+                "compound_variable_id 2 for DiscreteControl #5 in condition table but not in variable table",
+            ),
+            (
+                "junction_control",
+                """UPDATE "DiscreteControl / variable" SET variable = 'level'""",
+                "Invalid `listen_node_id`.",
+                "Can only listen to the flow_rate of a Junction node",
+            ),
+            (
+                "outlet_continuous_control",
+                """DELETE FROM "ContinuousControl / function" WHERE fid = 0""",
+                "Errors encountered when parsing ContinuousControl data.",
+                "There must be at least 2 data points in a ContinuousControl function.",
+            ),
+            (
+                "outlet_continuous_control",
+                """UPDATE "ContinuousControl / function" SET controlled_variable = 'foo' WHERE fid = 0""",
+                "Errors encountered when parsing ContinuousControl data.",
+                "There must be a unique 'controlled_variable' in a ContinuousControl function.",
+            ),
+        )
+        messages = error_messages(edited_model(model_name, statement), error_message)
+        @test any(occursin(message, m) for m in messages)
+    end
+
+    # The checks on the parsed DiscreteControl nodes fail the model construction
+    messages = error_messages(
+        edited_model("invalid_discrete_control"),
+        "Invalid discrete control state definition(s).",
+    )
+    @test length(messages) == 5
+end
+
+@testitem "Invalid Junction fractions" setup = [ModelEdit] begin
+    using .ModelEdit: edited_model, error_messages
+
+    # Junction #6 has a single outflow link that the flow is divided over, to Junction #25
+    for (statement, message) in (
+            (
+                """UPDATE "Junction / static" SET to_node_id = 3 WHERE fid = 0""",
+                "Junction fractions can only be given for flow links out of the Junction node, except the link to a UserDemand node.",
+            ),
+            (
+                """UPDATE "Junction / static" SET fraction = 1.5 WHERE fid = 0""",
+                "Junction fractions must be between 0 and 1 (inclusive).",
+            ),
+            (
+                """UPDATE "Junction / static" SET fraction = 0.5 WHERE fid = 0""",
+                "The fractions of the outflow links of Junction #6 must sum to 1 (got 0.5).",
+            ),
+        )
+        toml_path = edited_model("junction_fraction", statement)
+        messages = error_messages(toml_path, "Errors encountered when parsing Junction data.")
+        @test message in messages
+    end
+end
+
+@testitem "Invalid model structure" setup = [ModelEdit] begin
+    using .ModelEdit: edited_model, error_messages
+
+    toml_path = edited_model(
+        "trivial",
+        "INSERT INTO Link (link_id, from_node_id, to_node_id, link_type) VALUES (102, 6, 2147483647, 'flow')",
+    )
+    @test error_messages(toml_path, "Invalid link(s) found.") ==
+        ["Cannot connect a basin to a terminal."]
+
+    messages = error_messages(edited_model("invalid_no_basin"), "Model has no state.")
+    @test occursin("Models without states are unsupported.", only(messages))
+
+    # Tables outside the database must be NetCDF files
+    config = Ribasim.Config(edited_model("trivial"); basin_time = "basin-time.csv")
+    @test isempty(error_messages(config, "Only '.nc' is supported."))
+
+    toml_path = edited_model(
+        "flow_boundary_terminal",
+        """ALTER TABLE "Pump / static" RENAME COLUMN node_id TO id""",
+    )
+    @test isempty(error_messages(toml_path, "Missing required column node_id for table"))
+
+    toml_path = edited_model("flow_boundary_terminal", """UPDATE "Pump / static" SET flow_rate = NULL""")
+    @test isempty(error_messages(toml_path, "Missing values in required column flow_rate for table"))
+end

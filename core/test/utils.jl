@@ -189,3 +189,46 @@ macro tcstatistic(key, value)
         return esc(:(println($key, '=', $value)))
     end
 end
+
+@testmodule ModelEdit begin
+    using Ribasim
+    using Logging
+    using Test
+    import SQLite
+
+    """
+    Copy a test model to a temporary directory and run the SQL statements on its database,
+    to test invalid input without adding a test model for each case. Returns the path of
+    the copied TOML.
+    """
+    function edited_model(model_name::String, statements::String...)::String
+        model_dir = normpath(@__DIR__, "../../generated_testmodels", model_name)
+        @assert ispath(model_dir)
+        dir = joinpath(mktempdir(), model_name)
+        cp(model_dir, dir)
+        toml_path = joinpath(dir, "ribasim.toml")
+        db = SQLite.DB(Ribasim.database_path(Ribasim.Config(toml_path)))
+        try
+            # The GeoPackage triggers on the Node and Link tables need SpatiaLite functions
+            triggers = SQLite.DBInterface.execute(db, "SELECT name FROM sqlite_master WHERE type = 'trigger'")
+            for name in [row.name for row in triggers]
+                SQLite.execute(db, "DROP TRIGGER \"$name\"")
+            end
+            foreach(statement -> SQLite.execute(db, statement), statements)
+        finally
+            close(db)
+        end
+        return toml_path
+    end
+
+    "Construct the model and return the error messages logged during construction."
+    function error_messages(config::Ribasim.Config, error_message)::Vector{String}
+        logger = TestLogger()
+        with_logger(logger) do
+            @test_throws error_message Ribasim.Model(config)
+        end
+        return [string(log.message) for log in logger.logs if log.level == Logging.Error]
+    end
+    error_messages(toml_path::String, error_message) =
+        error_messages(Ribasim.Config(toml_path), error_message)
+end

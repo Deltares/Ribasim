@@ -132,3 +132,58 @@ end
     @test Ribasim.state_label(u, node_id, 4) == "PidControl #9 (integral)"
     @test Ribasim.state_label(u, node_id, 5) == "state 5"
 end
+
+@testitem "Array interface" begin
+    using Ribasim.CVectors: CVector, PtrArray, getdata, getaxes
+
+    data = [1.0, 2.0, 3.0]
+    x = CVector(data, (; a = 1:1, b = 2:3))
+
+    @test x[2:3] == [2.0, 3.0]
+    x[2:3] = [5.0, 6.0]
+    @test data == [1.0, 5.0, 6.0]
+
+    @test Base.elsize(x) == sizeof(Float64)
+    @test strides(x) == (1,)
+    @test stride(x, 1) == 1
+
+    @test collect(values(x)) == [[1.0], [5.0, 6.0]]
+    @test collect(pairs(x)) == [:a => [1.0], :b => [5.0, 6.0]]
+
+    # Solvers construct work vectors from the type only; these keep the axes type
+    y = typeof(x)(undef, 5)
+    @test y isa typeof(x)
+    @test length(y) == 5
+    @test isempty(y.a) && isempty(y.b)
+
+    GC.@preserve data begin
+        ptr = PtrArray(x)
+        @test ptr isa CVector
+        @test getaxes(ptr) === getaxes(x)
+        @test ptr.b == [5.0, 6.0]
+    end
+end
+
+@testitem "Component not found" begin
+    using Ribasim.CVectors: CVector
+
+    x = CVector([1.0, 2.0, 3.0], (; a = (; b = (; c = 1:3))))
+    @test_throws "CVector has no component named :b, available components are (:a,), but it exists at x.a.b" x.b
+    @test_throws "but it exists at x.a.b.c" x.c
+    @test_throws r"available components are \(:a,\)$" x.d
+end
+
+@testitem "Show" begin
+    using Ribasim.CVectors: CVector
+
+    x = CVector([1.0, 2.0, 3.0], (; a = 1, nested = (; b = 2:3)))
+    @test repr(x) == "CVector(a = 1.0, nested = CVector(b = [2.0, 3.0]))"
+    @test repr(MIME("text/plain"), x) == summary(x) * "\n  a: 1.0\n  nested:\n    b: [2.0, 3.0]"
+end
+
+@testitem "Axes type" begin
+    using Ribasim.CVectors: cvector_axes_type
+
+    @test cvector_axes_type((:a, :b)) === @NamedTuple{a::UnitRange{Int}, b::UnitRange{Int}}
+    @test cvector_axes_type((:a,); range_type = Int) === @NamedTuple{a::Int}
+end

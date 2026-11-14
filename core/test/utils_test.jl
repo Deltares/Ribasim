@@ -212,6 +212,11 @@ end
     @test logger.logs[1].message ==
         "The initial level (-1.0) of Basin #1 is below the bottom (0.0)."
 
+    # There must be one level per Basin
+    @test_logs (:error, "Unexpected 'Basin / state' length.") @test_throws "Encountered errors while parsing the initial levels of basins." Ribasim.get_storages_from_levels(
+        basin, Float64[],
+    )
+
     # Converting from storages to levels and back should return the same storages
     storages = range(0.0, 2 * storage_to_level.t[end], 50)
     levels = [Ribasim.get_level_from_storage(basin, 1, s) for s in storages]
