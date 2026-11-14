@@ -108,7 +108,7 @@ Which of these the solver actually uses depends on the algorithm:
 
 The Jacobian is prepared in one of two forms, set by `reduced_implicit_solve`. This is `true` by default for the implicit algorithms with a Newton solver, and always `false` for Rosenbrock and explicit algorithms.
 
-With `reduced_implicit_solve = true`, `RibasimJacobianEvaluationCache` prepares three Jacobians:
+With `reduced_implicit_solve = true`, `RibasimJacobianEvaluationCache` prepares three Jacobians, of closures that call the same steps as `water_balance!` (`formulate_flows_before_continuous_control!`, `formulate_continuous_control_compound_variables!` and `formulate_junction_flow!`), each prepared by the `SubJacobian` constructor:
 
 - `∂flow_∂flow_input`: the Jacobian of the flow formulation (`formulate_flows_closure!`) with respect to the input vector `flow_input = (storage_uplink, storage_downlink, pid_integral, continuous_control_compound)`. Its output is the flow rates and the PID errors. This is $\partial\mathbf{q}/\partial\mathbf{v}$ from the [concept documentation](/concept/numerics.qmd#structure-of-the-right-hand-side);
 - `∂continuous_control_compound_∂continuous_control_input`: the Jacobian of the ContinuousControl compound variables with respect to `(storage, flow)`;
