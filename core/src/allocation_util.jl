@@ -592,13 +592,6 @@ function get_primary_network(allocation_models::Vector{AllocationModel})::Alloca
     error("Queries primary network while no primary network found in allocation models.")
 end
 
-function delete_flow!(
-        allocation_model::AllocationModel
-    )::Nothing
-    (; problem) = allocation_model
-    return JuMP.delete(problem, problem[:flow])
-end
-
 """
 Time integrals over an intervention interval of the allocation results that are passed to
 the physical layer.

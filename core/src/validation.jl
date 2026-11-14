@@ -1083,6 +1083,7 @@ end
 Validates the initialisation of basins. Each basin at least need a level-area or level-storage relationship.
 We recommend to initialise all basins in the same way, which can be level-area, level-storage or both.
 If basins diverge from this recommendation we log info about it for the modeler.
+Returns whether the profiles are valid.
 """
 function validate_consistent_basin_initialization(
         profiles::StructVector{Schema.Basin.Profile},
@@ -1157,7 +1158,7 @@ function validate_consistent_basin_initialization(
         end
     end
 
-    return errors
+    return !errors
 end
 
 function invalid_nested_interpolation_times(

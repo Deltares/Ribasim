@@ -536,8 +536,7 @@ end
         area = areas_valid,
         storage = skipped,
     )
-    error = validate_consistent_basin_initialization(profiles_repeated_levels)
-    @test error
+    @test !validate_consistent_basin_initialization(profiles_repeated_levels)
 
     # Profile with non-increasing storage should give an error
     levels_valid = [0, 1, 2, 3, 4, 5]
@@ -549,8 +548,7 @@ end
         area = skipped,
         storage = storage_non_increasing,
     )
-    error = validate_consistent_basin_initialization(profiles_non_increasing_storage)
-    @test error
+    @test !validate_consistent_basin_initialization(profiles_non_increasing_storage)
 
     # Profile with zero area at the bottom should give an error
     areas_with_zero = [0, 1, 2, 3, 4, 5]
@@ -561,8 +559,7 @@ end
         area = areas_with_zero,
         storage = skipped,
     )
-    error = validate_consistent_basin_initialization(profiles_zero_area)
-    @test error
+    @test !validate_consistent_basin_initialization(profiles_zero_area)
 
     # Profile with no storage and area should error
     profiles_missing_data = StructVector{Schema.Basin.Profile}(;
@@ -571,8 +568,7 @@ end
         area = skipped,
         storage = skipped,
     )
-    error = validate_consistent_basin_initialization(profiles_missing_data)
-    @test error
+    @test !validate_consistent_basin_initialization(profiles_missing_data)
 end
 
 @testitem "nested interpolations" begin

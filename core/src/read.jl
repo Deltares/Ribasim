@@ -1037,7 +1037,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
 
     profiles = load_structvector(db, config, Schema.Basin.Profile)
 
-    errors |= validate_consistent_basin_initialization(profiles)
+    errors |= !validate_consistent_basin_initialization(profiles)
     errors && error("Errors encountered when parsing Basin data.")
 
     areas, levels, storage, node_ids = interpolate_basin_profile!(basin, profiles)

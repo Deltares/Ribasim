@@ -1023,8 +1023,6 @@ node_id: node ID of the Terminal node
     node_id::Vector{NodeID}
 end
 
-@enumx CacheType flow_rate_pump flow_rate_outlet basin_level basin_storage
-
 """
 A cache for intermediate results in `water_balance!` which depend only on the time `t`. A second version of this
 this cache is required for automatic differentiation (for Rosenbrock methods), where e.g. ForwardDiff requires these vectors
@@ -1056,26 +1054,6 @@ const TimeDependentCache{T} = @NamedTuple{
     user_demand::@NamedTuple{current_demand::Vector{T}, current_return_factor::Vector{T}},
     t_prev_call::Vector{T},
 } where {T}
-
-"""
-Get one of the vectors of the CurrentBasinProperties based on the passed type.
-"""
-function get_cache_vector(
-        current_basin_properties::CurrentBasinProperties,
-        type::CacheType.T,
-    )
-    return if type == CacheType.flow_rate_pump
-        current_basin_properties.current_flow_rate_pump
-    elseif type == CacheType.flow_rate_outlet
-        current_basin_properties.current_flow_rate_outlet
-    elseif type == CacheType.basin_level
-        current_basin_properties.current_level
-    elseif type == CacheType.basin_storage
-        current_basin_properties.current_storage
-    else
-        error("Invalid cache type $type passed.")
-    end
-end
 
 @kwdef struct SubVariable
     listen_node_id::NodeID

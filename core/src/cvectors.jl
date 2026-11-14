@@ -181,7 +181,6 @@ _first_index(loc::Int) = loc
 _last_index(loc::AbstractUnitRange{<:Integer}) = last(loc)
 _last_index(loc::NamedTuple) = _last_index(last(values(loc)))
 
-_total_length(loc::AbstractUnitRange{<:Integer}) = length(loc)
 _total_length(loc::NamedTuple) = _last_index(loc) - _first_index(loc) + 1
 
 Base.@constprop :aggressive @inline function Base.getproperty(x::CVector, name::Symbol)
