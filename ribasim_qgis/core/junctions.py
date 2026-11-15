@@ -147,6 +147,15 @@ class FlowGraph:
         links = self._flow_links(f'"link_id" = {int(link_id)}')
         return links[0] if links else None
 
+    def observed_node(self, observation_id: int) -> int | None:
+        """Return the node that an Observation node observes, if any."""
+        request = QgsFeatureRequest().setFilterExpression(
+            f'"from_node_id" = {int(observation_id)} AND "link_type" = \'observation\''
+        )
+        for feat in self._link_layer.getFeatures(request):
+            return int(feat["to_node_id"])
+        return None
+
     def is_plain_junction(self, node_id: int) -> bool:
         """Return whether the core removes this node: a Junction without rows."""
         return (
@@ -232,32 +241,40 @@ class FlowGraph:
         return None
 
 
-# Nodes whose flow rate in `node_flow_links` is their inflow.
-INFLOW_RATE_NODE_TYPES: frozenset[str] = frozenset({"UserDemand", "Terminal"})
-# Nodes that have a flow rate in `node_flow_links`.
-FLOW_RATE_NODE_TYPES: frozenset[str] = (
-    CONNECTOR_NODE_TYPES | INFLOW_RATE_NODE_TYPES | {"Junction", "FlowBoundary"}
-)
+# Nodes with a flow_rate in `node_flow_links`: those whose inflow equals their outflow,
+# and a Terminal, which only has inflow.
+FLOW_RATE_NODE_TYPES: frozenset[str] = CONNECTOR_NODE_TYPES | {
+    "Junction",
+    "FlowBoundary",
+    "Terminal",
+}
 
 
-def node_flow_links(graph: FlowGraph, node_id: int) -> list[FlowLink]:
-    """Return the links whose flows add up to the flow rate of a node.
+def node_flow_links(
+    graph: FlowGraph, node_id: int, variable: str = "flow_rate"
+) -> list[FlowLink]:
+    """Return the links whose flows add up to a flow of a node, as QGIS plots it.
 
-    This is the flow rate as QGIS plots it. A connector node or FlowBoundary has the flow
-    of its outflow link. A Junction has the flow rate the core gives it: the flow on the
-    link that leads to the Basin of its group, or else the sum of its inflow links. For
-    a UserDemand or Terminal it is the sum of its inflow links, so the abstraction of a
-    UserDemand. Returns an empty list for other nodes.
+    The ``inflow_rate`` and ``outflow_rate`` are the flows over the links into and out of
+    the node; for a Basin the Basin results have them instead. The ``flow_rate`` of a
+    connector node or FlowBoundary is the flow of its outflow link, and that of a Terminal
+    its inflow. A Junction has the flow rate the core gives it: the flow on the link that
+    leads to the Basin of its group, or else its inflow. Returns an empty list for a node
+    without the flow.
     """
     node_type = graph.node_type(node_id)
     links = graph.links(node_id)
     inflow_links = [link for link in links if link.to_node_id == node_id]
-    if node_type in CONNECTOR_NODE_TYPES or node_type == "FlowBoundary":
-        outflow_links = [link for link in links if link.from_node_id == node_id]
-        return outflow_links[:1]
+    outflow_links = [link for link in links if link.from_node_id == node_id]
+    if variable == "inflow_rate":
+        return inflow_links
+    if variable == "outflow_rate":
+        return outflow_links
+    if variable != "flow_rate" or node_type not in FLOW_RATE_NODE_TYPES:
+        return []
     if node_type == "Junction":
         towards_basin = graph.link_towards_basin(node_id)
         return [towards_basin] if towards_basin is not None else inflow_links
-    if node_type in INFLOW_RATE_NODE_TYPES:
+    if node_type == "Terminal":
         return inflow_links
-    return []
+    return outflow_links[:1]

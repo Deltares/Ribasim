@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
-- QGIS: Plot the fractional flow of a selected node, such as a Pump or a Junction. [#3446](https://github.com/Deltares/Ribasim/pull/3446)
+- QGIS: Plot the fractional flow of a selected node, such as a Pump or a Junction, and of the flow an Observation node observes, together with the observed flow. [#3446](https://github.com/Deltares/Ribasim/pull/3446)
 - Add `[logging] progress` TOML option and `RIBASIM_PROGRESS` environment variable, which takes precedence, to disable the progress bar, which avoids repeated progress lines in logs and documentation. [#3111](https://github.com/Deltares/Ribasim/issues/3111)
 
 ### Changed

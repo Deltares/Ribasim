@@ -75,7 +75,7 @@ class TracerFlows:
         substances: Collection[str] = (),
         boundary_concentration: Callable[[int], Tracers | None] | None = None,
     ):
-        self._graph = graph
+        self.graph = graph
         self._flow = flow
         self._basin_concentration = basin_concentration
         self._boundary_concentration = boundary_concentration
@@ -86,13 +86,22 @@ class TracerFlows:
 
     def link(self, link_id: int) -> Tracers | None:
         """Return the tracer flows over a link."""
-        link = self._graph.link(link_id)
+        link = self.graph.link(link_id)
         tracers = None if link is None else self._over_link(link)
         return None if tracers is None else self._complete(tracers)
 
-    def node(self, node_id: int) -> tuple[np.ndarray, Tracers] | None:
-        """Return the flow rate of a node and its tracer flows, see `node_flow_links`."""
-        links = node_flow_links(self._graph, node_id)
+    def node(
+        self, node_id: int, variable: str = "flow_rate"
+    ) -> tuple[np.ndarray, Tracers] | None:
+        """Return a flow of a node and its tracer flows, see `node_flow_links`.
+
+        The ``inflow_rate`` and ``outflow_rate`` of a Basin are those of the Basin results.
+        """
+        if variable in ("inflow_rate", "outflow_rate") and (
+            self.graph.node_type(node_id) == "Basin"
+        ):
+            return self._basin_flow(node_id, variable == "inflow_rate")
+        links = node_flow_links(self.graph, node_id, variable)
         if not links:
             return None
         total = np.zeros(self._n_time)
@@ -104,6 +113,49 @@ class TracerFlows:
                 return None
             total += flow
             _add(result, tracers, 1.0)
+        return total, self._complete(result)
+
+    def _basin_flow(
+        self, basin_id: int, inflow: bool
+    ) -> tuple[np.ndarray, Tracers] | None:
+        """Return the inflow or outflow of a Basin and its tracer flows.
+
+        Like the Basin results, these add up the water that the Basin exchanges with each
+        of its neighbors, also through a Junction tree of which it is the only Basin. The
+        water that flows out has the concentrations of the Basin.
+        """
+        basin_concentration = self._checked(self._basin_concentration(basin_id))
+        if basin_concentration is None:
+            return None
+        total = np.zeros(self._n_time)
+        result: Tracers = {}
+        for link in self.graph.links(basin_id):
+            other = link.other(basin_id)
+            if (
+                self.graph.is_plain_junction(other)
+                and self.graph.junction_group(other).basin == basin_id
+            ):
+                exchanges = self.graph.behind(other, link)[1]
+            else:
+                exchanges = [(basin_id, link)]
+            for near_node, exchange_link in exchanges:
+                flow = self._flow_of(exchange_link)
+                if flow is None:
+                    return None
+                # Positive flow towards the near node is water into the Basin
+                inflow_part = flow * exchange_link.inflow_sign(near_node)
+                part = np.maximum(inflow_part if inflow else -inflow_part, 0.0)
+                if not part.any():
+                    continue
+                concentration = (
+                    self._sent_over(exchange_link.other(near_node), exchange_link)
+                    if inflow
+                    else basin_concentration
+                )
+                if concentration is None:
+                    return None
+                total += part
+                _add(result, concentration, part)
         return total, self._complete(result)
 
     def _complete(self, tracers: Tracers) -> Tracers:
@@ -130,8 +182,8 @@ class TracerFlows:
         if flow is None:
             return None
         for node_id in (link.from_node_id, link.to_node_id):
-            if self._graph.is_plain_junction(node_id):
-                group = self._graph.junction_group(node_id)
+            if self.graph.is_plain_junction(node_id):
+                group = self.graph.junction_group(node_id)
                 basin = group.basin
                 if basin is not None and {
                     link.from_node_id,
@@ -161,7 +213,7 @@ class TracerFlows:
         """
         towards_basin = link.to_node_id == basin or (
             link.from_node_id != basin
-            and not self._graph.behind(link.from_node_id, link)[0]
+            and not self.graph.behind(link.from_node_id, link)[0]
         )
         behind_node, sign = (
             (link.from_node_id, 1.0) if towards_basin else (link.to_node_id, -1.0)
@@ -170,7 +222,7 @@ class TracerFlows:
         if basin_concentration is None:
             return None
         result: Tracers = {}
-        for junction_id, neighbor_link in self._graph.behind(behind_node, link)[1]:
+        for junction_id, neighbor_link in self.graph.behind(behind_node, link)[1]:
             flow = self._flow_of(neighbor_link)
             if flow is None:
                 return None
@@ -201,7 +253,7 @@ class TracerFlows:
         return self._sent[key]
 
     def _compute_sent(self, node_id: int, link: FlowLink) -> Tracers | None:
-        graph = self._graph
+        graph = self.graph
         node_type = graph.node_type(node_id)
         if node_type == "Basin":
             return self._checked(self._basin_concentration(node_id))

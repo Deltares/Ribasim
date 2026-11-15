@@ -5,6 +5,7 @@ import json
 import re
 from collections import defaultdict
 from collections.abc import Callable, Collection
+from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
@@ -22,11 +23,7 @@ from qgis.PyQt.QtWidgets import (
     QWidgetAction,
 )
 
-from ribasim_qgis.core.junctions import (
-    FLOW_RATE_NODE_TYPES,
-    INFLOW_RATE_NODE_TYPES,
-    FlowGraph,
-)
+from ribasim_qgis.core.junctions import FLOW_RATE_NODE_TYPES, FlowGraph
 from ribasim_qgis.core.tracer_flow import TracerFlows
 
 # Keep optional imports always bound for static typing.
@@ -149,6 +146,29 @@ VariableTraces = dict[str, Trace]
 # Full plot payload: file -> variable -> traces.
 PlotData = dict[str, dict[str, VariableTraces]]
 
+
+@dataclass
+class _FractionalFlows:
+    """The tracer flows of the selection in the fractional flow plot.
+
+    Attributes
+    ----------
+    time:
+        The times of the tracer flows.
+    tracers:
+        Substance -> tracer flow over time.
+    lines:
+        The flows to draw on top of the tracers, as ``(name, trace, color)``.
+    drawn:
+        The ``(file, variable)`` keys of these lines, to leave out of the extra rows.
+    """
+
+    time: np.ndarray
+    tracers: dict[str, np.ndarray]
+    lines: list[tuple[str, Trace, str]]
+    drawn: set[tuple[str, str]]
+
+
 _PLACEHOLDER_DEFAULT = "Select nodes and/or links on the map to plot timeseries."
 _PLACEHOLDER_WATER_BALANCE = (
     "Basin water balance requires exactly one Basin node selection."
@@ -164,11 +184,25 @@ _PLACEHOLDER_FRACTIONAL_FLOW_NO_CONCENTRATION = (
     "Fractional flow requires concentration results: "
     "enable `experimental.concentration` and run the model."
 )
+_PLACEHOLDER_FRACTIONAL_FLOW_OBSERVATION = (
+    "Fractional flow requires an Observation node that observes "
+    "a flow_rate, inflow_rate or outflow_rate."
+)
 _PLACEHOLDER_FRACTIONAL_FLOW_UNKNOWN = (
     "Fractional flow: could not determine where the water of the selection comes from."
 )
 # The name of a flow trace, like "Link #4" or "Pump #5 flow_rate".
 _FLOW_TRACE_NAME = re.compile(r"(?P<entity>\w+) #(?P<id>\d+)")
+# The flow of a selected node that the fractional flow plot splits, as its flow traces
+# name it.
+_NODE_FLOW_VARIABLE: dict[str, str] = dict.fromkeys(
+    FLOW_RATE_NODE_TYPES, "flow_rate"
+) | {"UserDemand": "inflow_rate", "Terminal": "inflow_rate"}
+_OBSERVATION_FLOW_VARIABLES: tuple[str, ...] = (
+    "flow_rate",
+    "inflow_rate",
+    "outflow_rate",
+)
 
 _DEFAULT_TRACERS: tuple[str, ...] = (
     "Precipitation",
@@ -1280,52 +1314,106 @@ class PlotWidget(QWidget):
                 col=1,
             )
 
+    def _selected_fractional_flows(self) -> _FractionalFlows | str:
+        """Return the tracer flows of the selection, or else the placeholder text."""
+        # The flow traces of a link are named "Link #4", those of a node after the node,
+        # like "Pump #5 flow_rate", and those of an Observation node after that node.
+        flow_rate_traces = self._plot_data.get("flow", {}).get("flow_rate", {})
+        observation_data = self._plot_data.get("observation", {})
+        trace_names = [*flow_rate_traces]
+        for traces in observation_data.values():
+            trace_names.extend(traces)
+        selections = {
+            (match["entity"], int(match["id"]))
+            for match in map(_FLOW_TRACE_NAME.match, trace_names)
+            if match is not None
+        }
+        entity, entity_id = selections.pop() if len(selections) == 1 else ("", 0)
+        if entity not in ("Link", "Observation", *_NODE_FLOW_VARIABLE):
+            return _PLACEHOLDER_FRACTIONAL_FLOW
+        if "concentration" not in self._available:
+            return _PLACEHOLDER_FRACTIONAL_FLOW_NO_CONCENTRATION
+
+        if entity == "Link":
+            time, values = flow_rate_traces[f"Link #{entity_id}"]
+            tracer_flows = self._tracer_flows(len(time))
+            tracers = None if tracer_flows is None else tracer_flows.link(entity_id)
+            lines = [("flow_rate", (time, values), "black")]
+            drawn = set()
+        elif entity == "Observation":
+            # Split the simulated flow of the observed node, with the observed flow
+            # in black and the simulated flow in red, like in the standard plot.
+            name = f"Observation #{entity_id}"
+            variable = next(
+                (
+                    v
+                    for v in _OBSERVATION_FLOW_VARIABLES
+                    if f"{name} simulated {v}" in observation_data.get(v, {})
+                ),
+                None,
+            )
+            if variable is None:
+                return _PLACEHOLDER_FRACTIONAL_FLOW_OBSERVATION
+            traces = observation_data[variable]
+            time = traces[f"{name} simulated {variable}"][0]
+            tracer_flows = self._tracer_flows(len(time))
+            target = (
+                None
+                if tracer_flows is None
+                else tracer_flows.graph.observed_node(entity_id)
+            )
+            node_flows = (
+                None
+                if tracer_flows is None or target is None
+                else tracer_flows.node(target, variable)
+            )
+            tracers = None if node_flows is None else node_flows[1]
+            lines = [
+                (trace_name, traces[trace_name], color)
+                for trace_name, color in (
+                    (f"{name} simulated {variable}", "red"),
+                    (f"{name} observed {variable}", "black"),
+                )
+                if trace_name in traces
+            ]
+            drawn = {("observation", variable)}
+        else:
+            variable = _NODE_FLOW_VARIABLE[entity]
+            time = next(iter(flow_rate_traces.values()))[0]
+            tracer_flows = self._tracer_flows(len(time))
+            node_flows = (
+                None if tracer_flows is None else tracer_flows.node(entity_id, variable)
+            )
+            tracers = None if node_flows is None else node_flows[1]
+            lines = (
+                []
+                if node_flows is None
+                else [(variable, (time, node_flows[0]), "black")]
+            )
+            drawn = set()
+
+        if not tracers:
+            return _PLACEHOLDER_FRACTIONAL_FLOW_UNKNOWN
+        return _FractionalFlows(time, tracers, lines, drawn)
+
     def _redraw_fractional_flow(
         self, selected_keys: list[tuple[str, str]], config: dict[str, bool | list[str]]
     ) -> None:
         if not self._plot_data:
             self._show_placeholder(self._placeholder_for_current_preset())
             return
-
-        # The flow traces of a link are named "Link #4", those of a node after the node,
-        # like "Pump #5 flow_rate". A UserDemand has two traces.
-        flow_rate_traces = self._plot_data.get("flow", {}).get("flow_rate", {})
-        selections = {
-            (match["entity"], int(match["id"]))
-            for match in map(_FLOW_TRACE_NAME.match, flow_rate_traces)
-            if match is not None
-        }
-        entity, entity_id = selections.pop() if len(selections) == 1 else ("", 0)
-        if entity != "Link" and entity not in FLOW_RATE_NODE_TYPES:
-            self._show_placeholder(_PLACEHOLDER_FRACTIONAL_FLOW)
+        selection = self._selected_fractional_flows()
+        if isinstance(selection, str):
+            self._show_placeholder(selection)
             return
-
-        if "concentration" not in self._available:
-            self._show_placeholder(_PLACEHOLDER_FRACTIONAL_FLOW_NO_CONCENTRATION)
-            return
-
-        flow_time = next(iter(flow_rate_traces.values()))[0]
-        tracer_flows = self._tracer_flows(len(flow_time))
-        result = None
-        if tracer_flows is not None and entity == "Link":
-            tracers = tracer_flows.link(entity_id)
-            if tracers is not None:
-                result = flow_rate_traces[f"Link #{entity_id}"][1], tracers
-        elif tracer_flows is not None:
-            result = tracer_flows.node(entity_id)
-        if result is None or not result[1]:
-            self._show_placeholder(_PLACEHOLDER_FRACTIONAL_FLOW_UNKNOWN)
-            return
-        flow_values, fractional_flows = result
-        total_name = "inflow_rate" if entity in INFLOW_RATE_NODE_TYPES else "flow_rate"
 
         selected_substances = self._selected_tracers(
-            selected_keys, set(fractional_flows)
+            selected_keys, set(selection.tracers)
         )
 
-        # Extra traces — exclude concentration and flow files.
+        # The other selected variables in extra rows, without the flows drawn here.
         traces_by_unit = self._collect_standard_traces(
-            selected_keys,
+            [key for key in selected_keys if key not in selection.drawn],
             excluded_files={"concentration", "flow"},
         )
 
@@ -1340,11 +1428,11 @@ class PlotWidget(QWidget):
 
         colors = qualitative.Plotly
         for substance in reversed(selected_substances):
-            values = fractional_flows.get(substance)
+            values = selection.tracers.get(substance)
             if values is None:
                 continue
             self._add_fractional_flow_traces(
-                fig, flow_time, values, substance, colors[used % len(colors)]
+                fig, selection.time, values, substance, colors[used % len(colors)]
             )
             used += 1
 
@@ -1352,20 +1440,21 @@ class PlotWidget(QWidget):
             self._show_placeholder(_PLACEHOLDER_FRACTIONAL_FLOW)
             return
 
-        # The total flow as a black line on top.
-        x_flow, y_flow = self._to_plotly_xy(flow_time, flow_values)
-        fig.add_trace(
-            go.Scatter(
-                x=x_flow,
-                y=y_flow,
-                mode="lines",
-                line={"color": "black", "width": 1.5},
-                name=total_name,
-                hovertemplate=self._hover_template(total_name),
-            ),
-            row=1,
-            col=1,
-        )
+        # The flows that the tracers make up as lines on top.
+        for name, (x, y), color in selection.lines:
+            x_data, y_data = self._to_plotly_xy(x, y)
+            fig.add_trace(
+                go.Scatter(
+                    x=x_data,
+                    y=y_data,
+                    mode="lines",
+                    line={"color": color, "width": 1.5},
+                    name=name,
+                    hovertemplate=self._hover_template(name),
+                ),
+                row=1,
+                col=1,
+            )
 
         flow_units = self._units.get("flow", {})
         yaxis_title = flow_units.get("flow_rate", "m3 s-1")

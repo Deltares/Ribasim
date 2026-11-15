@@ -665,16 +665,22 @@ def _memory_layer(fields: str, rows: list[tuple[Any, ...]]) -> QgsVectorLayer:
 
 
 def _layers(
-    node_types: dict[int, str], links: dict[int, tuple[int, int]]
+    node_types: dict[int, str],
+    links: dict[int, tuple[int, int]],
+    observation_links: dict[int, tuple[int, int]] | None = None,
 ) -> tuple[QgsVectorLayer, QgsVectorLayer]:
-    """Return a node and a link layer with flow links."""
+    """Return a node and a link layer with flow links and observation links."""
     node_layer = _memory_layer(
         "field=node_id:integer&field=node_type:string", list(node_types.items())
     )
     link_layer = _memory_layer(
         "field=link_id:integer&field=from_node_id:integer"
         "&field=to_node_id:integer&field=link_type:string",
-        [(lid, from_id, to_id, "flow") for lid, (from_id, to_id) in links.items()],
+        [(lid, *link, "flow") for lid, link in links.items()]
+        + [
+            (lid, *link, "observation")
+            for lid, link in (observation_links or {}).items()
+        ],
     )
     return node_layer, link_layer
 
@@ -884,7 +890,7 @@ def test_tracer_flows_user_demand_return():
     assert node_flows is not None
     _assert_tracers(node_flows[1], expected, [2.0, 2.0])
     # A UserDemand has its abstraction
-    node_flows = tracer_flows.node(4)
+    node_flows = tracer_flows.node(4, "inflow_rate")
     assert node_flows is not None
     _assert_tracers(node_flows[1], {"Tracer": [1.2, 1.2], "Other": [1.8, 1.8]}, 3.0)
     # A flow out of a Terminal brings no tracers
@@ -1033,6 +1039,29 @@ def test_tracer_flows_junction_tree(link_id, expected):
     assert np.allclose(tracers["Tracer"] + tracers["Other"], _TREE_FLOWS[link_id])
 
 
+@pytest.mark.parametrize(
+    ("variable", "expected_total", "expected_tracer"),
+    [
+        # Each inflow to the tree counts: from Basin 10 until LinearResistance 4
+        # reverses, and from Basin 12
+        ("inflow_rate", [8.0, 2.0], [0.2 * 6.0 + 0.4 * 2.0, 0.4 * 2.0]),
+        # The outflows over the Pumps, and over LinearResistance 4 when it reverses,
+        # are water from Basin 1
+        ("outflow_rate", [4.0, 9.0], [0.1 * 4.0, 0.1 * 9.0]),
+    ],
+)
+def test_tracer_flows_basin_inflow_outflow(variable, expected_total, expected_tracer):
+    """A Basin has the inflow and outflow of the Basin results, also through a tree."""
+    node_flows = _tracer_flows(
+        _TREE_NODE_TYPES, _TREE_LINKS, _TREE_FLOWS, _TREE_CONCENTRATIONS
+    ).node(1, variable)
+    assert node_flows is not None
+    total, tracers = node_flows
+    assert np.allclose(total, expected_total)
+    assert np.allclose(tracers["Tracer"], expected_tracer)
+    assert np.allclose(tracers["Continuity"], total)
+
+
 def test_tracer_flows_connector_between_junction_groups():
     """A connector takes its water from the one Basin of the group upstream of it."""
     tracers = _tracer_flows(
@@ -1100,11 +1129,14 @@ def _fractional_flow(
     traces: list[str],
     available: dict[str, list[str]] | None = None,
     junctions_in_static: frozenset[int] = frozenset(),
+    observation: dict[str, dict[str, tuple[np.ndarray, np.ndarray]]] | None = None,
+    observation_links: dict[int, tuple[int, int]] | None = None,
 ) -> tuple[PlotWidget, Any]:
     """Plot the fractional flow of the selected link or node on real layers.
 
     *traces* are the names of the flow traces of the selection, as the DatasetWidget
-    names them. Returns the widget and the figure, or ``None`` for a placeholder.
+    names them, and *observation* the traces of a selected Observation node. Returns
+    the widget and the figure, or ``None`` for a placeholder.
     """
     captured_figures = []
 
@@ -1114,7 +1146,7 @@ def _fractional_flow(
 
     monkeypatch.setattr("ribasim_qgis.widgets.plot_widget.po.plot", _capture_plot)
 
-    node_layer, link_layer = _layers(node_types, links)
+    node_layer, link_layer = _layers(node_types, links, observation_links)
     widget = PlotWidget(
         node_layer_getter=lambda: node_layer,
         link_layer_getter=lambda: link_layer,
@@ -1142,7 +1174,8 @@ def _fractional_flow(
         for name in traces
     }
     widget.set_data(
-        {"flow": {"flow_rate": selection}}, units={"flow": {"flow_rate": "m3 s-1"}}
+        {"flow": {"flow_rate": selection}, "observation": observation or {}},
+        units={"flow": {"flow_rate": "m3 s-1"}},
     )
     if not widget._web_view.isVisibleTo(widget):
         return widget, None
@@ -1265,6 +1298,52 @@ def test_plot_widget_fractional_flow_user_demand(monkeypatch):
     assert np.allclose(_signed_values(fig.data, "Tracer"), [1.2, 1.2])
 
 
+def test_plot_widget_fractional_flow_observation(monkeypatch):
+    """An Observation node splits the simulated flow of the node it observes."""
+    network = (
+        _TREE_NODE_TYPES | {20: "Observation"},
+        _TREE_LINKS,
+        _TREE_FLOWS,
+        _TREE_CONCENTRATIONS,
+        [],
+    )
+    observed = "Observation #20 observed flow_rate"
+    simulated = "Observation #20 simulated flow_rate"
+    observed_time = np.array(["2020-01-01T12:00:00", "2020-01-02T12:00:00"])
+    _, fig = _fractional_flow(
+        monkeypatch,
+        *network,
+        observation={
+            "flow_rate": {
+                observed: (observed_time, np.array([2.5, 3.5])),
+                simulated: (_TIME, np.array([3.0, 3.0])),
+            }
+        },
+        observation_links={11: (20, 5)},
+    )
+    assert fig is not None
+    # Pump 5 takes water from Basin 1 through the Junction tree
+    assert np.allclose(_signed_values(fig.data, "Tracer"), [0.3, 0.3])
+    # The observed flow is black and the simulated flow red, like in the standard plot
+    lines = {t.name: t for t in fig.data if t.stackgroup is None}
+    assert lines.keys() == {observed, simulated}
+    assert lines[observed].line.color == "black"
+    assert lines[simulated].line.color == "red"
+    assert list(lines[observed].x) == list(observed_time)
+
+    # Without an observed flow there is nothing to split
+    widget, fig = _fractional_flow(
+        monkeypatch,
+        *network,
+        observation={
+            "level": {"Observation #20 observed level": (_TIME, np.array([1.0, 1.1]))}
+        },
+        observation_links={11: (20, 1)},
+    )
+    assert fig is None
+    assert "observes a flow_rate" in widget._placeholder.text()
+
+
 @pytest.mark.parametrize(
     ("traces", "available", "placeholder"),
     [
@@ -1315,7 +1394,7 @@ def _junction_flow_column(
         "&field=to_node_id:integer&field=link_type:string",
         [(i, *link, "flow") for i, link in enumerate(links)],
     )
-    return DatasetWidget._junction_flow_column(
+    return DatasetWidget._node_flow_column(
         link_layer,
         node_layer,
         2,
