@@ -1157,3 +1157,9 @@ function update_basin!(basin::Basin, t)::Bool
 
     return new_flux
 end
+
+# Called by the `update_subgrid_level` entry point of libribasim, see build/libribasim.jl
+function update_subgrid_level(model::Model)::Model
+    update_subgrid_level!(model.integrator)
+    return model
+end

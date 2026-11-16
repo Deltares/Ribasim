@@ -1,7 +1,7 @@
 @testitem "trivial model" setup = [Teamcity] begin
     using NCDatasets: NCDataset, dimnames
     using Dates: DateTime
-    using Ribasim: get_tstops, tsaves, RibasimStateCVector
+    using Ribasim: tsaves, RibasimStateCVector
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
     @test ispath(toml_path)

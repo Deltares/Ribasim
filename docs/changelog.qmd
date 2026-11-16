@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Allocation: solve every problem from scratch, so that HiGHS uses presolve, which is much faster for large subnetworks. Start values made HiGHS construct a basis and then skip presolve. [#3387](https://github.com/Deltares/Ribasim/pull/3387)
 - Allocation: flow no longer switches between equally good routes from one timestep to the next. A last objective keeps the flows of allocation controlled nodes close to those of the previous timestep. [#3399](https://github.com/Deltares/Ribasim/issues/3399)
 
+### Fixed
+- Stricter input validation: an invalid `Basin / subgrid` or `Basin / subgrid_time` table now stops the model with a clear error, where the first only logged an error and the second crashed. A ContinuousControl function with a single data point and a missing value in a required column now also give a clear error. [#3449](https://github.com/Deltares/Ribasim/pull/3449)
+- Allocation: the error for an infeasible allocation problem now lists the incompatible constraints, this list was empty. [#3449](https://github.com/Deltares/Ribasim/pull/3449)
+
 ## [v2026.2.0-rc1] - 2026-11-11
 
 This is the first release candidate for v2026.2.0, and it is all about simpler models, speed, and robustness.
