@@ -340,11 +340,27 @@ function save_until_last_time_step!(model::Model)::Nothing
     (; u_accepted) = p.p_independent
     # Any water balance error is already logged, and shouldn't stop the results from being written
     try
-        set_current_basin_properties!(u_accepted.flow, p, t)
+        set_accepted_basin_properties!(p)
         save_results!(saved, u_accepted, t, integrator)
     catch e
         @error "Could not save the results after the last saveat, at t = $t s." exception = e
     end
+    return nothing
+end
+
+"""
+Set the Basin properties at the end of the last accepted time step. In a time step in progress
+the right hand side may have been evaluated at a later time, which leaves the cumulative forcing
+and FlowBoundary flow up to that time in the time dependent cache, so these are recomputed.
+"""
+function set_accepted_basin_properties!(p::Parameters)::Nothing
+    (; p_independent, p_mutable, time_dependent_cache) = p
+    t = p_mutable.tprev
+    p_mutable.new_time_dependent_cache = true
+    formulate_cumulative_boundary_flow!(p_independent.flow_boundary, p, t)
+    set_current_basin_properties!(p_independent.u_accepted.flow, p, t)
+    # Only part of the cache is now at t, so the next evaluation renews all of it
+    time_dependent_cache.t_prev_call[1] = -1.0
     return nothing
 end
 
