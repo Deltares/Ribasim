@@ -51,6 +51,7 @@ from ribasim.schemas import (
     PumpTimeSchema,
     TabulatedRatingCurveStaticSchema,
     TabulatedRatingCurveTimeSchema,
+    UserDemandConcentrationSchema,
     UserDemandStaticSchema,
     UserDemandTimeSchema,
 )
@@ -327,6 +328,10 @@ class UserDemand(NodeModel):
     time: TableModel[UserDemandTimeSchema] = Field(
         default_factory=TableModel[UserDemandTimeSchema],
         json_schema_extra={"sort_keys": ["node_id", "demand_priority", "time"]},
+    )
+    concentration: TableModel[UserDemandConcentrationSchema] = Field(
+        default_factory=TableModel[UserDemandConcentrationSchema],
+        json_schema_extra={"sort_keys": ["node_id", "substance", "time"]},
     )
 
 

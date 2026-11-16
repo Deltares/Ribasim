@@ -7,7 +7,7 @@ Basin that mass is added to the Basin, if it goes to Junction nodes it is passed
 UserDemand nodes in a Junction subgraph are also handled there.
 """
 function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
-    (; p) = integrator
+    (; p, tprev) = integrator
     (; basin, user_demand, cumulative_flow_dt) = p.p_independent
     (; concentration_state, mass) = basin.concentration_data
     (; return_mass) = user_demand
@@ -37,6 +37,13 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
                     @view(concentration_state[:, from_node.idx]) .* return_flow .* fraction
             end
         end
+
+        add_substance_mass!(
+            return_mass_node,
+            user_demand.concentration_itp[node_idx],
+            return_flow,
+            tprev,
+        )
 
         if to_node.is_basin
             view(mass, :, to_node.idx) .+= return_mass_node
@@ -204,6 +211,12 @@ function mass_through_junctions!(integrator::DEIntegrator)::Nothing
             return_flow = cumulative_flow_dt.horizontal.user_demand_outflow[id.idx]
             return_mass_node = view(return_mass, :, id.idx)
             return_mass_node .= return_flow .* view(concentration, :, junction_id.idx)
+            add_substance_mass!(
+                return_mass_node,
+                user_demand.concentration_itp[id.idx],
+                return_flow,
+                tprev,
+            )
 
             # The return mass into a Junction node is picked up there via `set_junction_source_mass!`
             target_id = user_demand.outflow_link[id.idx].link[2]
@@ -229,11 +242,15 @@ function get_concentration_itp(
         substances,
         substance_idx_node_type,
         cyclic_times,
-        config,
+        config;
+        continuity_tracer = true,
     )::Vector{Vector{ScalarConstantInterpolation}}
     concentration_itp = [
-        initialize_concentration_itp(length(substances), substance_idx_node_type) for
-            _ in node_id
+        initialize_concentration_itp(
+            length(substances),
+            substance_idx_node_type;
+            continuity_tracer,
+        ) for _ in node_id
     ]
 
     for (id, cyclic_time) in zip(node_id, cyclic_times)

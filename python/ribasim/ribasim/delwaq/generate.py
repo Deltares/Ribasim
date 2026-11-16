@@ -119,6 +119,25 @@ def _make_boundary(data, boundary_type, values="concentration"):
     return boundary, substances
 
 
+def _terms_flow(wide: pd.DataFrame, terms) -> np.ndarray:
+    """Sum the flow of the terms of a link, given the Ribasim flows with a column per link."""
+    total = np.zeros(len(wide.index))
+    for base, ratios, sign in terms:
+        contribution = sign * wide[base].to_numpy(dtype=float)
+        for numerator_ids, denominator_ids in ratios:
+            numerator = wide[numerator_ids].sum(axis=1).to_numpy(dtype=float)
+            denominator = wide[denominator_ids].sum(axis=1).to_numpy(dtype=float)
+            share = np.divide(
+                numerator,
+                denominator,
+                out=np.zeros_like(numerator),
+                where=denominator != 0,
+            )
+            contribution = contribution * share
+        total += contribution
+    return total
+
+
 def _junction_term_flows(G, flows: pd.DataFrame) -> pd.DataFrame | None:
     """Compute the flows over the links that bypass the Junction nodes that divide the flow, see ``_setup_graph``.
 
@@ -135,20 +154,7 @@ def _junction_term_flows(G, flows: pd.DataFrame) -> pd.DataFrame | None:
         terms = d.get("terms")
         if not terms:
             continue
-        total = np.zeros(len(wide.index))
-        for base, ratios, sign in terms:
-            contribution = sign * wide[base].to_numpy(dtype=float)
-            for numerator_ids, denominator_ids in ratios:
-                numerator = wide[numerator_ids].sum(axis=1).to_numpy(dtype=float)
-                denominator = wide[denominator_ids].sum(axis=1).to_numpy(dtype=float)
-                share = np.divide(
-                    numerator,
-                    denominator,
-                    out=np.zeros_like(numerator),
-                    where=denominator != 0,
-                )
-                contribution = contribution * share
-            total += contribution
+        total = _terms_flow(wide, terms)
         dfs.append(pd.DataFrame({"time": wide.index, "link_id": i, "flow_rate": total}))
     return _concat(dfs, ignore_index=True) if dfs else None
 
@@ -267,7 +273,8 @@ def _setup_graph(nodes, link, evaporate_mass=True, routed_junction_ids=frozenset
     # of the water it abstracted. Each link into a UserDemand is passed on over its return
     # links, with the share of the return flow in the abstraction. The UserDemand stays in the
     # network as a boundary, that only receives the water it consumes: the links into it get
-    # the passed on flow as negative terms.
+    # the passed on flow as negative terms. Its return links move to a separate node, to
+    # follow where the substances that the UserDemand adds to its return flow end up.
     routed_ids = [
         n for n, d in G.nodes(data=True) if d["routed"] or d["type"] == "UserDemand"
     ]
@@ -306,7 +313,11 @@ def _setup_graph(nodes, link, evaporate_mass=True, routed_junction_ids=frozenset
                         (base, ratios, -sign) for base, ratios, sign in new_terms
                     )
         if is_user_demand:
-            G.remove_edges_from(list(G.out_edges(node_id)))
+            return_id = ("UserDemandReturn", node_id)
+            G.add_node(return_id, type="UserDemandReturn", routed=False, id=node_id)
+            for _, out_id, d_out in out_edges:
+                G.add_edge(return_id, out_id, **d_out)
+                G.remove_edge(node_id, out_id)
         else:
             G.remove_node(node_id)
 
@@ -318,6 +329,7 @@ def _setup_graph(nodes, link, evaporate_mass=True, routed_junction_ids=frozenset
             "LevelBoundary",
             "FlowBoundary",
             "UserDemand",
+            "UserDemandReturn",
         ]:
             inneighbor_ids = G.pred[node_id]
             remove_nodes.append(node_id)
@@ -345,6 +357,16 @@ def _setup_graph(nodes, link, evaporate_mass=True, routed_junction_ids=frozenset
 
     # Water that returns to where it came from, through a UserDemand, needs no link
     G.remove_edges_from(list(nx.selfloop_edges(G)))
+
+    # Keep the flows from the UserDemand return nodes into Basins, for `_user_demand_loads`
+    user_demand_returns = []
+    for return_id, d in list(G.nodes(data=True)):
+        if d["type"] == "UserDemandReturn":
+            for _, to_id, d_out in G.out_edges(return_id, data=True):
+                if G.nodes[to_id]["type"] == "Basin":
+                    flow = {"id": d_out["id"], "terms": d_out.get("terms", [])}
+                    user_demand_returns.append((d["id"], to_id, flow))
+            G.remove_node(return_id)
 
     # Remove boundary to boundary links
     remove_double_boundary = []
@@ -484,7 +506,53 @@ def _setup_graph(nodes, link, evaporate_mass=True, routed_junction_ids=frozenset
 
     assert len(basin_mapping) == basin_id
 
-    return G, node_mapping, link_mapping, basin_mapping
+    return G, node_mapping, link_mapping, basin_mapping, user_demand_returns
+
+
+def _user_demand_loads(flows, user_demand_returns, basin_mapping, table):
+    """Add the UserDemand concentrations to the return flows as mass loads.
+
+    Like in the core, the return flow of a UserDemand carries the concentrations of
+    its source water plus the concentrations set in its concentration table.
+    The loads go to the Basins that the return flow ends up in, see `_setup_graph`.
+    """
+    loads = []
+    substances = set()
+    if table is None:
+        return loads, substances
+
+    wide = flows.pivot_table(
+        index="time", columns="link_id", values="flow_rate", aggfunc="sum"
+    )
+    n_basin = pd.Series(
+        [node_id for node_id, _, _ in user_demand_returns]
+    ).value_counts()
+    for node_id, to_id, flow in user_demand_returns:
+        concentration = table[table.node_id == node_id].pivot_table(
+            index="time", columns="substance", values="concentration"
+        )
+        if concentration.empty:
+            continue
+        concentration = (
+            concentration.reindex(concentration.index.union(wide.index))
+            .ffill()
+            .bfill()
+            .reindex(wide.index)
+        )
+        return_flow = wide[flow["id"]].sum(axis=1) + _terms_flow(wide, flow["terms"])
+        load = concentration.mul(return_flow, axis=0)
+        rows = load.reset_index().melt(
+            id_vars="time", var_name="substance", value_name="load"
+        )
+        rows["node_id"] = node_id
+        boundary, substance = _make_boundary(rows, "UserDemand", "load")
+        if n_basin[node_id] > 1:
+            boundary["name"] += f"_{to_id}"
+        boundary["node_id"] = basin_mapping[to_id]
+        loads.append(boundary)
+        substances.update(substance)
+
+    return loads, substances
 
 
 def _setup_boundaries(model, node_mapping):
@@ -565,7 +633,7 @@ def generate(
     include_path.mkdir(exist_ok=True)
 
     # Setup flow network
-    G, node_mapping, link_mapping, basin_mapping = _setup_graph(
+    G, node_mapping, link_mapping, basin_mapping, user_demand_returns = _setup_graph(
         model.node,
         model.link,
         evaporate_mass=evaporate_mass,
@@ -626,6 +694,10 @@ def generate(
     grid_name = cast(Any, grid).name
     dataset[grid_name].attrs["node_id"] = grid.node_dimension
     dataset[grid_name].attrs["node_long_name"] = "Node dimension of 1D network"
+
+    user_demand_loads, user_demand_substances = _user_demand_loads(
+        flows, user_demand_returns, basin_mapping, model.user_demand.concentration.df
+    )
 
     # Generate area and flows
     # File format is int32, float32 based
@@ -713,6 +785,8 @@ def generate(
 
     # Find all boundary substances and concentrations
     boundaries, substances, loads = _setup_boundaries(model, node_mapping)
+    loads.extend(user_demand_loads)
+    substances.update(user_demand_substances)
     # Write boundary data with substances and concentrations
     template = env.get_template("B5_bounddata.inc.j2")
     with (include_path / "B5_bounddata.inc").open(mode="w") as f:
