@@ -54,12 +54,8 @@ jobs:
         run: pixi run quarto-check
       - name: Render Quarto Project
         run: pixi run quarto-render
-      # Checks the rendered HTML, so internal and external links are covered
       - name: Check for dead links
-        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
-        with:
-          args: --config lychee.toml docs/_site
-          fail: true
+        run: pixi run check-docs-links
       - name: Publish Quarto Project
         if: github.ref == 'refs/heads/main'
         run: pixi run quarto-publish
