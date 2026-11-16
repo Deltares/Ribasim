@@ -113,7 +113,7 @@ Since $Q$ is in $\text{m}^3/\text{s}$ and the error $e$ in $\text{m}$, the param
 | Parameter | Unit | Operator's rule of thumb |
 |---|---|---|
 | $K_p$ | $\text{m}^2/\text{s}$ | "For every metre the level is off target, change the discharge by this much." |
-| $K_i$ | $\text{m}^2/\text{s}^2$ | "If the level stays off target, keep increasing the discharge, the longer the more." |
+| $K_i$ | $\text{m}^2/\text{s}^2$ | "If the level stays off target, the discharge keeps increasing, the longer the more untill the target is reached." |
 | $K_d$ | $\text{m}^2$ | "If the level is moving quickly towards or away from the target, react in advance." |
 
 Remember that $K_p,K_i,K_d$ of a Pump and an Outlet need opposite signs, see [the sign of the parameters](#the-sign-of-the-parameters).
