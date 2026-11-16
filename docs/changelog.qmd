@@ -15,7 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Allocation: flow no longer switches between equally good routes from one timestep to the next. A last objective keeps the flows of allocation controlled nodes close to those of the previous timestep. [#3399](https://github.com/Deltares/Ribasim/issues/3399)
 
 ### Fixed
-- A simulation that stops within a timestep, after an error or with Ctrl-C, no longer adds the forcing of that unfinished timestep to `basin_state.nc` and the results since the last saveat. [#3454](https://github.com/Deltares/Ribasim/pull/3454)
+- When a simulation stops after an error or with Ctrl-C, the results no longer include the forcing of the unfinished timestep. This affected `basin_state.nc` and the results since the last saveat. [#3454](https://github.com/Deltares/Ribasim/pull/3454)
 
 ## [v2026.2.0-rc1] - 2026-11-11
 
