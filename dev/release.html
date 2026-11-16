@@ -423,9 +423,10 @@ All changes
 <ol type="1">
 <li>Download the <code>ribasim_qgis.zip</code> from the <a href="https://github.com/Deltares/Ribasim/releases/latest">latest GitHub release assets</a>.</li>
 <li>Log in to the <a href="https://plugins.qgis.org/">QGIS plugin repository</a>.</li>
-<li>Go to <a href="https://plugins.qgis.org/plugins/upload/">Upload a plugin</a> and upload the zip file.</li>
+<li>Go to <a href="https://plugins.qgis.org/plugins/upload/">Upload a plugin</a> and select the zip file. In the Security Rules panel below it, turn off B101 (Assert used), then upload.</li>
 <li>The plugin will be available after manual approval from a QGIS plugin repository maintainer.</li>
 </ol>
+<p>The QGIS plugin repository <a href="https://plugins.qgis.org/docs/security-scanning">scans each upload</a> and blocks it on any finding of Bandit or detect-secrets. Ruff checks the Bandit rules on the plugin code, except for B101: we use <code>assert</code> to narrow types.</p>
 </section>
 <section id="update-version-numbers-in-docs" class="level2" data-number="2.9">
 <h2 data-number="2.9" class="anchored" data-anchor-id="update-version-numbers-in-docs"><span class="header-section-number">2.9</span> Update version numbers in docs</h2>
