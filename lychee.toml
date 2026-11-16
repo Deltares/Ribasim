@@ -1,0 +1,13 @@
+# Configuration for the dead link check on the rendered docs, see .github/workflows/docs.yml
+no_progress = true
+# Only fail on definitive errors, not on rate limiting or slow servers
+accept = ["200..=299", "429"]
+max_retries = 3
+timeout = 30
+exclude_path = ["docs/_site/search.json"]
+# Links that only resolve once the docs are published or that block bots
+exclude = [
+    '^https?://localhost',
+    '^https?://127\.0\.0\.1',
+    '^https://ribasim\.org',
+]
