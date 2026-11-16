@@ -167,11 +167,13 @@ end
 function reset_cumulative_flows!(integrator)::Nothing
     (; u, p) = integrator
     (; p_independent, current_basin_properties, time_dependent_cache) = p
-    (; basin, flow_boundary, u_prev_saveat, cumulative_flow_prev_allocation_dt) = p_independent
+    (; basin, flow_boundary, u_prev_saveat, u_accepted, cumulative_flow_prev_allocation_dt) = p_independent
     (; forcing) = basin
 
     basin.storage0 .= current_basin_properties.current_storage
     u_prev_saveat.flow .-= u.flow
+    # If no time step follows the reset, the final results are computed from this
+    u_accepted.flow .-= u.flow
     cumulative_flow_prev_allocation_dt .-= u.flow
     forcing.exact_cumulative_forcing_prev_saveat .-= forcing.exact_cumulative_forcing_since_reset
     flow_boundary.cumulative_flow_prev_saveat .-= flow_boundary.cumulative_flow_since_reset
