@@ -1,8 +1,10 @@
 # Configuration for the dead link check on the rendered docs, see .github/workflows/docs.yml
 no_progress = true
-# Only fail on definitive errors, not on rate limiting or slow servers
-accept = ["200..=299", "401", "403", "429"]
+# Only fail on definitive errors, not on bot blocking, rate limiting or temporarily unavailable servers
+accept = ["200..=299", "401", "403", "429", "502", "503", "504"]
 max_retries = 3
+retry_wait_time = 5
+accept_timeouts = true
 timeout = 30
 exclude_path = ["docs/_site/search.json"]
 # docs/_site is gitignored, and lychee would otherwise skip it
