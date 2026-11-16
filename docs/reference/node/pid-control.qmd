@@ -105,6 +105,61 @@ Note by @eq-error that the error is positive if the setpoint is larger than the 
 We enforce the convention that when a Pump is controlled, its link points away from the Basin, and when an Outlet is controlled, its link points towards the Basin, so that the main flow direction along these links is positive.
 Therefore, positive flows of the Pump and Outlet have opposite effects on the Basin, and thus the parameters $K_p,K_i,K_d$ of the Pump and Outlet must have opposite signs to achieve the same goal.
 
+# Hydrological interpretation of the parameters
+
+The PID controller mimics what a gate or pump operator does: compare the water level with the target level and adjust the discharge.
+Since $Q$ is in $\text{m}^3/\text{s}$ and the error $e$ in $\text{m}$, the parameters have the following units and meaning.
+
+| Parameter | Unit | Operator's rule of thumb |
+|---|---|---|
+| $K_p$ | $\text{m}^2/\text{s}$ | "For every metre the level is off target, change the discharge by this much." |
+| $K_i$ | $\text{m}^2/\text{s}^2$ | "If the level stays off target, the discharge keeps increasing, the longer the more untill the target is reached." |
+| $K_d$ | $\text{m}^2$ | "If the level is moving quickly towards or away from the target, react in advance." |
+
+Remember that $K_p,K_i,K_d$ of a Pump and an Outlet need opposite signs, see [the sign of the parameters](#the-sign-of-the-parameters).
+The values below are therefore given as magnitudes.
+
+## Proportional term $K_p$
+
+$K_p$ is the discharge per metre of level error, which is like the slope of a weir or gate rating curve.
+A Basin with surface area $A$ that is controlled by $K_p$ alone behaves like a linear reservoir with time scale
+
+$$
+\tau = \frac{A}{K_p}.
+$$
+
+The level error decays exponentially with this time scale, so a large $K_p$ gives a quick but possibly abrupt response, and a small $K_p$ a slow one.
+Starting from a desired response time $\tau$ (e.g. the Basin should recover within a day), a first estimate is $K_p = A/\tau$.
+Another way to find $K_p$ is the maximum discharge $Q_\text{max}$ of the Pump or Outlet and the level deviation $\Delta h$ at which the structure should be fully open: $K_p = Q_\text{max}/\Delta h$.
+
+A proportional controller on its own leaves a steady-state offset whenever there is a constant inflow or outflow that is not matched, since a nonzero error is needed to produce the required discharge.
+For example, with a constant net inflow $Q_\text{in}$ that must be pumped out, the Basin level settles at $Q_\text{in}/K_p$ above the target.
+
+## Integral term $K_i$
+
+$K_i$ removes this steady-state offset: as long as the level is off target, the integral keeps growing and so does the discharge, until the level is back at the target.
+Hydrologically, it learns the unknown inflow (e.g. seepage, precipitation surplus or upstream supply) that must be compensated.
+The cost is a slower response and a possible overshoot, where the level passes the target and the Basin oscillates around it.
+Therefore $K_i$ is usually chosen small compared to $K_p$.
+A common choice is to make the integral time $T_i = K_p/K_i$ longer than the response time $\tau$, for instance several times $\tau$.
+
+## Derivative term $K_d$
+
+$K_d$ reacts to the rate of change of the error, and thereby damps overshoot and oscillations: when the level approaches the target quickly, the discharge is reduced already before the target is reached.
+In many water systems it is not needed, and often it can be left at $0$.
+It can be useful for systems with a large delay or a fast-changing setpoint.
+Setting $K_d \ne 0$ makes the equations implicit, see [the derivative term](#the-derivative-term).
+In addition, a large $K_d$ makes the controller sensitive to fast fluctuations of the level, such as those caused by a sudden change of inflow.
+
+## Practical guidance
+
+- Start with $K_i = K_d = 0$ and choose $K_p$ from the Basin area and the desired response time, or from the capacity of the structure.
+  Check that the resulting discharge stays within the $Q_\text{min}$ and $Q_\text{max}$ of the Pump or Outlet, otherwise the controller saturates and behaves like an on/off controller.
+- Add a small $K_i$ if the level does not reach the target, but stays offset.
+- Only add $K_d$ if the level oscillates or overshoots despite a smaller $K_i$.
+- Values for real systems can often be derived from available information: the Basin area from the water level-area relation, and $Q_\text{max}$ and the allowed level deviation from the structure's specifications or operational rules (e.g. the target level band of a polder).
+- Use the [PID control example](/getting-started/examples.qmd#model-with-pid-control) to see the effect of changing the parameters.
+
 # Behavior in allocation
 
 [Allocation](/concept/allocation.qmd) assumes that the flow rate that this node sets on a Pump or Outlet stays the same until the next intervention time, set by `intervention_interval` in the [allocation settings](/reference/usage.qmd#sec-allocation-settings).
