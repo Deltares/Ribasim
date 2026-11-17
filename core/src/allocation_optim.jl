@@ -1478,6 +1478,36 @@ function update_allocation_controlled!(
 end
 
 """
+The product of the level based reduction factors that the physical layer applies to the flow
+of a Pump or Outlet, see `pump_or_outlet_flow`. It is evaluated at the levels at the start of
+the allocation timestep `t` and held constant over that timestep, which keeps the problem
+linear.
+"""
+function level_reduction_factor(
+        node::Union{Pump, Outlet},
+        node_id::NodeID,
+        p::Parameters,
+        t::Float64,
+    )::Float64
+    (; level_difference_threshold) = p.p_independent
+    inflow_id = node.inflow_link[node_id.idx].link[1]
+    downstream_id = node.downstream_level_id[node_id.idx]
+    # Outside of automatic differentiation get_level ignores the storage argument
+    src_level = get_level(0.0, p, inflow_id, t)
+    dst_level = get_level(0.0, p, downstream_id, t)
+
+    factor = 1.0
+    if node isa Outlet
+        factor *= reduction_factor(src_level - dst_level, level_difference_threshold)
+    end
+    min_upstream_level = node.min_upstream_level[node_id.idx](t)
+    max_downstream_level = node.max_downstream_level[node_id.idx](t)
+    factor *= reduction_factor(src_level - min_upstream_level, level_difference_threshold)
+    factor *= reduction_factor(max_downstream_level - dst_level, level_difference_threshold)
+    return factor
+end
+
+"""
 Flow capacity imposed on a link by one of the nodes it connects.
 Flows set by a linearized flow-level relation get no bounds, since these would only
 follow from the same linearization.
@@ -1499,10 +1529,12 @@ function connector_flow_capacity_bounds(
             max_flow_rate = node.max_flow_rate[node_id.idx]
             # Take the tightest bounds over the allocation time step, since allocation
             # assigns a single flow rate for the whole step
-            return (
-                max(0.0, min_flow_rate(t), min_flow_rate(t + Δt_allocation)),
-                min(max_flow_rate(t), max_flow_rate(t + Δt_allocation)),
-            )
+            lower = max(0.0, min_flow_rate(t), min_flow_rate(t + Δt_allocation))
+            upper = min(max_flow_rate(t), max_flow_rate(t + Δt_allocation))
+            # The physical layer applies the level based reduction factors after clamping
+            # to these bounds, so allocation cannot realize more than this
+            factor = level_reduction_factor(node, node_id, p, t)
+            return (factor * lower, factor * upper)
         end
     elseif node_id.type == NodeType.TabulatedRatingCurve &&
             tabulated_rating_curve.allocation_controlled[node_id.idx]

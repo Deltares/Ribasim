@@ -442,10 +442,13 @@ def medium_primary_secondary_network_model() -> Model:
         [outlet_data_2],
     )
 
-    # outlet towards second basin
-    model.outlet.add(
+    # The primary network has Pumps between its Basins: an Outlet only flows when the upstream
+    # level is higher than the downstream level, and allocation takes that into account
+    # per allocation timestep, which makes the result depend on how the network is split.
+    # pump towards second basin
+    model.pump.add(
         Node(4, Point(1.5, 0), subnetwork_id=1, route_priority=0),
-        [outlet_data],
+        [pump_data],
     )
 
     # second basin
@@ -457,10 +460,10 @@ def medium_primary_secondary_network_model() -> Model:
         [pump_data],
     )
 
-    # outlet towards fourth basin
-    model.outlet.add(
+    # pump towards third basin
+    model.pump.add(
         Node(16, Point(2.5, 0), subnetwork_id=1, route_priority=0),
-        [outlet_data],
+        [pump_data],
     )
 
     # third basin
@@ -472,10 +475,10 @@ def medium_primary_secondary_network_model() -> Model:
         [outlet_data_2],
     )
 
-    # outlet towards fourth basin
-    model.outlet.add(
+    # pump towards fourth basin
+    model.pump.add(
         Node(9, Point(3.5, 0), subnetwork_id=1, route_priority=0),
-        [outlet_data],
+        [pump_data],
     )
 
     # fourth basin
@@ -533,14 +536,14 @@ def medium_primary_secondary_network_model() -> Model:
 
     model.link.add(model.flow_boundary[1], model.basin[2])
     model.link.add(model.basin[2], model.outlet[3])
-    model.link.add(model.basin[2], model.outlet[4])
-    model.link.add(model.outlet[4], model.basin[5])
+    model.link.add(model.basin[2], model.pump[4])
+    model.link.add(model.pump[4], model.basin[5])
     model.link.add(model.basin[5], model.pump[6])
-    model.link.add(model.basin[5], model.outlet[16])
-    model.link.add(model.outlet[16], model.basin[7])
+    model.link.add(model.basin[5], model.pump[16])
+    model.link.add(model.pump[16], model.basin[7])
     model.link.add(model.basin[7], model.outlet[8])
-    model.link.add(model.basin[7], model.outlet[9])
-    model.link.add(model.outlet[9], model.basin[10])
+    model.link.add(model.basin[7], model.pump[9])
+    model.link.add(model.pump[9], model.basin[10])
     model.link.add(model.basin[10], model.pump[11])
     model.link.add(model.basin[10], model.user_demand[12])
     model.link.add(model.user_demand[12], model.basin[10])

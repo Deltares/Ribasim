@@ -24,8 +24,8 @@ Bounds
 basin_storage_change_Basin_#2_ >= -1.180327868852459
 0 <= low_storage_factor_Basin_#2_ <= 1
 0 <= flow_(Basin_#2,_UserDemand_#3)_ <= 0.17704918032786887
-0 <= flow_(Basin_#2,_Outlet_#4)_ <= 0.17704918032786887
-0 <= flow_(Outlet_#4,_Basin_#5)_ <= 0.17704918032786887
+flow_(Basin_#2,_Outlet_#4)_ = 0
+flow_(Outlet_#4,_Basin_#5)_ = 0
 0 <= flow_(UserDemand_#3,_Basin_#2)_ <= 0.17704918032786887
 0 <= user_demand_allocated_UserDemand_#3,2_ <= 0.17704918032786887
 0 <= user_demand_error_UserDemand_#3,2,first_ <= 1

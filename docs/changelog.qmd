@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Docs: check the rendered documentation for dead links with lychee in CI. [#1844](https://github.com/Deltares/Ribasim/issues/1844)
 - Allocation: solve every problem from scratch, so that HiGHS uses presolve, which is much faster for large subnetworks. Start values made HiGHS construct a basis and then skip presolve. [#3387](https://github.com/Deltares/Ribasim/pull/3387)
 - Allocation: flow no longer switches between equally good routes from one timestep to the next. A last objective keeps the flows of allocation controlled nodes close to those of the previous timestep. [#3399](https://github.com/Deltares/Ribasim/issues/3399)
+- Allocation: the flow capacity of an allocation controlled Pump or Outlet is reduced by its `min_upstream_level`, `max_downstream_level` and, for an Outlet, level difference reduction factors, so allocation no longer plans flow that the physical layer does not realise. In the physical layer these factors now reduce the capacity of an allocation controlled Pump or Outlet, where they reduced the allocated flow rate itself. [#2723](https://github.com/Deltares/Ribasim/issues/2723)
 
 ## [v2026.2.0-rc1] - 2026-11-11
 
