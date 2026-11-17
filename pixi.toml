@@ -52,8 +52,9 @@ quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs", in
     "docs/reference/python",
 ] }
 quarto-check = { cmd = "quarto check all", depends-on = ["quartodoc-build"] }
-# Checks the rendered HTML, so internal and external links are covered
-check-docs-links = { cmd = "lychee --config lychee.toml docs/_site" }
+# Checks the rendered HTML, so internal and external links are covered.
+# Links to ribasim.org are checked against the rendered site, since it is only published afterwards.
+check-docs-links = { cmd = "lychee --config lychee.toml --remap \"https://ribasim\\.org/(.*) file://$PIXI_PROJECT_ROOT/docs/_site/\\$1\" docs/_site" }
 quarto-render = { cmd = "PYTHON_JULIAPKG_PROJECT=$PIXI_PROJECT_ROOT quarto render docs/{{path}}", args = [
     { "arg" = "path", "default" = "" },
 ], depends-on = [

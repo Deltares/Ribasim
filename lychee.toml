@@ -9,11 +9,12 @@ timeout = 30
 exclude_path = ["docs/_site/search.json"]
 # docs/_site is gitignored, and lychee would otherwise skip it
 no_ignore = true
-# Links that only resolve once the docs are published or that block bots
+# Like GitHub Pages, resolve extensionless links to ribasim.org pages such as /changelog
+fallback_extensions = ["html"]
+# Local links. Links to ribasim.org are remapped to docs/_site in the check-docs-links pixi task.
 exclude = [
     '^https?://localhost',
     '^https?://127\.0\.0\.1',
-    '^https://ribasim\.org',
     # Quarto links this stylesheet in pages with diagrams, but does not write it
     'quarto-diagram/mermaid\.css$',
     # Quarto adds a .png extension to this embedded GitHub attachment, which then 404s

@@ -306,7 +306,7 @@ We linearize the optimization problem, and Pump and Outlets can now listen to al
 NetCDF output has been added, as well as experimental support for NetCDF input.
 DiscreteControl now supports an upper and lower threshold to model hysteresis.
 Editing models in QGIS is no longer supported; the plugin widget has been reduced one button.
-The [Ribasim Python installation section](https://ribasim.org/install.html#sec-install-python) allows you to pick your favorite package manager.
+The [Ribasim Python installation section](https://ribasim.org/getting-started/install.html#sec-install-python) allows you to pick your favorite package manager.
 Lastly, Ribasim is now multithreaded!
 
 **Breaking changes**: In the `DiscreteControl / condition` table, `greater_than` has been renamed to `threshold_high`, and the optional `threshold_low` column was added.
@@ -397,8 +397,8 @@ We also welcome the Junction node to the family, which will help laying out netw
 - Added [Junction](https://ribasim.org/reference/node/junction.html) node type. [#2175](https://github.com/Deltares/Ribasim/pull/2175)
 - Write results and log bottlenecks also on an interrupt or crash. [#2191](https://github.com/Deltares/Ribasim/pull/2191) [#2200](https://github.com/Deltares/Ribasim/pull/2200)
 - Log computation time and save it to `solver_stats.arrow`. [#2209](https://github.com/Deltares/Ribasim/pull/)
-- Experimental support for writing the model network and results into files used by Delft-FEWS, [`model.to_fews`](https://ribasim.org/reference/python/Model.html#ribasim.Model.to_fews). [#2161](https://github.com/Deltares/Ribasim/pull/2161)
-- Document [`results/concentration.arrow`](https://ribasim.org/reference/usage.html#concentration---concentration.arrow). [#2165](https://github.com/Deltares/Ribasim/pull/2165)
+- Experimental support for writing the model network and results into files used by Delft-FEWS, `model.to_fews`. [#2161](https://github.com/Deltares/Ribasim/pull/2161)
+- Document [`results/concentration.arrow`](https://ribasim.org/reference/usage.html#concentration---concentration.nc). [#2165](https://github.com/Deltares/Ribasim/pull/2165)
 
 ### Changed
 - Allow max 1 outflow neighbour for FlowBoundary. [#2192](https://github.com/Deltares/Ribasim/pull/2192)
