@@ -18,6 +18,4 @@ exclude = [
     'quarto-diagram/mermaid\.css$',
     # Quarto adds a .png extension to this embedded GitHub attachment, which then 404s
     '^https://github\.com/Deltares/Ribasim/assets/',
-    # Dead link in references.bib, the new location of this page has to be looked up
-    '^https://www\.pdok\.nl/downloads/-/article/basisregistratie-topografie-brt-topnl',
 ]
