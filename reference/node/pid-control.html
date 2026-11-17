@@ -429,7 +429,14 @@ window.Quarto = {
   <li><a href="#the-derivative-term" id="toc-the-derivative-term" class="nav-link" data-scroll-target="#the-derivative-term"><span class="header-section-number">2.1</span> The derivative term</a></li>
   <li><a href="#the-sign-of-the-parameters" id="toc-the-sign-of-the-parameters" class="nav-link" data-scroll-target="#the-sign-of-the-parameters"><span class="header-section-number">2.2</span> The sign of the parameters</a></li>
   </ul></li>
-  <li><a href="#behavior-in-allocation" id="toc-behavior-in-allocation" class="nav-link" data-scroll-target="#behavior-in-allocation"><span class="header-section-number">3</span> Behavior in allocation</a></li>
+  <li><a href="#hydrological-interpretation-of-the-parameters" id="toc-hydrological-interpretation-of-the-parameters" class="nav-link" data-scroll-target="#hydrological-interpretation-of-the-parameters"><span class="header-section-number">3</span> Hydrological interpretation of the parameters</a>
+  <ul class="collapse">
+  <li><a href="#proportional-term-k_p" id="toc-proportional-term-k_p" class="nav-link" data-scroll-target="#proportional-term-k_p"><span class="header-section-number">3.1</span> Proportional term <span class="math inline">\(K_p\)</span></a></li>
+  <li><a href="#integral-term-k_i" id="toc-integral-term-k_i" class="nav-link" data-scroll-target="#integral-term-k_i"><span class="header-section-number">3.2</span> Integral term <span class="math inline">\(K_i\)</span></a></li>
+  <li><a href="#derivative-term-k_d" id="toc-derivative-term-k_d" class="nav-link" data-scroll-target="#derivative-term-k_d"><span class="header-section-number">3.3</span> Derivative term <span class="math inline">\(K_d\)</span></a></li>
+  <li><a href="#practical-guidance" id="toc-practical-guidance" class="nav-link" data-scroll-target="#practical-guidance"><span class="header-section-number">3.4</span> Practical guidance</a></li>
+  </ul></li>
+  <li><a href="#behavior-in-allocation" id="toc-behavior-in-allocation" class="nav-link" data-scroll-target="#behavior-in-allocation"><span class="header-section-number">4</span> Behavior in allocation</a></li>
   </ul>
 </nav>
     </div>
@@ -666,8 +673,71 @@ Q_\text{pump/outlet} = \text{clamp}\left(\phi(u_\text{us})\frac{K_pe + K_iI + K_
 <p>We enforce the convention that when a Pump is controlled, its link points away from the Basin, and when an Outlet is controlled, its link points towards the Basin, so that the main flow direction along these links is positive. Therefore, positive flows of the Pump and Outlet have opposite effects on the Basin, and thus the parameters <span class="math inline">\(K_p,K_i,K_d\)</span> of the Pump and Outlet must have opposite signs to achieve the same goal.</p>
 </section>
 </section>
-<section id="behavior-in-allocation" class="level1" data-number="3">
-<h1 data-number="3"><span class="header-section-number">3</span> Behavior in allocation</h1>
+<section id="hydrological-interpretation-of-the-parameters" class="level1" data-number="3">
+<h1 data-number="3"><span class="header-section-number">3</span> Hydrological interpretation of the parameters</h1>
+<p>The PID controller mimics what a gate or pump operator does: compare the water level with the target level and adjust the discharge. Since <span class="math inline">\(Q\)</span> is in <span class="math inline">\(\text{m}^3/\text{s}\)</span> and the error <span class="math inline">\(e\)</span> in <span class="math inline">\(\text{m}\)</span>, the parameters have the following units and meaning.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Parameter</th>
+<th>Unit</th>
+<th>Operator’s rule of thumb</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><span class="math inline">\(K_p\)</span></td>
+<td><span class="math inline">\(\text{m}^2/\text{s}\)</span></td>
+<td>“For every metre the level is off target, change the discharge by this much.”</td>
+</tr>
+<tr class="even">
+<td><span class="math inline">\(K_i\)</span></td>
+<td><span class="math inline">\(\text{m}^2/\text{s}^2\)</span></td>
+<td>“If the level stays off target, the discharge keeps increasing, the longer the more until the target is reached.”</td>
+</tr>
+<tr class="odd">
+<td><span class="math inline">\(K_d\)</span></td>
+<td><span class="math inline">\(\text{m}^2\)</span></td>
+<td>“If the level is moving quickly towards or away from the target, react in advance.”</td>
+</tr>
+</tbody>
+</table>
+<p>Remember that <span class="math inline">\(K_p,K_i,K_d\)</span> of a Pump and an Outlet need opposite signs, see <a href="#the-sign-of-the-parameters">the sign of the parameters</a>. The values below are therefore given as magnitudes.</p>
+<section id="proportional-term-k_p" class="level2" data-number="3.1">
+<h2 data-number="3.1" class="anchored" data-anchor-id="proportional-term-k_p"><span class="header-section-number">3.1</span> Proportional term <span class="math inline">\(K_p\)</span></h2>
+<p><span class="math inline">\(K_p\)</span> is the discharge per metre of level error, which is like the slope of a weir or gate rating curve. A Basin with surface area <span class="math inline">\(A\)</span> that is controlled by <span class="math inline">\(K_p\)</span> alone behaves like a linear reservoir with time scale</p>
+<p><span class="math display">\[
+\tau = \frac{A}{K_p}.
+\]</span></p>
+<p>The level error decays exponentially with this time scale, so a large <span class="math inline">\(K_p\)</span> gives a quick but possibly abrupt response, and a small <span class="math inline">\(K_p\)</span> a slow one. Starting from a desired response time <span class="math inline">\(\tau\)</span> (e.g.&nbsp;the Basin should recover within a day), a first estimate is <span class="math inline">\(K_p = A/\tau\)</span>. Another way to find <span class="math inline">\(K_p\)</span> is the maximum discharge <span class="math inline">\(Q_\text{max}\)</span> of the Pump or Outlet and the level deviation <span class="math inline">\(\Delta h\)</span> at which the structure should be fully open: <span class="math inline">\(K_p = Q_\text{max}/\Delta h\)</span>.</p>
+<p>A proportional controller on its own leaves a steady-state offset whenever there is a constant inflow or outflow that is not matched, since a nonzero error is needed to produce the required discharge. For example, with a constant net inflow <span class="math inline">\(Q_\text{in}\)</span> that must be pumped out, the Basin level settles at <span class="math inline">\(Q_\text{in}/K_p\)</span> above the target.</p>
+</section>
+<section id="integral-term-k_i" class="level2" data-number="3.2">
+<h2 data-number="3.2" class="anchored" data-anchor-id="integral-term-k_i"><span class="header-section-number">3.2</span> Integral term <span class="math inline">\(K_i\)</span></h2>
+<p><span class="math inline">\(K_i\)</span> removes this steady-state offset: as long as the level is off target, the integral keeps growing and so does the discharge, until the level is back at the target. Hydrologically, it learns the unknown inflow (e.g.&nbsp;seepage, precipitation surplus or upstream supply) that must be compensated. The cost is a slower response and a possible overshoot, where the level passes the target and the Basin oscillates around it. Therefore <span class="math inline">\(K_i\)</span> is usually chosen small compared to <span class="math inline">\(K_p\)</span>. A common choice is to make the integral time <span class="math inline">\(T_i = K_p/K_i\)</span> longer than the response time <span class="math inline">\(\tau\)</span>, for instance several times <span class="math inline">\(\tau\)</span>.</p>
+</section>
+<section id="derivative-term-k_d" class="level2" data-number="3.3">
+<h2 data-number="3.3" class="anchored" data-anchor-id="derivative-term-k_d"><span class="header-section-number">3.3</span> Derivative term <span class="math inline">\(K_d\)</span></h2>
+<p><span class="math inline">\(K_d\)</span> reacts to the rate of change of the error, and thereby damps overshoot and oscillations: when the level approaches the target quickly, the discharge is reduced already before the target is reached. In many water systems it is not needed, and often it can be left at <span class="math inline">\(0\)</span>. It can be useful for systems with a large delay or a fast-changing setpoint. Setting <span class="math inline">\(K_d \ne 0\)</span> makes the equations implicit, see <a href="#the-derivative-term">the derivative term</a>. In addition, a large <span class="math inline">\(K_d\)</span> makes the controller sensitive to fast fluctuations of the level, such as those caused by a sudden change of inflow.</p>
+</section>
+<section id="practical-guidance" class="level2" data-number="3.4">
+<h2 data-number="3.4" class="anchored" data-anchor-id="practical-guidance"><span class="header-section-number">3.4</span> Practical guidance</h2>
+<ul>
+<li>Start with <span class="math inline">\(K_i = K_d = 0\)</span> and choose <span class="math inline">\(K_p\)</span> from the Basin area and the desired response time, or from the capacity of the structure. Check that the resulting discharge stays within the <span class="math inline">\(Q_\text{min}\)</span> and <span class="math inline">\(Q_\text{max}\)</span> of the Pump or Outlet, otherwise the controller saturates and behaves like an on/off controller.</li>
+<li>Add a small <span class="math inline">\(K_i\)</span> if the level does not reach the target, but stays offset.</li>
+<li>Only add <span class="math inline">\(K_d\)</span> if the level oscillates or overshoots despite a smaller <span class="math inline">\(K_i\)</span>.</li>
+<li>Values for real systems can often be derived from available information: the Basin area from the water level-area relation, and <span class="math inline">\(Q_\text{max}\)</span> and the allowed level deviation from the structure’s specifications or operational rules (e.g.&nbsp;the target level band of a polder).</li>
+<li>Use the <a href="../../getting-started/examples.html#model-with-pid-control">PID control example</a> to see the effect of changing the parameters.</li>
+</ul>
+</section>
+</section>
+<section id="behavior-in-allocation" class="level1" data-number="4">
+<h1 data-number="4"><span class="header-section-number">4</span> Behavior in allocation</h1>
 <p><a href="../../concept/allocation.html">Allocation</a> assumes that the flow rate that this node sets on a Pump or Outlet stays the same until the next intervention time, set by <code>intervention_interval</code> in the <a href="../../reference/usage.html#sec-allocation-settings">allocation settings</a>. Since a PidControl node changes the flow rate continuously, the simulated flows can differ from what allocation planned.</p>
 
 
