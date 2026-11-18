@@ -103,7 +103,7 @@ Each node page documents its own parameters; this overview lists the checks that
 ## Allocation
 
 - Subnetwork IDs are positive integers, and all nodes in a subnetwork are connected when allocation is active.
-- The nodes that connect the main network to a secondary network are Pumps or Outlets with `allocation_controlled` set to `true`. Flow is only from the main network into a secondary network, not between secondary networks.
+- The nodes that connect the primary network to a secondary network are Pumps or Outlets with `allocation_controlled` set to `true`. Flow is only from the primary network into a secondary network, not between secondary networks.
 - A Pump or Outlet that is allocation controlled has a finite `max_flow_rate`, also in every control state.
 - The demands of a UserDemand are non-negative.
 - For a UserDemand, `return_factor` is between 0 and 1, and `return_factor` and `min_level` are equal for all demand priorities. A UserDemand that takes water from a Basin has a `min_level`.
