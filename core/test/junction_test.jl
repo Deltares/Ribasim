@@ -285,18 +285,18 @@ end
 @testitem "Junction at subnetwork boundary" setup = [JunctionValidation] begin
     messages = JunctionValidation.error_messages(
         "invalid_junction_subnetwork_boundary",
-        "Errors detected in connections between primary network and subnetworks."
+        "Errors detected in connections between primary network and secondary networks."
     )
     @test messages == ["Junction nodes at the boundary between subnetworks are not supported."]
 end
 
-@testitem "Subnetwork flows into primary network" setup = [JunctionValidation] begin
+@testitem "Secondary network flows into primary network" setup = [JunctionValidation] begin
     messages = JunctionValidation.error_messages(
         "invalid_subnetwork_to_primary",
-        "Errors detected in connections between primary network and subnetworks."
+        "Errors detected in connections between primary network and secondary networks."
     )
     @test messages ==
-        ["This node flows from a subnetwork into the primary network, which is not supported."]
+        ["This node flows from a secondary network into the primary network, which is not supported."]
 end
 
 @testitem "Junction allocation" begin
