@@ -54,3 +54,61 @@ Junction nodes in `Junction / static`, which divide the flow or supply a UserDem
 ::: {.callout-note}
 Pump and Outlet can receive two control links, in which case one must be from a FlowDemand, and the other from a control node.
 :::
+
+# Other validation rules
+
+Besides connectivity, the Julia core checks the input values and the combinations of values.
+A model that violates one of these rules is not run, and the log lists the offending nodes.
+The rules below are grouped by topic.
+Each node page documents its own parameters; this overview lists the checks that go beyond a single column.
+
+## Tables and nodes
+
+- Every `node_id` occurs once in the Node table, and every node ID in another table exists in the Node table and has the node type of that table.
+- Tables have no duplicate rows, where a row is identified by the columns it is sorted by. The `Variable` tables of ContinuousControl and DiscreteControl are exempt, since the same variable can be listened to multiple times, for instance with a different `look_ahead`.
+- A node has its parameters in either the Static or the Time table, not in both and not in neither.
+- A node with multiple `control_state`s must be controlled by DiscreteControl; otherwise add a row without `control_state`.
+- A Link between two nodes occurs once, and the opposite Link is only allowed to or from a UserDemand.
+- A model needs at least one state, so it needs a Basin, a connector node or a UserDemand next to FlowBoundary nodes.
+
+## Configuration
+
+- The `starttime` is before the `endtime`.
+- `reduced_implicit_solve = true` is only allowed for solver algorithms that support it (see [solver settings](usage.qmd#sec-solver-settings)).
+- The allocation `intervention_interval` is positive and finite, and the allocation timesteps satisfy `0 < dtmin ≤ dtmax`, with `dt` positive if given. A `dtmin`, `dtmax` or `dt` larger than the `intervention_interval` is reduced to it, with a warning.
+- The results `compression_level` is between 0 and 9, and `significant_bits` between 0 and 52.
+
+## Basin
+
+- The initial level, from the `Basin / state` table, is not below the lowest level of the Basin profile.
+- Each subgrid element refers to an existing Basin and has no repeated levels, since these cannot be interpolated.
+- Negative concentrations are not allowed in `Basin / concentration_external`.
+
+## Connector nodes
+
+- Flow rates of a Pump, Outlet and FlowBoundary are non-negative, also for every control state.
+- A TabulatedRatingCurve has at least two points, starts at a flow rate of 0, and its flow rate does not decrease with increasing level.
+- The first and last rating curve are equal when `cyclic_time` is used.
+- A Pump or Outlet that takes water from a Basin has a `min_upstream_level` that is not below the Basin bottom.
+- The lowest level of a TabulatedRatingCurve that takes water from a Basin is not below the Basin bottom.
+- For a ManningResistance, `profile_width` and `profile_slope` are not both zero, also not after a control state update.
+
+## Control
+
+- A PidControl listens to a Basin that is directly upstream or downstream of the controlled Pump or Outlet.
+- A ContinuousControl function has at least two points and one `controlled_variable`.
+- A condition in the DiscreteControl condition table refers to a DiscreteControl node and to a `compound_variable_id` in its variable table.
+- A node has at most one control node, not counting a FlowDemand (see the note above).
+
+## Allocation
+
+- Subnetwork IDs are positive integers, and all nodes in a subnetwork are connected when allocation is active.
+- The nodes that connect the primary network to a subnetwork are Pumps or Outlets with `allocation_controlled` set to `true`, and flow is only from the primary network into a subnetwork, not between subnetworks.
+- A Pump or Outlet that is allocation controlled has a finite `max_flow_rate`, also in every control state.
+- The demands of a UserDemand are non-negative.
+- For a UserDemand, `return_factor` is between 0 and 1, and `return_factor` and `min_level` are equal for all demand priorities. A UserDemand that takes water from a Basin has a `min_level`.
+- For a LevelDemand, the minimum and maximum levels of subsequent demand priorities define nested windows.
+
+## Junction
+
+See the [Junction connectivity rules](node/junction.qmd#connectivity-rules) for the rules on Junction groups and on the Junctions that divide the flow, including the rules on their fractions.
