@@ -948,9 +948,6 @@ function pump_or_outlet_flow(
         p,
         t,
     )
-    level_factor =
-        reduction_factor(src_level - min_upstream_level_, level_difference_threshold)
-
     max_downstream_level_ = eval_time_interpolation(
         max_downstream_level,
         current_max_downstream_level,
@@ -958,23 +955,35 @@ function pump_or_outlet_flow(
         p,
         t,
     )
-    level_factor *=
-        reduction_factor(max_downstream_level_ - dst_level, level_difference_threshold)
+
+    if is_active(allocation) && node.allocation_controlled[node_idx]
+        # Allocation already limits its flow rate to the capacity that is left by the level
+        # based reduction factors, see `connector_flow_capacity_bounds`. So here these
+        # factors reduce the capacity too, not the flow rate itself: that would apply them twice.
+        level_factor =
+            reduction_factor(src_level - min_upstream_level_, level_difference_threshold)
+        level_factor *=
+            reduction_factor(max_downstream_level_ - dst_level, level_difference_threshold)
+        if reduce_Δlevel
+            level_factor *= reduction_factor(src_level - dst_level, level_difference_threshold)
+        end
+        return clamp(q, level_factor * lower_bound, level_factor * upper_bound)
+    end
+
+    # The factors are applied to the flow rate one by one, in this order, so that the results
+    # without allocation control are the same to the last digit as before
+    q = clamp(q, lower_bound, upper_bound)
 
     # Special case for outlet: check level difference
     if reduce_Δlevel
         Δlevel = src_level - dst_level
-        level_factor *= reduction_factor(Δlevel, level_difference_threshold)
+        q *= reduction_factor(Δlevel, level_difference_threshold)
     end
 
-    return if is_active(allocation) && node.allocation_controlled[node_idx]
-        # Allocation already limits its flow rate to the capacity that is left by the level
-        # based reduction factors, see `connector_flow_capacity_bounds`. So here these
-        # factors reduce the capacity too, not the flow rate itself: that would apply them twice.
-        clamp(q, level_factor * lower_bound, level_factor * upper_bound)
-    else
-        level_factor * clamp(q, lower_bound, upper_bound)
-    end
+    q *= reduction_factor(src_level - min_upstream_level_, level_difference_threshold)
+    q *= reduction_factor(max_downstream_level_ - dst_level, level_difference_threshold)
+
+    return q
 end
 
 function formulate_pump_or_outlet_flow!(

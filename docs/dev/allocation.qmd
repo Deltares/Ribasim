@@ -846,7 +846,7 @@ function update_flow_variable_bounds!(
         lower, upper = -Inf, Inf
         for node_id in flow_link
             node_lower, node_upper = connector_flow_capacity_bounds(
-                allocation_model, node_id, p, t, Δt_allocation,
+                node_id, p, t, Δt_allocation, scaling.flow,
             )
             lower = max(lower, node_lower)
             upper = min(upper, node_upper)
@@ -861,7 +861,7 @@ end
 
 `connector_flow_capacity_bounds` dispatches on the node type:
 
-- **Pump and Outlet**: the tightest `min_flow_rate` and `max_flow_rate` over $[t, t + \Delta t]$, since allocation assigns a single flow rate for the whole timestep. Both are multiplied by `level_reduction_factor`: the product of the level based reduction factors of the physical layer (`min_upstream_level`, `max_downstream_level` and for an Outlet the level difference), evaluated at the levels at the start of the allocation timestep. A factor below $10^{-4}$ is set to zero: a level that rests at its limit would otherwise leave a capacity too small for the solver tolerances next to a FlowDemand;
+- **Pump and Outlet**: the tightest `min_flow_rate` and `max_flow_rate` over $[t, t + \Delta t]$, since allocation assigns a single flow rate for the whole timestep. Both are multiplied by `level_reduction_factor`: the product of the level based reduction factors of the physical layer (`min_upstream_level`, `max_downstream_level` and for an Outlet the level difference), evaluated at the levels at the start of the allocation timestep. If this leaves less than `MIN_SCALED_CAPACITY` (in units of the flow scaling), the node is treated as closed: a level that rests at its limit leaves a capacity too small for the solver tolerances, which makes the problem infeasible next to a FlowDemand;
 - **LinearResistance, ManningResistance and non-allocation-controlled TabulatedRatingCurve**: `linearized_flow_bounds`, see below;
 - **allocation controlled TabulatedRatingCurve**: $[0, Q(h_{a,\max})]$ where $h_{a,\max}$ is the highest reachable upstream level;
 - **UserDemand**: $[0, \infty)$, tightened afterwards by `update_user_demand_flow_bounds!`;

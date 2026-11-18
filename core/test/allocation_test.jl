@@ -389,7 +389,7 @@ end
     # relation, whose reduction factors can bring it below min_flow_rate
     outlet.allocation_controlled[outlet_id.idx] = false
     outlet.min_flow_rate[outlet_id.idx].u .= 1.0e-3
-    @test Ribasim.connector_flow_capacity_bounds(outlet_id, model.integrator.p, 0.0, 86400.0) ==
+    @test Ribasim.connector_flow_capacity_bounds(outlet_id, model.integrator.p, 0.0, 86400.0, scaling.flow) ==
         (-Inf, Inf)
 
     # ManningResistance flows are only constrained by their linearized flow-level relation,
@@ -403,7 +403,7 @@ end
     (; p_independent) = model.integrator.p
     (; allocation, manning_resistance) = p_independent
     allocation_model = only(allocation.allocation_models)
-    (; problem) = allocation_model
+    (; problem, scaling) = allocation_model
     flow = problem[:flow]
 
     manning_id = NodeID(:ManningResistance, 2, p_independent)
@@ -422,7 +422,8 @@ end
     (; outlet, pump) = p_independent
     outlet_id = NodeID(:Outlet, 5, p_independent)
     max_flow_rate = outlet.max_flow_rate[outlet_id.idx](0.0)
-    capacity() = Ribasim.connector_flow_capacity_bounds(outlet_id, p, 0.0, 86400.0)
+    capacity() =
+        Ribasim.connector_flow_capacity_bounds(outlet_id, p, 0.0, 86400.0, scaling.flow)
     @test capacity() == (0.0, max_flow_rate)
     outlet.min_upstream_level[outlet_id.idx].u .= 10.0
     @test capacity() == (0.0, 0.0)
@@ -432,9 +433,26 @@ end
     outlet.max_downstream_level[outlet_id.idx].u .= Inf
     @test capacity() == (0.0, max_flow_rate)
 
+    # What is left of the capacity by the level limits is kept, unless it is negligible
+    # compared to the flow scaling, which would make the problem infeasible
+    upstream_id = outlet.inflow_link[outlet_id.idx].link[1]
+    upstream_level = Ribasim.get_level(0.0, p, upstream_id, 0.0)
+    (; level_difference_threshold) = p_independent
+    factor() = Ribasim.level_reduction_factor(outlet, outlet_id, p, 0.0)
+    outlet.min_upstream_level[outlet_id.idx].u .=
+        upstream_level - 0.05 * level_difference_threshold
+    @test 0 < factor() < 1
+    @test capacity() == (0.0, factor() * max_flow_rate)
+    outlet.min_upstream_level[outlet_id.idx].u .=
+        upstream_level - 1.0e-3 * level_difference_threshold
+    @test 0 < factor() * max_flow_rate < Ribasim.MIN_SCALED_CAPACITY * scaling.flow
+    @test capacity() == (0.0, 0.0)
+    outlet.min_upstream_level[outlet_id.idx].u .= -Inf
+
     pump_id = NodeID(:Pump, 7, p_independent)
     pump.min_upstream_level[pump_id.idx].u .= 10.0
-    @test Ribasim.connector_flow_capacity_bounds(pump_id, p, 0.0, 86400.0) == (0.0, 0.0)
+    @test Ribasim.connector_flow_capacity_bounds(pump_id, p, 0.0, 86400.0, scaling.flow) ==
+        (0.0, 0.0)
 end
 
 @testitem "Level reduction factors limit the capacity of allocation controlled nodes" begin

@@ -1504,11 +1504,16 @@ function level_reduction_factor(
     max_downstream_level = node.max_downstream_level[node_id.idx](t)
     factor *= reduction_factor(src_level - min_upstream_level, level_difference_threshold)
     factor *= reduction_factor(max_downstream_level - dst_level, level_difference_threshold)
-    # A level that rests at its limit leaves a capacity of ~1e-6 m³/s. Next to a demand of
-    # order 1 m³/s, such a capacity makes the allocation problem infeasible within the
-    # solver tolerance, so it is treated as closed.
-    return factor < 1.0e-4 ? 0.0 : factor
+    return factor
 end
+
+"""
+The capacity of a Pump or Outlet that its level limits leave, in units of `scaling.flow`,
+below which it is treated as closed. A level that rests at its limit leaves a capacity of
+~1e-6 m³/s. Scaled, that is below the feasibility tolerance of the solver
+(`FEASIBILITY_TOLERANCE`), and next to a demand this makes the allocation problem infeasible.
+"""
+const MIN_SCALED_CAPACITY = 1.0e-6
 
 """
 Flow capacity imposed on a link by one of the nodes it connects.
@@ -1520,6 +1525,7 @@ function connector_flow_capacity_bounds(
         p::Parameters,
         t::Float64,
         Δt_allocation::Float64,
+        scaling_flow::Float64,
     )::Tuple{Float64, Float64}
     (; tabulated_rating_curve, pump, outlet) = p.p_independent
 
@@ -1537,6 +1543,10 @@ function connector_flow_capacity_bounds(
             # The physical layer applies the level based reduction factors after clamping
             # to these bounds, so allocation cannot realize more than this
             factor = level_reduction_factor(node, node_id, p, t)
+            # Treat what is left of the capacity as closed when it is negligible
+            if factor < 1 && factor * upper < MIN_SCALED_CAPACITY * scaling_flow
+                return (0.0, 0.0)
+            end
             return (factor * lower, factor * upper)
         end
     elseif node_id.type == NodeType.TabulatedRatingCurve &&
@@ -1570,7 +1580,7 @@ function update_flow_variable_bounds!(
         lower, upper = -Inf, Inf
         for node_id in flow_link
             node_lower, node_upper =
-                connector_flow_capacity_bounds(node_id, p, t, Δt_allocation)
+                connector_flow_capacity_bounds(node_id, p, t, Δt_allocation, scaling.flow)
             lower = max(lower, node_lower)
             upper = min(upper, node_upper)
         end
