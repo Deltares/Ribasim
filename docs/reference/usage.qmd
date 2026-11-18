@@ -390,6 +390,7 @@ models = Path("../../generated_testmodels")
 run_ribasim(models / "basic/ribasim.toml")
 run_ribasim(models / "pump_discrete_control/ribasim.toml")
 run_ribasim(models / "flow_demand/ribasim.toml")
+run_ribasim(models / "allocation_control/ribasim.toml")
 run_ribasim(models / "two_basin/ribasim.toml")
 ```
 
@@ -507,6 +508,25 @@ If in the model a primary network and subnetwork(s) are specified, there are 3 d
 ```{python}
 #| code-fold: true
 ds = xr.open_dataset("../../generated_testmodels/flow_demand/results/allocation_flow.nc")
+ds
+```
+
+## Allocation control - `allocation_control.nc`
+
+The allocation control results contain the flow rate that allocation assigned to each node it controls.
+These are the Pump, Outlet and TabulatedRatingCurve nodes in a subnetwork that have `allocation_controlled` set to `true`, or that get it set by a control state of a DiscreteControl node.
+The file has one `node_id` per such node, with its `node_type`, and is empty if there are none.
+
+The `flow_rate` is the optimized flow rate over an allocation timestep, in $\text{m}^3 \text{s}^{-1}$.
+This is the flow rate that the physical layer is subject to, but the flow rate in `flow.nc` can be lower, due to for instance the reduction factors (see the node pages).
+Within an intervention interval, the flow rates of its allocation timesteps are averaged over time, and the average is stored at the start time of the interval, as for the other allocation results.
+A `flow_rate` is `NaN` at the times that allocation did not assign a flow rate to the node, for instance when the node was not allocation controlled at that time.
+
+**NetCDF structure:**
+
+```{python}
+#| code-fold: true
+ds = xr.open_dataset("../../generated_testmodels/allocation_control/results/allocation_control.nc")
 ds
 ```
 
