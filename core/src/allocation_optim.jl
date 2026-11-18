@@ -1504,7 +1504,10 @@ function level_reduction_factor(
     max_downstream_level = node.max_downstream_level[node_id.idx](t)
     factor *= reduction_factor(src_level - min_upstream_level, level_difference_threshold)
     factor *= reduction_factor(max_downstream_level - dst_level, level_difference_threshold)
-    return factor
+    # A level that rests at its limit leaves a capacity of ~1e-6 m³/s. Next to a demand of
+    # order 1 m³/s, such a capacity makes the allocation problem infeasible within the
+    # solver tolerance, so it is treated as closed.
+    return factor < 1.0e-4 ? 0.0 : factor
 end
 
 """

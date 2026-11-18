@@ -861,7 +861,7 @@ end
 
 `connector_flow_capacity_bounds` dispatches on the node type:
 
-- **Pump and Outlet**: the tightest `min_flow_rate` and `max_flow_rate` over $[t, t + \Delta t]$, since allocation assigns a single flow rate for the whole timestep. Both are multiplied by `level_reduction_factor`: the product of the level based reduction factors of the physical layer (`min_upstream_level`, `max_downstream_level` and for an Outlet the level difference), evaluated at the levels at the start of the allocation timestep;
+- **Pump and Outlet**: the tightest `min_flow_rate` and `max_flow_rate` over $[t, t + \Delta t]$, since allocation assigns a single flow rate for the whole timestep. Both are multiplied by `level_reduction_factor`: the product of the level based reduction factors of the physical layer (`min_upstream_level`, `max_downstream_level` and for an Outlet the level difference), evaluated at the levels at the start of the allocation timestep. A factor below $10^{-4}$ is set to zero: a level that rests at its limit would otherwise leave a capacity too small for the solver tolerances next to a FlowDemand;
 - **LinearResistance, ManningResistance and non-allocation-controlled TabulatedRatingCurve**: `linearized_flow_bounds`, see below;
 - **allocation controlled TabulatedRatingCurve**: $[0, Q(h_{a,\max})]$ where $h_{a,\max}$ is the highest reachable upstream level;
 - **UserDemand**: $[0, \infty)$, tightened afterwards by `update_user_demand_flow_bounds!`;
