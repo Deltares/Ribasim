@@ -83,6 +83,9 @@ Each control state change makes the solver restart with small timesteps, which f
 Setting `discrete_control_interval`, for instance to `86400` for daily, evaluates the logic of all DiscreteControl nodes only at multiples of this interval in seconds since the start of the simulation, which are added as solver timesteps.
 This makes control state changes coincide and can make simulations much faster, at the cost of reacting later to crossed thresholds.
 
+A DiscreteControl node whose control state changes more often than every `min_discrete_control_interval` seconds of simulated time (default: 1.0) gives a warning, since such rapid oscillations often indicate a model problem.
+Set `min_discrete_control_interval = 0.0` to disable these warnings. See the [DiscreteControl page](/reference/node/discrete-control.qmd) for details.
+
 ## Interpolation settings
 There are the following interpolation settings:
 
@@ -102,6 +105,7 @@ There are the following allocation settings:
   - When no default route priorities are specified, default values are applied (see the TOML example above).
 
   The way the route priorities work is as follows: The priority that is assigned to a node is interpreted as the cost it takes for water to flow through that node. The flow through each node is multiplied with the priority, and we find the water distribution solution that has the lowest cost of fulfilling the desired demands.
+- `reltol_linearization`: Deprecated and ignored. It is still accepted, with a warning, so that TOML files from Ribasim v2026.1.2 can be read, and can be removed from the TOML.
 
 ## Results settings
 
@@ -167,7 +171,7 @@ Currently the following features can be enabled (all are disabled by default).
 entry             | type   | description
 ----------------- | ------ | -----------
 concentration     | Bool   | Whether to enable tracer calculations or not.
-allocation        | Bool   | Whether to activate the activation layer. Replaced by 'first come first serve' when deactivated
+allocation        | Bool   | Whether to activate the allocation layer. Replaced by 'first come first serve' when deactivated
 
 
 
@@ -386,6 +390,7 @@ models = Path("../../generated_testmodels")
 run_ribasim(models / "basic/ribasim.toml")
 run_ribasim(models / "pump_discrete_control/ribasim.toml")
 run_ribasim(models / "flow_demand/ribasim.toml")
+run_ribasim(models / "allocation_control/ribasim.toml")
 run_ribasim(models / "two_basin/ribasim.toml")
 ```
 
@@ -496,13 +501,32 @@ Currently the stored demand and abstraction rate are those at the allocation tim
 ## Allocation flow - `allocation_flow.nc`
 
 The allocation flow results contain results of the optimized allocation flow on every link in the model that is part of a subnetwork, for each time an optimization problem is solved. The vertical flow of a Basin has `link_id` 0, and the Basin as both `from_node_id` and `to_node_id` (see also [here](/concept/allocation.qmd#the-high-level-algorithm)).
-If in the model a primary network and subnetwork(s) are specified, there are 3 different types of optimization for the subnetwork.
+If a primary network and secondary network(s) are specified in the model, there are 3 different types of optimization for the subnetwork.
 
 **NetCDF structure:**
 
 ```{python}
 #| code-fold: true
 ds = xr.open_dataset("../../generated_testmodels/flow_demand/results/allocation_flow.nc")
+ds
+```
+
+## Allocation control - `allocation_control.nc`
+
+The allocation control results contain the flow rate that allocation assigned to each node it controls.
+These are the Pump, Outlet and TabulatedRatingCurve nodes in a subnetwork that have `allocation_controlled` set to `true`, or that receive this setting by a control state of a DiscreteControl node.
+The file has one `node_id` per such node, with its `node_type`, and is empty if there are none.
+
+The `flow_rate` is the optimized flow rate over an allocation timestep, in $\text{m}^3 \text{s}^{-1}$.
+This is the flow rate that the physical layer is subject to, but the flow rate in `flow.nc` can be lower, due to for instance the reduction factors (see the node pages).
+Within an intervention interval, the flow rates of its allocation timesteps are averaged over time, and the average is stored at the start time of the interval, as for the other allocation results.
+A `flow_rate` is `NaN` at the times that allocation did not assign a flow rate to the node, for instance when the node was not allocation controlled at that time.
+
+**NetCDF structure:**
+
+```{python}
+#| code-fold: true
+ds = xr.open_dataset("../../generated_testmodels/allocation_control/results/allocation_control.nc")
 ds
 ```
 

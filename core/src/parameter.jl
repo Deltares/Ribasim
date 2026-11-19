@@ -426,9 +426,9 @@ end
 """
 Object for all information about allocation
 subnetwork_ids: The unique sorted allocation network IDs
-allocation_models: The allocation models for the primary network and subnetworks corresponding to
+allocation_models: The allocation models for the primary network and secondary networks corresponding to
     subnetwork_ids
-primary_network_connections: (from_id: pump or outlet in the primary network, to_id: node in the subnetwork, generally a basin)
+primary_network_connections: (from_id: pump or outlet in the primary network, to_id: node in the secondary network, generally a basin)
     per subnetwork
 demand_priorities_all: All used demand priority values from all subnetworks
 config: The Ribasim Model config

@@ -25,21 +25,21 @@ Allocation is the process of assigning an optimized allocated flow rate to deman
 
 The allocation problem is solved per subnetwork of the Ribasim model. A subnetwork is defined by all nodes that have the same subnetwork ID in the [Node table](/reference/usage.qmd#node). By default, all nodes get a subnetwork ID of 1. Each subnetwork is used to formulate a linear optimization problem with the [JuMP](https://jump.dev/JuMP.jl/stable/) package, which is solved using the [HiGHS solver](https://highs.dev/). For more in-depth information see also the example of solving the maximum flow problem with `JuMP.jl` [here](https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem).
 
-When we build a Ribasim model in which we want to utilize allocation, it can be computationally efficient and stable to divide a large allocation network into a primary network which connects to multiple subnetworks. The primary network should be the main water system and treats each connected subnetwork as a single demand node.
+When we build a Ribasim model in which we want to utilize allocation, it can be computationally efficient and stable to divide a large allocation network into a primary network which connects to multiple secondary networks. The primary network should be the main water system and treats each connected secondary network as a single demand node.
 
-We can first solve an allocation optimization for the primary network, that calculates how to optimally divide the available water to each subnetwork. With this allocated amount for a subnetwork, we can optimize how to divide this water within the subnetwork to the demand nodes.
+We can first solve an allocation optimization for the primary network, that calculates how to optimally divide the available water to each secondary network. With this allocated amount for a secondary network, we can optimize how to divide this water within the secondary network to the demand nodes.
 
 Subnetworks are defined by grouping nodes that share the same subnetwork ID in the [Node table](/reference/usage.qmd#node). The primary network is associated with subnetwork ID 1. This will always represent the main water system. This is shown in @fig-subnetwork-example below.
 
-![The primary network (subnetwork 1, blue) with connected secondary subnetworks (subnetwork 2 and 3, grey).](https://s3.deltares.nl/ribasim/doc-image/concept/medium_sized_subnetwork_model.png){#fig-subnetwork-example}
+![The primary network (subnetwork 1, blue) with connected secondary networks (subnetwork 2 and 3, grey).](https://s3.deltares.nl/ribasim/doc-image/concept/medium_sized_subnetwork_model.png){#fig-subnetwork-example}
 
 Secondary networks:
 
 - Can only connect to the primary network via Pump or Outlet nodes, which must be allocation controlled
 - Cannot connect directly to other secondary networks
 - Cannot flow into the primary network
-- Cannot have a [Junction](/reference/node/junction.qmd) with fractions at the connection with the primary network, or with another subnetwork
-- The demand of a subnetwork to the primary network is the sum of all unmet demands within the subnetwork
+- Cannot have a [Junction](/reference/node/junction.qmd) with fractions at the connection with the primary network
+- The demand of a secondary network to the primary network is the sum of all unmet demands within the secondary network. Unmet demands are those demands that cannot be fulfilled by the water that is locally available, i.e. the water in the secondary network itself.
 - Must have a subnetwork greater than 1.
 
 
