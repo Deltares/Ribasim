@@ -67,8 +67,8 @@ Each node page documents its own parameters; this overview lists the checks that
 - Every `node_id` occurs once in the Node table, and every node ID in another table exists in the Node table and has the node type of that table.
 - Tables have no duplicate rows, where a row is identified by the columns it is sorted by. The `Variable` tables of ContinuousControl and DiscreteControl are exempt, since the same variable can be listened to multiple times, for instance with a different `look_ahead`.
 - A node has its parameters in either the Static or the Time table, not in both and not in neither.
-- A node with multiple `control_state`s must be controlled by DiscreteControl; otherwise add a row without `control_state`.
-- A Link between two nodes occurs once, and the opposite Link is only allowed to or from a UserDemand.
+- A node with multiple `control_state`s must be controlled by DiscreteControl; otherwise use a row without `control_state`.
+- There is at most one Link between any two nodes, with the exception of UserDemand, where there can be Links from a Basin to the UserDemand and back.
 - A model needs at least one state, so it needs a Basin, a connector node or a UserDemand next to FlowBoundary nodes.
 
 ## Configuration

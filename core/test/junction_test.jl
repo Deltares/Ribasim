@@ -296,7 +296,7 @@ end
         "Errors detected in connections between primary network and secondary networks."
     )
     @test messages ==
-        ["This node flows from a secondary network into the primary network, which is not supported."]
+        ["This node flows from a secondary network into the primary network, which is not allowed."]
 end
 
 @testitem "Junction allocation" begin

@@ -69,15 +69,15 @@ function collect_primary_network_connections!(
                             outlet.allocation_controlled[upstream_id.idx]
                         end
                         if !allocation_controlled
-                            @error "This node connects the primary network to a secondary network and therefore must have allocation_controlled set to true." upstream_id subnetwork_id
+                            @error "This node connects the primary network to a secondary network without allocation_controlled set to true, which is not allowed." upstream_id subnetwork_id
                             errors = true
                         end
                     else
-                        @error "This node connects the primary network to a secondary network but is not an outlet or pump." upstream_id subnetwork_id
+                        @error "This node connects the primary network to a secondary network but is not an outlet or pump, which is not allowed." upstream_id subnetwork_id
                         errors = true
                     end
                 elseif upstream_node_subnetwork_id != subnetwork_id
-                    @error "This node connects two secondary networks." upstream_id subnetwork_id upstream_node_subnetwork_id
+                    @error "This node connects two secondary networks, which is not allowed." upstream_id subnetwork_id upstream_node_subnetwork_id
                     errors = true
                 end
             end
@@ -95,7 +95,7 @@ function collect_primary_network_connections!(
                 if upstream_id.is_routed || node_id.is_routed
                     @error "Junction nodes at the boundary between subnetworks are not supported." upstream_id node_id
                 else
-                    @error "This node flows from a secondary network into the primary network, which is not supported." upstream_id node_id
+                    @error "This node flows from a secondary network into the primary network, which is not allowed." upstream_id node_id
                 end
                 errors = true
             end

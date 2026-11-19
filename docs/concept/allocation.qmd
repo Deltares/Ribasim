@@ -38,8 +38,8 @@ Secondary networks:
 - Can only connect to the primary network via Pump or Outlet nodes, which must be allocation controlled
 - Cannot connect directly to other secondary networks
 - Cannot flow into the primary network
-- Cannot have a [Junction](/reference/node/junction.qmd) with fractions at the connection with the primary network, or with another secondary network
-- The demand of a secondary network to the primary network is the sum of all unmet demands within the secondary network
+- Cannot have a [Junction](/reference/node/junction.qmd) with fractions at the connection with the primary network
+- The demand of a secondary network to the primary network is the sum of all unmet demands within the secondary network. Unmet demands are those demands that cannot be fulfilled by the water that is locally available, i.e. the water in the secondary network itself.
 - Must have a subnetwork greater than 1.
 
 

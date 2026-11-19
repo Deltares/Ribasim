@@ -501,7 +501,7 @@ Currently the stored demand and abstraction rate are those at the allocation tim
 ## Allocation flow - `allocation_flow.nc`
 
 The allocation flow results contain results of the optimized allocation flow on every link in the model that is part of a subnetwork, for each time an optimization problem is solved. The vertical flow of a Basin has `link_id` 0, and the Basin as both `from_node_id` and `to_node_id` (see also [here](/concept/allocation.qmd#the-high-level-algorithm)).
-If in the model a primary network and secondary network(s) are specified, there are 3 different types of optimization for the subnetwork.
+If a primary network and secondary network(s) are specified in the model, there are 3 different types of optimization for the subnetwork.
 
 **NetCDF structure:**
 
@@ -514,7 +514,7 @@ ds
 ## Allocation control - `allocation_control.nc`
 
 The allocation control results contain the flow rate that allocation assigned to each node it controls.
-These are the Pump, Outlet and TabulatedRatingCurve nodes in a subnetwork that have `allocation_controlled` set to `true`, or that get it set by a control state of a DiscreteControl node.
+These are the Pump, Outlet and TabulatedRatingCurve nodes in a subnetwork that have `allocation_controlled` set to `true`, or that receive this setting by a control state of a DiscreteControl node.
 The file has one `node_id` per such node, with its `node_type`, and is empty if there are none.
 
 The `flow_rate` is the optimized flow rate over an allocation timestep, in $\text{m}^3 \text{s}^{-1}$.
