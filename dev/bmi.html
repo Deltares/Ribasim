@@ -411,6 +411,15 @@ window.Quarto = {
 <td>basin node ID</td>
 </tr>
 <tr class="even">
+<td><code>basin.surface_runoff</code></td>
+<td>surface runoff flux per basin</td>
+<td>Float64</td>
+<td><span class="math inline">\(\text{m}^3 \text{s}^{-1}\)</span></td>
+<td>forward fill</td>
+<td>yes</td>
+<td>basin node ID</td>
+</tr>
+<tr class="odd">
 <td><code>basin.drainage</code></td>
 <td>drainage flux per basin</td>
 <td>Float64</td>
@@ -419,8 +428,8 @@ window.Quarto = {
 <td>yes</td>
 <td>basin node ID</td>
 </tr>
-<tr class="odd">
-<td><code>basin.infiltration_integrated</code></td>
+<tr class="even">
+<td><code>basin.cumulative_infiltration</code></td>
 <td>cumulative infiltration per basin</td>
 <td>Float64</td>
 <td><span class="math inline">\(\text{m}^3\)</span></td>
@@ -428,8 +437,17 @@ window.Quarto = {
 <td>yes</td>
 <td>basin node ID</td>
 </tr>
+<tr class="odd">
+<td><code>basin.cumulative_surface_runoff</code></td>
+<td>cumulative surface runoff per basin</td>
+<td>Float64</td>
+<td><span class="math inline">\(\text{m}^3\)</span></td>
+<td>integrated from start</td>
+<td>yes</td>
+<td>basin node ID</td>
+</tr>
 <tr class="even">
-<td><code>basin.drainage_integrated</code></td>
+<td><code>basin.cumulative_drainage</code></td>
 <td>cumulative drainage per basin</td>
 <td>Float64</td>
 <td><span class="math inline">\(\text{m}^3\)</span></td>
@@ -445,6 +463,24 @@ window.Quarto = {
 <td>instantaneous</td>
 <td>no</td>
 <td>subgrid ID</td>
+</tr>
+<tr class="even">
+<td><code>flow_boundary.flow_rate</code></td>
+<td>flow rate per flow boundary, <code>NaN</code> if unset</td>
+<td>Float64</td>
+<td><span class="math inline">\(\text{m}^3 \text{s}^{-1}\)</span></td>
+<td>forward fill</td>
+<td>yes</td>
+<td>flow_boundary node ID</td>
+</tr>
+<tr class="odd">
+<td><code>flow_boundary.cumulative_flow</code></td>
+<td>cumulative flow per flow boundary</td>
+<td>Float64</td>
+<td><span class="math inline">\(\text{m}^3\)</span></td>
+<td>integrated from start</td>
+<td>yes</td>
+<td>flow_boundary node ID</td>
 </tr>
 <tr class="even">
 <td><code>user_demand.demand</code></td>
@@ -471,7 +507,8 @@ window.Quarto = {
 <li><code>user_demand.demand</code> yields the only 2D array, the other arrays are 1D. This array is indexed as <code>(node_idx, priority_idx)</code> in Julia, which stores arrays column-major</li>
 <li>The index of e.g.&nbsp;basins and user demand nodes needs to be inferred from the Ribasim input. The same holds for <code>priority_idx</code>, which is global over all subnetworks</li>
 <li>The data being writable means that Ribasim takes into account the possibility that the data is updated outiside the Ribasim core</li>
-<li>Although the <code>*_integrated</code> and <code>user_demand.cumulative_inflow</code> data is writable, this doesn’t affect the Ribasim simulation. This integrated data is only computed for the BMI, and can be set to <span class="math inline">\(0\)</span> via the BMI to avoid accuracy problems when the values get too large.</li>
+<li>A <code>flow_boundary.flow_rate</code> that is not <code>NaN</code> takes precedence over the flow rate from the model input for that FlowBoundary. Setting it back to <code>NaN</code> restores the model input</li>
+<li>Although the <code>cumulative_*</code> data is writable, this doesn’t affect the Ribasim simulation. This integrated data is only computed for the BMI, and can be set to <span class="math inline">\(0\)</span> via the BMI to avoid accuracy problems when the values get too large.</li>
 <li>Different from what is exposed via the BMI, the basin forcings and supplied user demands are averaged over the allocation timestep and saveat interval respectively.</li>
 </ul>
 

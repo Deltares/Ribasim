@@ -427,6 +427,7 @@ window.Quarto = {
   <li><a href="#tables" id="toc-tables" class="nav-link" data-scroll-target="#tables"><span class="header-section-number">3</span> Tables</a>
   <ul class="collapse">
   <li><a href="#static" id="toc-static" class="nav-link" data-scroll-target="#static"><span class="header-section-number">3.1</span> Static</a></li>
+  <li><a href="#profile" id="toc-profile" class="nav-link" data-scroll-target="#profile"><span class="header-section-number">3.2</span> Profile</a></li>
   </ul></li>
   <li><a href="#equations" id="toc-equations" class="nav-link" data-scroll-target="#equations"><span class="header-section-number">4</span> Equations</a>
   <ul class="collapse">
@@ -509,17 +510,18 @@ window.Quarto = {
 <span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>        <span class="op">:</span>length <span class="op">=&gt;</span> <span class="st">"positive"</span>,</span>
 <span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>        <span class="op">:</span>manning_n <span class="op">=&gt;</span> <span class="st">"positive"</span>,</span>
 <span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>        <span class="op">:</span>profile_width <span class="op">=&gt;</span> <span class="st">"non-negative, not zero together with profile_slope"</span>,</span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    ),</span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>        <span class="op">:</span>profile_slope <span class="op">=&gt;</span> <span class="st">"non-negative, not zero together with profile_width, horizontal length per unit of vertical, see below"</span>,</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
 <table class="caption-top table table-sm table-striped small">
 <colgroup>
-<col style="width: 15%">
-<col style="width: 9%">
-<col style="width: 9%">
 <col style="width: 10%">
-<col style="width: 54%">
+<col style="width: 6%">
+<col style="width: 6%">
+<col style="width: 6%">
+<col style="width: 70%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -564,7 +566,7 @@ window.Quarto = {
 <td>Float64</td>
 <td>-</td>
 <td>x</td>
-<td>-</td>
+<td>non-negative, not zero together with profile_width, horizontal length per unit of vertical, see below</td>
 </tr>
 <tr class="even">
 <td>control_state</td>
@@ -577,6 +579,34 @@ window.Quarto = {
 </table>
 </div>
 </div>
+</section>
+<section id="profile" class="level2" data-number="3.2">
+<h2 data-number="3.2" class="anchored" data-anchor-id="profile"><span class="header-section-number">3.2</span> Profile</h2>
+<p>The cross section of the reach is a trapezoid, described by the <code>profile_width</code> <span class="math inline">\(w\)</span> at the bottom and the <code>profile_slope</code> of the banks, as shown in the schematic above.</p>
+<p>The <code>profile_slope</code> is <span class="math inline">\(\Delta y / \Delta z\)</span>, the horizontal length <span class="math inline">\(\Delta y\)</span> per unit of vertical length <span class="math inline">\(\Delta z\)</span>, so it is <strong>not</strong> the steepness <span class="math inline">\(\Delta z / \Delta y\)</span> of the bank. The steeper the bank, the smaller the <code>profile_slope</code>:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>bank</th>
+<th><code>profile_slope</code></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>vertical (rectangular)</td>
+<td>0</td>
+</tr>
+<tr class="even">
+<td>45 degrees</td>
+<td>1</td>
+</tr>
+<tr class="odd">
+<td>1 vertical in 2 horizontal</td>
+<td>2</td>
+</tr>
+</tbody>
+</table>
+<p>A rectangular profile therefore has <code>profile_slope = 0</code>, and a triangular profile has <code>profile_width = 0</code>. The two cannot both be zero.</p>
 </section>
 </section>
 <section id="equations" class="level1" data-number="4">
