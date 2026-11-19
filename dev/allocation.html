@@ -1065,7 +1065,7 @@ G^p = \sum_{v \in V_p} w_v^p E_v^p.
 <span id="cb26-15"><a href="#cb26-15" aria-hidden="true" tabindex="-1"></a>        lower, upper <span class="op">=</span> <span class="op">-</span><span class="cn">Inf</span>, <span class="cn">Inf</span></span>
 <span id="cb26-16"><a href="#cb26-16" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> node_id <span class="kw">in</span> flow_link</span>
 <span id="cb26-17"><a href="#cb26-17" aria-hidden="true" tabindex="-1"></a>            node_lower, node_upper <span class="op">=</span> <span class="fu">connector_flow_capacity_bounds</span>(</span>
-<span id="cb26-18"><a href="#cb26-18" aria-hidden="true" tabindex="-1"></a>                allocation_model, node_id, p, t, Δt_allocation,</span>
+<span id="cb26-18"><a href="#cb26-18" aria-hidden="true" tabindex="-1"></a>                node_id, p, t, Δt_allocation, scaling.flow,</span>
 <span id="cb26-19"><a href="#cb26-19" aria-hidden="true" tabindex="-1"></a>            )</span>
 <span id="cb26-20"><a href="#cb26-20" aria-hidden="true" tabindex="-1"></a>            lower <span class="op">=</span> <span class="fu">max</span>(lower, node_lower)</span>
 <span id="cb26-21"><a href="#cb26-21" aria-hidden="true" tabindex="-1"></a>            upper <span class="op">=</span> <span class="fu">min</span>(upper, node_upper)</span>
@@ -1078,7 +1078,7 @@ G^p = \sum_{v \in V_p} w_v^p E_v^p.
 <span id="cb26-28"><a href="#cb26-28" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p><code>connector_flow_capacity_bounds</code> dispatches on the node type:</p>
 <ul>
-<li><strong>Pump and Outlet</strong>: the tightest <code>min_flow_rate</code> and <code>max_flow_rate</code> over <span class="math inline">\([t, t + \Delta t]\)</span>, since allocation assigns a single flow rate for the whole timestep;</li>
+<li><strong>Pump and Outlet</strong>: the tightest <code>min_flow_rate</code> and <code>max_flow_rate</code> over <span class="math inline">\([t, t + \Delta t]\)</span>, since allocation assigns a single flow rate for the whole timestep. Both are multiplied by <code>level_reduction_factor</code>: the product of the level based reduction factors of the physical layer (<code>min_upstream_level</code>, <code>max_downstream_level</code> and for an Outlet the level difference), evaluated at the levels at the start of the allocation timestep. If this leaves less than <code>MIN_SCALED_CAPACITY</code> (in units of the flow scaling), the node is treated as closed: a level that rests at its limit leaves a capacity too small for the solver tolerances, which makes the problem infeasible next to a FlowDemand;</li>
 <li><strong>LinearResistance, ManningResistance and non-allocation-controlled TabulatedRatingCurve</strong>: <code>linearized_flow_bounds</code>, see below;</li>
 <li><strong>allocation controlled TabulatedRatingCurve</strong>: <span class="math inline">\([0, Q(h_{a,\max})]\)</span> where <span class="math inline">\(h_{a,\max}\)</span> is the highest reachable upstream level;</li>
 <li><strong>UserDemand</strong>: <span class="math inline">\([0, \infty)\)</span>, tightened afterwards by <code>update_user_demand_flow_bounds!</code>;</li>

@@ -702,6 +702,11 @@ Q = \phi_\text{level} \, \mathrm{clamp}(\phi_\text{storage} Q_\text{set}, Q_{\mi
 </ul>
 <p>For <code>depth_threshold</code>, <code>level_difference_threshold</code> see <a href="../../reference/usage.html#sec-solver-settings">Solver settings</a>.</p>
 <p>Since <span class="math inline">\(\phi_\text{level}\)</span> is applied after the clamp, <code>min_flow_rate</code> is not a strict minimum: the level criteria can still reduce the flow to zero.</p>
+<p>For an <a href="#behavior-in-allocation">allocation-controlled</a> Outlet the level criteria reduce the capacity instead of the flow rate:</p>
+<p><span class="math display">\[
+Q = \mathrm{clamp}(\phi_\text{storage} Q_\text{set}, \phi_\text{level} Q_{\min}, \phi_\text{level} Q_{\max})
+\]</span></p>
+<p>Allocation already takes these criteria into account when it sets the flow rate, so reducing the flow rate itself would apply them twice.</p>
 </section>
 <section id="behavior-in-allocation" class="level1" data-number="5">
 <h1 data-number="5"><span class="header-section-number">5</span> Behavior in allocation</h1>
