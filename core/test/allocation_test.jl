@@ -389,7 +389,7 @@ end
     # relation, whose reduction factors can bring it below min_flow_rate
     outlet.allocation_controlled[outlet_id.idx] = false
     outlet.min_flow_rate[outlet_id.idx].u .= 1.0e-3
-    @test Ribasim.connector_flow_capacity_bounds(outlet_id, model.integrator.p, 0.0, 86400.0) ==
+    @test Ribasim.connector_flow_capacity_bounds(outlet_id, model.integrator.p, 0.0, 86400.0, scaling.flow) ==
         (-Inf, Inf)
 
     # ManningResistance flows are only constrained by their linearized flow-level relation,
@@ -403,7 +403,7 @@ end
     (; p_independent) = model.integrator.p
     (; allocation, manning_resistance) = p_independent
     allocation_model = only(allocation.allocation_models)
-    (; problem) = allocation_model
+    (; problem, scaling) = allocation_model
     flow = problem[:flow]
 
     manning_id = NodeID(:ManningResistance, 2, p_independent)
@@ -415,6 +415,84 @@ end
         @test JuMP.has_lower_bound(storage_change)
         @test !JuMP.has_upper_bound(storage_change)
     end
+
+    # The level based reduction factors of the physical layer also limit the capacity of
+    # allocation controlled Pumps and Outlets
+    (; p) = model.integrator
+    (; outlet, pump) = p_independent
+    outlet_id = NodeID(:Outlet, 5, p_independent)
+    max_flow_rate = outlet.max_flow_rate[outlet_id.idx](0.0)
+    capacity() =
+        Ribasim.connector_flow_capacity_bounds(outlet_id, p, 0.0, 86400.0, scaling.flow)
+    @test capacity() == (0.0, max_flow_rate)
+    outlet.min_upstream_level[outlet_id.idx].u .= 10.0
+    @test capacity() == (0.0, 0.0)
+    outlet.min_upstream_level[outlet_id.idx].u .= -Inf
+    outlet.max_downstream_level[outlet_id.idx].u .= -10.0
+    @test capacity() == (0.0, 0.0)
+    outlet.max_downstream_level[outlet_id.idx].u .= Inf
+    @test capacity() == (0.0, max_flow_rate)
+
+    # What is left of the capacity by the level limits is kept, unless it is negligible
+    # compared to the flow scaling, which would make the problem infeasible
+    upstream_id = outlet.inflow_link[outlet_id.idx].link[1]
+    upstream_level = Ribasim.get_level(0.0, p, upstream_id, 0.0)
+    (; level_difference_threshold) = p_independent
+    factor() = Ribasim.level_reduction_factor(outlet, outlet_id, p, 0.0)
+    outlet.min_upstream_level[outlet_id.idx].u .=
+        upstream_level - 0.05 * level_difference_threshold
+    @test 0 < factor() < 1
+    @test capacity() == (0.0, factor() * max_flow_rate)
+    outlet.min_upstream_level[outlet_id.idx].u .=
+        upstream_level - 1.0e-3 * level_difference_threshold
+    @test 0 < factor() * max_flow_rate < Ribasim.MIN_SCALED_CAPACITY * scaling.flow
+    @test capacity() == (0.0, 0.0)
+    outlet.min_upstream_level[outlet_id.idx].u .= -Inf
+
+    pump_id = NodeID(:Pump, 7, p_independent)
+    pump.min_upstream_level[pump_id.idx].u .= 10.0
+    @test Ribasim.connector_flow_capacity_bounds(pump_id, p, 0.0, 86400.0, scaling.flow) ==
+        (0.0, 0.0)
+end
+
+@testitem "Level reduction factors limit the capacity of allocation controlled nodes" begin
+    import BasicModelInterface as BMI
+    using Ribasim: NodeID
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/polder_management/ribasim.toml")
+    model = Ribasim.Model(toml_path)
+    BMI.update(model)
+
+    (; p, t) = model.integrator
+    (; outlet, level_difference_threshold) = p.p_independent
+    outlet_id = NodeID(:Outlet, 5, p.p_independent)
+    max_flow_rate = outlet.max_flow_rate[outlet_id.idx](t)
+
+    # Halfway the range over which min_upstream_level reduces the flow the factor is 0.5
+    upstream_id = outlet.inflow_link[outlet_id.idx].link[1]
+    upstream_level = Ribasim.get_level(0.0, p, upstream_id, t)
+    outlet.min_upstream_level[outlet_id.idx].u .=
+        upstream_level - level_difference_threshold / 2
+    @test Ribasim.level_reduction_factor(outlet, outlet_id, p, t) ≈ 0.5
+
+    function flow(flow_rate)
+        # Evaluate min_upstream_level again
+        p.p_mutable.new_time_dependent_cache = true
+        return Ribasim.pump_or_outlet_flow(
+            outlet, outlet_id, 0.0, 0.0, p, t, flow_rate, p.time_dependent_cache.outlet, true
+        )
+    end
+
+    # The capacity that allocation uses is realized in the physical layer,
+    # and a flow rate below that capacity is not reduced
+    @test flow(max_flow_rate) ≈ 0.5 * max_flow_rate
+    @test flow(0.1 * max_flow_rate) ≈ 0.1 * max_flow_rate
+
+    # Without allocation control the factor reduces the flow rate itself
+    outlet.allocation_controlled[outlet_id.idx] = false
+    @test flow(max_flow_rate) ≈ 0.5 * max_flow_rate
+    @test flow(0.1 * max_flow_rate) ≈ 0.05 * max_flow_rate
 end
 
 @testitem "Allocation controlled node without capacity" begin
