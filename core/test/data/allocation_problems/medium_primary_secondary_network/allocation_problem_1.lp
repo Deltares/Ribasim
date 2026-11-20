@@ -43,7 +43,7 @@ level_demand_fairness_error_constraint_Basin_#10,1,lower_: -1 level_demand_error
 level_demand_fairness_error_constraint_Basin_#10,1,upper_: -1 level_demand_error_Basin_#10,1,upper,first_ + 1 level_demand_error_Basin_#10,1,upper,second_ + 1 average_storage_unit_error_1,upper_ >= 0
 flow_change_constraint_Pump_#4,_1_: 1 flow_(Basin_#2,_Pump_#4)_ + 1 flow_change_Pump_#4_ >= 0.05832
 flow_change_constraint_Pump_#6,_1_: 1 flow_(Basin_#5,_Pump_#6)_ + 1 flow_change_Pump_#6_ >= 0.019440000000000002
-flow_change_constraint_Pump_#9,_1_: 1 flow_(Basin_#7,_Pump_#9)_ + 1 flow_change_Pump_#9_ >= 0.03888
+flow_change_constraint_Pump_#9,_1_: 1 flow_(Basin_#7,_Pump_#9)_ + 1 flow_change_Pump_#9_ >= 0.038880000000000005
 flow_change_constraint_Pump_#11,_1_: 1 flow_(Basin_#10,_Pump_#11)_ + 1 flow_change_Pump_#11_ >= 0.019440000000000002
 flow_change_constraint_Pump_#16,_1_: 1 flow_(Basin_#5,_Pump_#16)_ + 1 flow_change_Pump_#16_ >= 0.03888
 flow_change_constraint_Outlet_#3,_1_: 1 flow_(Basin_#2,_Outlet_#3)_ + 1 flow_change_Outlet_#3_ >= 0
@@ -51,7 +51,7 @@ flow_change_constraint_Outlet_#8,_1_: 1 flow_(Basin_#7,_Outlet_#8)_ + 1 flow_cha
 flow_change_constraint_Outlet_#21,_1_: 1 flow_(Basin_#10,_Outlet_#21)_ + 1 flow_change_Outlet_#21_ >= 0
 flow_change_constraint_Pump_#4,1_: -1 flow_(Basin_#2,_Pump_#4)_ + 1 flow_change_Pump_#4_ >= -0.05832
 flow_change_constraint_Pump_#6,1_: -1 flow_(Basin_#5,_Pump_#6)_ + 1 flow_change_Pump_#6_ >= -0.019440000000000002
-flow_change_constraint_Pump_#9,1_: -1 flow_(Basin_#7,_Pump_#9)_ + 1 flow_change_Pump_#9_ >= -0.03888
+flow_change_constraint_Pump_#9,1_: -1 flow_(Basin_#7,_Pump_#9)_ + 1 flow_change_Pump_#9_ >= -0.038880000000000005
 flow_change_constraint_Pump_#11,1_: -1 flow_(Basin_#10,_Pump_#11)_ + 1 flow_change_Pump_#11_ >= -0.019440000000000002
 flow_change_constraint_Pump_#16,1_: -1 flow_(Basin_#5,_Pump_#16)_ + 1 flow_change_Pump_#16_ >= -0.03888
 flow_change_constraint_Outlet_#3,1_: -1 flow_(Basin_#2,_Outlet_#3)_ + 1 flow_change_Outlet_#3_ >= 0
