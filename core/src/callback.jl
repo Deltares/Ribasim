@@ -293,7 +293,6 @@ end
         mass_node::AbstractVector{Float64},
         substances::OrderedSet{Symbol},
     )::Nothing
-    # OrderedSet does not support indexing
     for (substance_idx, substance_name) in enumerate(substances)
         substance_mass = mass_node[substance_idx]
         if substance_mass < 0

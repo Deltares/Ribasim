@@ -1,7 +1,4 @@
 # https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference
-# Julia and pixi are updated by our own monthly workflows instead.
-# Dependabot adds compat entries to the root Project.toml for deps whose compat is in core,
-# and only updates direct dependencies.
 version: 2
 updates:
   - package-ecosystem: "github-actions"
