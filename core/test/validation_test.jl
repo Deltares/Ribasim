@@ -1054,22 +1054,22 @@ end
     using .ModelEdit: edited_model, error_messages
 
     # Outlet #4 connects Basin #2 in the primary network to Basin #5 in subnetwork 2
-    connection_error = "Errors detected in connections between primary network and subnetworks."
+    connection_error = "Errors detected in connections between primary network and secondary networks."
     for (statement, error_message, message) in (
             (
                 """UPDATE "Outlet / static" SET allocation_controlled = 0""",
                 connection_error,
-                "This node connects the primary network to a subnetwork and therefore must have allocation_controlled set to true.",
+                "This node connects the primary network to a secondary network without allocation_controlled set to true, which is not allowed.",
             ),
             (
                 "UPDATE Node SET subnetwork_id = 2 WHERE node_id = 4",
                 connection_error,
-                "This node connects the primary network to a subnetwork but is not an outlet or pump.",
+                "This node connects the primary network to a secondary network but is not an outlet or pump, which is not allowed.",
             ),
             (
                 "UPDATE Node SET subnetwork_id = 3 WHERE node_id IN (2, 3, 4)",
                 connection_error,
-                "This node connects two subnetworks that are not the primary network.",
+                "This node connects two secondary networks, which is not allowed.",
             ),
             (
                 "UPDATE Node SET subnetwork_id = 1 WHERE node_id = 6",
