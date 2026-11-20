@@ -533,15 +533,9 @@ end
             ),
             (
                 "trivial",
-                """UPDATE "Basin / subgrid" SET subgrid_level = 0.0 WHERE subgrid_id = 11""",
+                """UPDATE "Basin / subgrid" SET node_id = 99 WHERE subgrid_id = 11""",
                 "Errors encountered when parsing Basin subgrid data.",
-                "Invalid Basin static subgrid table for 6.",
-            ),
-            (
-                "two_basin",
-                """UPDATE "Basin / subgrid_time" SET subgrid_level = 0.0""",
-                "Errors encountered when parsing Basin subgrid data.",
-                "Invalid Basin time subgrid table for 3, time = 2020-01-01T00:00:00.",
+                "Invalid Basin static subgrid table for 99.",
             ),
             (
                 "two_basin",
@@ -664,4 +658,52 @@ end
 
     toml_path = edited_model("flow_boundary_terminal", """UPDATE "Pump / static" SET flow_rate = NULL""")
     @test isempty(error_messages(toml_path, "Missing values in required column flow_rate for table"))
+end
+
+@testitem "Subgrid with a flat segment" setup = [ModelEdit] begin
+    using .ModelEdit: edited_model
+
+    # The subgrid levels are the output of the h(h) relation, so they can repeat: the level of
+    # subgrid element 11 stays 0.0 as the Basin level rises from 0.0 to 1.0
+    toml_path = edited_model(
+        "trivial",
+        """UPDATE "Basin / subgrid" SET subgrid_level = 0.0 WHERE subgrid_id = 11""",
+    )
+    model = Ribasim.Model(toml_path)
+    (; subgrid) = model.integrator.p.p_independent
+    @test subgrid.subgrid_id_static == [11, 22, 33]
+    flat = subgrid.interpolations_static[1]
+    @test flat.u == [0.0, 0.0]
+    @test flat.(0.0:0.25:2.0) == zeros(9)
+    # The other elements are not affected
+    @test subgrid.interpolations_static[2](0.5) ≈ -0.5
+
+    @test success(Ribasim.solve!(model))
+    Ribasim.update_subgrid_level(model)
+    @test subgrid.level[1] == 0.0
+
+    # The same holds for time dependent relations
+    toml_path = edited_model(
+        "two_basin",
+        """UPDATE "Basin / subgrid_time" SET subgrid_level = 0.0""",
+    )
+    model = Ribasim.Model(toml_path)
+    (; subgrid) = model.integrator.p.p_independent
+    @test !isempty(subgrid.interpolations_time)
+    @test all(itp -> all(iszero, itp.u), subgrid.interpolations_time)
+end
+
+@testitem "Subgrid with repeated Basin levels" setup = [ModelEdit] begin
+    using .ModelEdit: edited_model, error_messages
+
+    # The Basin levels are the points between which the relation is interpolated, so these
+    # must be unique
+    for (model_name, table, subgrid_id) in (
+            ("trivial", "Basin / subgrid", 11),
+            ("two_basin", "Basin / subgrid_time", 2),
+        )
+        statement = """UPDATE "$table" SET basin_level = 0.0 WHERE subgrid_id = $subgrid_id"""
+        messages = error_messages(edited_model(model_name, statement), "Invalid $table table.")
+        @test any(startswith("Duplicate rows found in $table for (subgrid_id = $subgrid_id"), messages)
+    end
 end

@@ -1922,7 +1922,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)
         basin_level = getproperty.(group, :basin_level)
         subgrid_level = getproperty.(group, :subgrid_level)
 
-        if valid_subgrid(subgrid_id, node_id, node_to_basin, basin_level, subgrid_level)
+        if valid_subgrid(subgrid_id, node_id, node_to_basin)
             hh_itp = LinearInterpolation(
                 subgrid_level,
                 basin_level;
@@ -1969,7 +1969,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)
             basin_level = getproperty.(group_time, :basin_level)
             subgrid_level = getproperty.(group_time, :subgrid_level)
 
-            if valid_subgrid(subgrid_id, node_id, node_to_basin, basin_level, subgrid_level)
+            if valid_subgrid(subgrid_id, node_id, node_to_basin)
                 hh_itp = LinearInterpolation(
                     subgrid_level,
                     basin_level;

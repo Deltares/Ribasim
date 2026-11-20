@@ -626,27 +626,20 @@ end
 
 """
 Validate the entries for a single subgrid element.
+
+The subgrid levels can repeat, since the h(h) relation can have flat segments, for instance
+for an element with a bed level above the lowest Basin level. The Basin levels, at which
+the relation is interpolated, must be unique, which is checked as part of the table row
+uniqueness validation.
 """
 function valid_subgrid(
         subgrid_id::Int32,
         node_id::Int32,
         node_to_basin::Dict{Int32, NodeID},
-        basin_level::Vector{Float64},
-        subgrid_level::Vector{Float64},
     )::Bool
-    errors = false
-
-    if !(node_id in keys(node_to_basin))
-        errors = true
-        @error "The node_id of the Basin / subgrid does not exist." node_id subgrid_id
-    end
-
-    if !allunique(subgrid_level)
-        errors = true
-        @error "Basin / subgrid subgrid_id $(subgrid_id) has repeated element levels, this cannot be interpolated."
-    end
-
-    return !errors
+    valid = node_id in keys(node_to_basin)
+    valid || @error "The node_id of the Basin / subgrid does not exist." node_id subgrid_id
+    return valid
 end
 
 function valid_demand(

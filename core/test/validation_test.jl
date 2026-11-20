@@ -339,7 +339,7 @@ end
 
     logger = TestLogger()
     with_logger(logger) do
-        @test !valid_subgrid(Int32(1), Int32(10), node_to_basin, [-1.0, 0.0], [-1.0, 0.0])
+        @test !valid_subgrid(Int32(1), Int32(10), node_to_basin)
     end
 
     @test length(logger.logs) == 1
@@ -348,21 +348,7 @@ end
     @test logger.logs[1].kwargs[:node_id] == Int32(10)
     @test logger.logs[1].kwargs[:subgrid_id] == 1
 
-    logger = TestLogger()
-    with_logger(logger) do
-        @test !valid_subgrid(
-            Int32(1),
-            Int32(9),
-            node_to_basin,
-            [-1.0, 0.0, 1.0],
-            [-1.0, 0.0, 0.0],
-        )
-    end
-
-    @test length(logger.logs) == 1
-    @test logger.logs[1].level == Error
-    @test logger.logs[1].message ==
-        "Basin / subgrid subgrid_id 1 has repeated element levels, this cannot be interpolated."
+    @test @test_logs valid_subgrid(Int32(1), Int32(9), node_to_basin)
 end
 
 @testitem "negative demand" begin
