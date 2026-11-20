@@ -18,6 +18,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 - Long simulations of large rivers no longer stop with `Unstable` after some years. The cumulative flows are now reset before their floating point rounding approaches `solver.abstol`, without restarting the solver. [#3442](https://github.com/Deltares/Ribasim/pull/3442)
 
+### Fixed
+- Stricter input validation: an unknown `node_id` in `Basin / subgrid` or `Basin / subgrid_time` now stops the model with a clear error, where the first only logged an error and dropped the subgrid element, and the second crashed. A ContinuousControl function with a single data point and a missing value in a required column now also give a clear error. [#3449](https://github.com/Deltares/Ribasim/pull/3449)
+- Allow repeated `subgrid_level` values in `Basin / subgrid` and `Basin / subgrid_time`, which give a flat segment in the relation from Basin level to subgrid level. Subgrid elements with such values were rejected before. [#3449](https://github.com/Deltares/Ribasim/pull/3449)
+- Allocation: the error for an infeasible allocation problem now lists the incompatible constraints, this list was empty. [#3449](https://github.com/Deltares/Ribasim/pull/3449)
+
 ## [v2026.2.0-rc1] - 2026-11-11
 
 This is the first release candidate for v2026.2.0, and it is all about simpler models, speed, and robustness.

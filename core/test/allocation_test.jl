@@ -954,3 +954,58 @@ end
     times = unique(datum.time for datum in allocation.record_flow)
     @test times == [0.0, 3600.0, 10800.0, 25200.0, 54000.0]
 end
+
+@testitem "Allocation termination status" setup = [ModelEdit] begin
+    using JuMP
+    using Logging
+    using Ribasim:
+        AllocationFailure, AllocationObjective, AllocationObjectiveType, parse_termination_status
+
+    model = Ribasim.Model(ModelEdit.edited_model("minimal_subnetwork"))
+    allocation_model = only(model.integrator.p.p_independent.allocation.allocation_models)
+    (; problem) = allocation_model
+
+    objective = AllocationObjective(; type = AllocationObjectiveType.demand_flow, demand_priority = 1)
+    @test repr(objective) == "AllocationObjective of type demand_flow with demand priority 1"
+    @test repr(AllocationObjective(; type = AllocationObjectiveType.none)) ==
+        "AllocationObjective of type none"
+
+    parse_status(; kwargs...) = parse_termination_status(
+        allocation_model, objective, JuMP.AffExpr(), nothing, model.config, 0.0; kwargs...
+    )
+    error_logs(logger) = [log for log in logger.logs if log.level == Logging.Error]
+
+    Ribasim.optimize_cold!(problem)
+    @test parse_status() === nothing
+
+    x = JuMP.variable_by_name(problem, "flow[(FlowBoundary #1, Basin #2)]")
+    y = JuMP.variable_by_name(problem, "flow[(Basin #2, Pump #3)]")
+
+    # A status that can't be resolved is retried with a smaller timestep if possible
+    extra_constraint = JuMP.@constraint(problem, test_extra, x + y <= 1.0e10)
+    @test JuMP.termination_status(problem) == JuMP.OPTIMIZE_NOT_CALLED
+    @test_throws AllocationFailure parse_status(; can_retry = true)
+    @test_throws "failed with termination status OPTIMIZE_NOT_CALLED" parse_status()
+    JuMP.delete(problem, extra_constraint)
+    JuMP.unregister(problem, :test_extra)
+
+    # An infeasible problem is reported with the constraints that contradict each other
+    JuMP.@constraint(problem, test_lower, x - y >= 1.0e-3)
+    JuMP.@constraint(problem, test_upper, x - y <= -1.0e-3)
+    Ribasim.optimize_cold!(problem)
+    @test JuMP.termination_status(problem) == JuMP.INFEASIBLE
+    logger = TestLogger()
+    with_logger(logger) do
+        @test_throws "Allocation optimization for subnetwork 2 at t = 0.0 s is infeasible" parse_status()
+    end
+    message = only(error_logs(logger)).message
+    @test startswith(message, "Set of incompatible constraints found:\n")
+    violations = split(message, '\n')[2:end]
+    @test length(violations) == 2
+    @test any(startswith("test_lower : "), violations)
+    @test any(startswith("test_upper : "), violations)
+
+    # The indices reported by the analysis are those of the JuMP model
+    @test Ribasim.constraint_ref_from_index(problem, JuMP.index(test_lower)) == test_lower
+    @test Ribasim.variable_ref_from_index(problem, JuMP.index(x)) == x
+end

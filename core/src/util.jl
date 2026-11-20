@@ -151,12 +151,6 @@ function findsorted(a, x)::Union{Int, Nothing}
     end
 end
 
-"From an iterable of DateTimes, find the times the solver needs to stop"
-function get_tstops(time, starttime::DateTime)::Vector{Float64}
-    unique_times = filter(!ismissing, unique(time))
-    return seconds_since.(unique_times, starttime)
-end
-
 """
 Get the current water level of a node ID.
 The ID can belong to either a Basin, Junction or a LevelBoundary.
@@ -1109,28 +1103,6 @@ function get_timeseries_tstops(itp::AbstractInterpolation, t_end::Float64)::Vect
     return tstops
 end
 
-"""Get the exponential time stops for decreasing the tolerance."""
-function get_log_tstops(starttime, t_end)::Vector{Float64}
-    log_tstops = Float64[]
-    t = 60 * 60
-    while Second(t) <= round(t_end - starttime, Second)
-        push!(log_tstops, t)
-        t *= 2.0
-    end
-    return log_tstops
-end
-
-function ranges(lengths::Vector{<:Integer})
-    # from the lengths of the components
-    # construct [1:n_pump, (n_pump+1):(n_pump+n_outlet)]
-    # which are used to create views into the data array
-    bounds = pushfirst!(cumsum(lengths), 0)
-    ranges = [range(p[1] + 1, p[2]) for p in IterTools.partition(bounds, 2, 1)]
-    # standardize empty ranges to 1:0 for easier testing
-    replace!(x -> isempty(x) ? (1:0) : x, ranges)
-    return ranges
-end
-
 """
 Interpolate the values `u` over the times `t` (in seconds) with the given interpolation type.
 Block interpolation is smoothed over `block_transition_period` seconds on either side of each
@@ -1263,17 +1235,6 @@ function trivial_allocation_itp_fill(
         val = 0.0,
     )::Vector{Vector{ScalarConstantInterpolation}}
     return [fill(trivial_constant_itp(; val), length(demand_priorities)) for _ in node_id]
-end
-
-function finitemaximum(u::AbstractVector; init = 0)
-    # Find the maximum finite value in the vector
-    max_val = init
-    for val in u
-        if isfinite(val) && val > max_val
-            max_val = val
-        end
-    end
-    return max_val
 end
 
 function initialize_concentration_itp(
