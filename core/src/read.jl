@@ -1969,25 +1969,17 @@ function Subgrid(db::DB, config::Config, basin::Basin)
             basin_level = getproperty.(group_time, :basin_level)
             subgrid_level = getproperty.(group_time, :subgrid_level)
 
-            if valid_subgrid(subgrid_id, node_id, node_to_basin)
-                hh_itp = LinearInterpolation(
-                    subgrid_level,
-                    basin_level;
-                    extrapolation_left = ConstantExtrapolation,
-                    extrapolation_right = Linear,
-                    cache_parameters = true,
-                )
-                push!(lookup_index, interpolation_index)
-                push!(lookup_time, seconds_since(t, config.starttime))
-                push!(subgrid.interpolations_time, hh_itp)
-            else
-                @error "Invalid Basin time subgrid table for $node_id, time = $t."
-                errors = true
-            end
+            hh_itp = LinearInterpolation(
+                subgrid_level,
+                basin_level;
+                extrapolation_left = ConstantExtrapolation,
+                extrapolation_right = Linear,
+                cache_parameters = true,
+            )
+            push!(lookup_index, interpolation_index)
+            push!(lookup_time, seconds_since(t, config.starttime))
+            push!(subgrid.interpolations_time, hh_itp)
         end
-
-        # Without valid tables there is nothing to interpolate, the errors are thrown below
-        isempty(lookup_index) && continue
 
         if cyclic_time
             itp_first = subgrid.interpolations_time[first(lookup_index)]
