@@ -26,7 +26,7 @@ test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=r
 # Installation
 # This is only for developers who want their global Julia to use the right version.
 # Use `pixi run julia` for the package used by CI.
-install-julia = "juliaup add 1.13.3 && juliaup override set 1.13.3"
+install-julia = "juliaup add 1.13.4 && juliaup override set 1.13.4"
 _prek-install = "prek install --overwrite"
 instantiate-formatting = { cmd = "julia --startup-file=no --project=utils/formatting --eval 'using Pkg; Pkg.instantiate()'" }
 install-prek = { depends-on = [
@@ -52,6 +52,9 @@ quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs", in
     "docs/reference/python",
 ] }
 quarto-check = { cmd = "quarto check all", depends-on = ["quartodoc-build"] }
+# Checks the rendered HTML, so internal and external links are covered.
+# Links to ribasim.org are checked against the rendered site, since it is only published afterwards.
+check-docs-links = { cmd = "lychee --config lychee.toml --remap \"https://ribasim\\.org/(.*) file://$PIXI_PROJECT_ROOT/docs/_site/\\$1\" docs/_site" }
 quarto-render = { cmd = "PYTHON_JULIAPKG_PROJECT=$PIXI_PROJECT_ROOT quarto render docs/{{path}}", args = [
     { "arg" = "path", "default" = "" },
 ], depends-on = [
@@ -253,7 +256,7 @@ quarto-render = { cmd = "echo 'Skipping quarto render on ARM64 Linux (Quarto not
 # Dependencies of the Python packages go in python/*/pyproject.toml.
 [dependencies]
 gh = "*"
-julia = { version = "==1.13.3", channel = "https://prefix.dev/julia-forge" }
+julia = { version = "==1.13.4", channel = "https://prefix.dev/julia-forge" }
 rust = "*"
 # The yamlfmt on PyPI is an unrelated project
 yamlfmt = "*"
@@ -353,7 +356,7 @@ cmd = "qgis --profiles-path {{ profiles_path }}"
 platforms = ["win-64", "linux-64"]
 
 [feature.wflow-coupled.dependencies]
-julia = { version = "==1.13.3", channel = "https://prefix.dev/julia-forge" }
+julia = { version = "==1.13.4", channel = "https://prefix.dev/julia-forge" }
 python = "3.13.*"
 
 [feature.wflow-coupled.pypi-dependencies]
@@ -384,12 +387,15 @@ wflow-coupled-run = { cmd = "julia --startup-file=no --project=wflow-coupled wfl
 [target.win-64.dependencies]
 rcedit = "*"
 quarto = "*"
+lychee = "*"
 
 [target.linux-64.dependencies]
 quarto = "*"
+lychee = "*"
 
 [target.osx-arm64.dependencies]
 quarto = "*"
+lychee = "*"
 
 [target.unix.activation]
 scripts = ["scripts/load-env.sh"]

@@ -258,7 +258,7 @@ A UserDemand that abstracts from a Junction gets an allocated flow rate per dema
 Allocation can give it less than flows into the Junction, to leave water for demands downstream with an earlier priority.
 The remainder of the flow is divided over the other outflow links.
 
-Such a Junction must have the same subnetwork ID as the nodes it is connected to: Junctions at the boundary between the primary network and a subnetwork, or between subnetworks, are not supported yet.
+Such a Junction must have the same subnetwork ID as the nodes it is connected to: Junctions at the boundary between the primary network and a secondary network, or between secondary networks, are not supported yet.
 
 # Connectivity rules
 

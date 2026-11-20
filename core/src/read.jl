@@ -21,8 +21,8 @@ function initialize_allocation!(
         return nothing
     end
 
-    # Detect connections between the primary network and subnetworks:
-    # (upstream_id: pump or outlet in the primary network, node_id: node in the subnetwork, generally a basin)
+    # Detect connections between the primary network and secondary networks:
+    # (upstream_id: pump or outlet in the primary network, node_id: node in the secondary network, generally a basin)
     collect_primary_network_connections!(allocation, graph, pump, outlet)
 
     non_positive_subnetwork_id(graph) && error("Allocation network initialization failed.")

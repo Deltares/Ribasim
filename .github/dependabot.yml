@@ -17,3 +17,11 @@ updates:
       all-julia-packages:
         patterns:
           - "*"
+  - package-ecosystem: "cargo"
+    directory: "/build/cli"
+    schedule:
+      interval: "monthly"
+    groups:
+      all-cargo-packages:
+        patterns:
+          - "*"
