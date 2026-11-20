@@ -627,6 +627,14 @@ end
     @test_throws "not found" find_index(:d, s)
 end
 
+@testitem "log_negative_mass" begin
+    using Ribasim: NodeID, log_negative_mass
+    using DataStructures: OrderedSet
+    substances = OrderedSet([:a, :b])
+    message = "Basin #1 has negative mass -2.0 for substance b"
+    @test_logs (:error, message) log_negative_mass(NodeID(:Basin, 1, 1), [1.0, -2.0], substances)
+end
+
 @testitem "@threaded" begin
     using Ribasim: @threaded, parallel_foreach
 

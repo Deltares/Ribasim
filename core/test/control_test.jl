@@ -546,7 +546,7 @@ end
     (; concentration_data) = p_independent.basin
     basin_id = last(p_independent.basin.node_id)
     substance_idx = length(concentration_data.substances)
-    substance = concentration_data.substances[substance_idx]
+    substance = collect(concentration_data.substances)[substance_idx]
     concentration_data.concentration_state[substance_idx, basin_id.idx] = 3.0
     @test value(basin_id, "concentration.$substance") == 3.0
 
