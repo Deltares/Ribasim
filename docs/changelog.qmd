@@ -23,6 +23,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Allow repeated `subgrid_level` values in `Basin / subgrid` and `Basin / subgrid_time`, which give a flat segment in the relation from Basin level to subgrid level. Subgrid elements with such values were rejected before. [#3449](https://github.com/Deltares/Ribasim/pull/3449)
 - Allocation: the error for an infeasible allocation problem now lists the incompatible constraints, this list was empty. [#3449](https://github.com/Deltares/Ribasim/pull/3449)
 
+### Fixed
+- When a simulation stops after an error or with Ctrl-C, the results no longer include the forcing of the unfinished timestep. This affected `basin_state.nc` and the results since the last saveat. [#3454](https://github.com/Deltares/Ribasim/pull/3454)
+
 ## [v2026.2.0-rc1] - 2026-11-11
 
 This is the first release candidate for v2026.2.0, and it is all about simpler models, speed, and robustness.

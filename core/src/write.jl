@@ -619,9 +619,8 @@ end
 "Create the basin state table from the saved data"
 function basin_state_data(model::Model; table::Bool = true)
     (; p) = model.integrator
-    (; basin, u_accepted) = p.p_independent
-    set_current_basin_properties!(u_accepted.flow, p, p.p_mutable.tprev)
-    return (; node_id = Int32.(basin.node_id), level = copy(p.current_basin_properties.current_level))
+    set_accepted_basin_properties!(p)
+    return (; node_id = Int32.(p.p_independent.basin.node_id), level = copy(p.current_basin_properties.current_level))
 end
 
 "Create the basin result table from the saved data"

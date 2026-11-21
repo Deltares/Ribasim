@@ -589,18 +589,25 @@ end
     BMI.update_until(model, 2.5day)
     (; integrator) = model
     @test Ribasim.tsaves(model) == [0, 1, 2] .* day
+    (; current_storage, current_level) = integrator.p.current_basin_properties
+    storage_accepted = copy(current_storage)
+    level_accepted = copy(current_level)
 
     # The state in the integrator can be from a time step in progress, for instance if an error
-    # occurs there, that one isn't accepted so it must not be used.
+    # occurs there, that one isn't accepted so it must not be used. Neither must the forcing up
+    # to the time at which the right hand side was evaluated there, repeatedly as in a Newton
+    # iteration.
+    for _ in 1:2
+        Ribasim.water_balance!(zero(integrator.u), integrator.u, integrator.p, 2.5day + 3600.0)
+    end
     integrator.u .= NaN
     write_results(model)
     @test Ribasim.tsaves(model) == [0, 1, 2, 2.5] .* day
 
     (; storage, level, storage_rate, balance_error) = Ribasim.basin_data(model; table = false)
-    (; current_storage) = integrator.p.current_basin_properties
     @test size(storage, 2) == 3
     # The last time step covers half a day, and ends at the state in the results
-    @test storage[:, end] .+ 0.5day .* storage_rate[:, end] ≈ current_storage
+    @test storage[:, end] .+ 0.5day .* storage_rate[:, end] ≈ storage_accepted
     @test maximum(abs, balance_error) < 1.0e-10
     NCDataset(results_path(config, RESULTS_FILENAME.basin)) do ds
         @test ds["time"][:] == DateTime(2020) .+ Day.(0:2)
@@ -614,7 +621,7 @@ end
     end
     NCDataset(results_path(config, RESULTS_FILENAME.basin_state)) do ds
         @test ds["level"][:] == model.saved.level_prev
-        @test !any(isnan, ds["level"][:])
+        @test ds["level"][:] ≈ level_accepted
     end
 end
 
