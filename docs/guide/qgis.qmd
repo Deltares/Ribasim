@@ -83,7 +83,8 @@ Select one Basin, and choose the variable `water balance` to see:
 
 ![](https://s3.deltares.nl/ribasim/doc-image/qgis/timeseries-plot-water-balance.png){fig-align="left"}
 
-Select one link, and if you have concentration results, you can choose the variable `fractional flow` to see which tracers the flow consists of:
+Select one link or node, and if you have concentration results (see [experimental features](/reference/usage.qmd#experimental-features)), you can choose the variable `fractional flow` to see which tracers the flow consists of.
+A node shows the tracers of its flow rate, which for a UserDemand is the water it abstracts:
 
 ![](https://s3.deltares.nl/ribasim/doc-image/qgis/timeseries-plot-fractional-flow.png){fig-align="left"}
 
@@ -91,6 +92,7 @@ Under the variable → concentration dropdown menu you can select another set of
 
 If your model has [Observation](/reference/node/observation.qmd) nodes, select the `node` button and click an Observation node to compare its observed and simulated timeseries.
 The observed series (read from the input) is drawn in black, and the corresponding simulated series in red.
+For an observed flow, `fractional flow` also shows which tracers the simulated flow consists of.
 
 ![](https://s3.deltares.nl/ribasim/doc-image/qgis/timeseries-plot-observation.png){fig-align="left"}
 
