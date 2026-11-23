@@ -167,13 +167,11 @@ end
 function reset_cumulative_flows!(integrator)::Nothing
     (; u, p) = integrator
     (; p_independent, current_basin_properties, time_dependent_cache) = p
-    (; basin, flow_boundary, u_prev_saveat, u_accepted, cumulative_flow_prev_allocation_dt) = p_independent
+    (; basin, flow_boundary, u_prev_saveat, cumulative_flow_prev_allocation_dt) = p_independent
     (; forcing) = basin
 
     basin.storage0 .= current_basin_properties.current_storage
     u_prev_saveat.flow .-= u.flow
-    # If no time step follows the reset, the final results are computed from this
-    u_accepted.flow .-= u.flow
     cumulative_flow_prev_allocation_dt .-= u.flow
     forcing.exact_cumulative_forcing_prev_saveat .-= forcing.exact_cumulative_forcing_since_reset
     flow_boundary.cumulative_flow_prev_saveat .-= flow_boundary.cumulative_flow_since_reset
@@ -349,44 +347,10 @@ function save_results!(saved::SavedResults, u, t::Float64, integrator)::Bool
     saved.level_prev .= current_basin_properties.current_level
     saved.solver_stats_prev = get_solver_stats(t, integrator)
     saved.t_prev = t
+    # The next intervention interval starts at t if the current one ends there
+    (; t_intervention, t_intervention_end) = p_independent.allocation.time
+    saved.t_allocation_unfinished = t_intervention_end > t ? t_intervention : t
     return errors
-end
-
-"""
-If the simulation stopped in between two saveats, because of an error, because it was interrupted
-or because a coupled simulation stopped there, save the results up to the last accepted time step.
-The state of the integrator can be from a time step in progress, and is not used.
-"""
-function save_until_last_time_step!(model::Model)::Nothing
-    (; integrator, saved) = model
-    (; p) = integrator
-    t = p.p_mutable.tprev
-    t > saved.t_prev || return nothing
-    (; u_accepted) = p.p_independent
-    # Any water balance error is already logged, and shouldn't stop the results from being written
-    try
-        set_accepted_basin_properties!(p)
-        save_results!(saved, u_accepted, t, integrator)
-    catch e
-        @error "Could not save the results after the last saveat, at t = $t s." exception = e
-    end
-    return nothing
-end
-
-"""
-Set the Basin properties at the end of the last accepted time step. In a time step in progress
-the right hand side may have been evaluated at a later time, which leaves the cumulative forcing
-and FlowBoundary flow up to that time in the time dependent cache, so these are recomputed.
-"""
-function set_accepted_basin_properties!(p::Parameters)::Nothing
-    (; p_independent, p_mutable, time_dependent_cache) = p
-    t = p_mutable.tprev
-    p_mutable.new_time_dependent_cache = true
-    formulate_cumulative_boundary_flow!(p_independent.flow_boundary, p, t)
-    set_current_basin_properties!(p_independent.u_accepted.flow, p, t)
-    # Only part of the cache is now at t, so the next evaluation renews all of it
-    time_dependent_cache.t_prev_call[1] = -1.0
-    return nothing
 end
 
 """
@@ -706,9 +670,8 @@ end
 function check_negative_storage(u, t, integrator)::Nothing
     (; p) = integrator
     (; p_independent, current_basin_properties) = p
-    (; basin, u_accepted) = p_independent
+    (; basin) = p_independent
     du = get_du(integrator)
-    u_accepted .= u
 
     # The accepted time step ends at t, which is the start of the next one. Integrate the
     # forcings over the time step and set p_mutable.tprev to t. From here on, piecewise
