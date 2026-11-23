@@ -774,7 +774,7 @@ end
 
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/allocation_example/ribasim.toml")
-    @test ispath(toml_path) skip = true
+    @test ispath(toml_path)
     config = Ribasim.Config(toml_path)
     model = Ribasim.run(config)
     @test success(model)

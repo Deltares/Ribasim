@@ -25,21 +25,21 @@ Allocation is the process of assigning an optimized allocated flow rate to deman
 
 The allocation problem is solved per subnetwork of the Ribasim model. A subnetwork is defined by all nodes that have the same subnetwork ID in the [Node table](/reference/usage.qmd#node). By default, all nodes get a subnetwork ID of 1. Each subnetwork is used to formulate a linear optimization problem with the [JuMP](https://jump.dev/JuMP.jl/stable/) package, which is solved using the [HiGHS solver](https://highs.dev/). For more in-depth information see also the example of solving the maximum flow problem with `JuMP.jl` [here](https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem).
 
-When we build a Ribasim model in which we want to utilize allocation, it can be computationally efficient and stable to divide a large allocation network into a primary network which connects to multiple subnetworks. The primary network should be the main water system and treats each connected subnetwork as a single demand node.
+When we build a Ribasim model in which we want to utilize allocation, it can be computationally efficient and stable to divide a large allocation network into a primary network which connects to multiple secondary networks. The primary network should be the main water system and treats each connected secondary network as a single demand node.
 
-We can first solve an allocation optimization for the primary network, that calculates how to optimally divide the available water to each subnetwork. With this allocated amount for a subnetwork, we can optimize how to divide this water within the subnetwork to the demand nodes.
+We can first solve an allocation optimization for the primary network, that calculates how to optimally divide the available water to each secondary network. With this allocated amount for a secondary network, we can optimize how to divide this water within the secondary network to the demand nodes.
 
 Subnetworks are defined by grouping nodes that share the same subnetwork ID in the [Node table](/reference/usage.qmd#node). The primary network is associated with subnetwork ID 1. This will always represent the main water system. This is shown in @fig-subnetwork-example below.
 
-![The primary network (subnetwork 1, blue) with connected secondary subnetworks (subnetwork 2 and 3, grey).](https://s3.deltares.nl/ribasim/doc-image/concept/medium_sized_subnetwork_model.png){#fig-subnetwork-example}
+![The primary network (subnetwork 1, blue) with connected secondary networks (subnetwork 2 and 3, grey).](https://s3.deltares.nl/ribasim/doc-image/concept/medium_sized_subnetwork_model.png){#fig-subnetwork-example}
 
 Secondary networks:
 
 - Can only connect to the primary network via Pump or Outlet nodes, which must be allocation controlled
 - Cannot connect directly to other secondary networks
 - Cannot flow into the primary network
-- Cannot have a [Junction](/reference/node/junction.qmd) with fractions at the connection with the primary network, or with another subnetwork
-- The demand of a subnetwork to the primary network is the sum of all unmet demands within the subnetwork
+- Cannot have a [Junction](/reference/node/junction.qmd) with fractions at the connection with the primary network
+- The demand of a secondary network to the primary network is the sum of all unmet demands within the secondary network. Unmet demands are those demands that cannot be fulfilled by the water that is locally available, i.e. the water in the secondary network itself.
 - Must have a subnetwork greater than 1.
 
 
@@ -374,7 +374,7 @@ $$
 
 ### Control by allocation
 
-When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, they must have `allocation_controlled` set to `true` in the static table for [Pump](/reference/node/pump.qmd#static) or [Outlet](/reference/node/outlet.qmd#static). When a Pump or Outlet is allocation controlled, the flow through the node in the allocation problem is only bounded by its `min_flow_rate` and `max_flow_rate` (see @sec-flow-capacities). In the physical layer, the allocated flow rate is still subject to the Pump or Outlet specific reduction factors, such as those for low storage and `min_upstream_level` (see [Pump equations](/reference/node/pump.qmd#equations) or [Outlet equations](/reference/node/outlet.qmd#equations)).
+When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, they must have `allocation_controlled` set to `true` in the static table for [Pump](/reference/node/pump.qmd#static) or [Outlet](/reference/node/outlet.qmd#static). When a Pump or Outlet is allocation controlled, the flow through the node in the allocation problem is bounded by its `min_flow_rate` and `max_flow_rate`, reduced by its level based reduction factors at the start of the allocation timestep (see @sec-flow-capacities). In the physical layer, the allocated flow rate is still subject to the Pump or Outlet specific reduction factor for low storage, and the level based reduction factors keep limiting its capacity when the levels change between two intervention times (see [Pump equations](/reference/node/pump.qmd#equations) or [Outlet equations](/reference/node/outlet.qmd#equations)).
 
 :::{.callout-important}
 Because the allocation problem must be bounded, an allocation controlled Pump or Outlet is required to have a finite `max_flow_rate`. This is validated at the start of the simulation, for the initial parameters as well as for all DiscreteControl states of the node. Note that Pumps and Outlets that connect the primary network to a secondary network are required to be allocation controlled; an error is thrown if `allocation_controlled` is not set to `true` for these nodes. Hence they also require a finite `max_flow_rate`.
@@ -457,7 +457,7 @@ Every flow variable in the optimization problem needs to be bounded, either by b
 For each flow link, the bounds are the intersection of the bounds imposed by the node at either end of the link. Per node type:
 
 - **FlowBoundary**: the flow variable is fixed to the prescribed boundary flow, so no bounds are needed.
-- **Allocation controlled Pump and Outlet**: bounded by `min_flow_rate` and `max_flow_rate`, where `max_flow_rate` is [required to be finite](#control-by-allocation). Since allocation assigns a single flow rate for the whole timestep, the tightest bounds over $[t, t + \Delta t]$ are used, i.e. the largest minimum and the smallest maximum of the two interpolated endpoints.
+- **Allocation controlled Pump and Outlet**: bounded by `min_flow_rate` and `max_flow_rate`, where `max_flow_rate` is [required to be finite](#control-by-allocation). Since allocation assigns a single flow rate for the whole timestep, the tightest bounds over $[t, t + \Delta t]$ are used, i.e. the largest minimum and the smallest maximum of the two interpolated endpoints. Both bounds are multiplied by the level based reduction factors $\phi_\text{level}$ of the [Pump](/reference/node/pump.qmd#equations) or [Outlet](/reference/node/outlet.qmd#equations): those for `min_upstream_level` and `max_downstream_level`, and for an Outlet the one for the level difference. These factors are evaluated at the levels at the start of the allocation timestep and held constant over it, which keeps the problem linear. So allocation does not plan flow through a Pump or Outlet that the physical layer keeps closed, but it sees a level limit that is reached within the allocation timestep one timestep late.
 - **Allocation controlled TabulatedRatingCurve**: bounded below by $0$. The upper bound is a constraint rather than a bound on the variable: the flow is at most $Q(h_a)$, linearized around the current upstream level. Because $Q(h)$ is validated to be non-decreasing and all reduction factors applied in the physical layer are in $[0, 1]$, this is a valid upper bound.
 - **UserDemand**: both the inflow links and the return flow links are bounded between $0$ and the total demand of the node summed over all its demand priorities. For the upper bound the return factor is conservatively assumed to be $1$.
 - **Junction**: the flows over the links from and to Junction nodes in `Junction / static` are non-negative, otherwise they follow from the [constraints](#sec-allocation-junction) and the bounds of the nodes upstream. So a UserDemand abstracting from such a Junction gets at most its inflow.

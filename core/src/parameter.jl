@@ -138,7 +138,7 @@ end
 function NodeID(node_type, value::Integer, node_ids::Vector{NodeID})::NodeID
     node_type = NodeType.T(node_type)
     index = searchsortedfirst(node_ids, value; by = Int32)
-    if index == lastindex(node_ids) + 1
+    if index == lastindex(node_ids) + 1 || node_ids[index].value != value
         @error "Node ID $node_type #$value is not in the Node table."
         error("Node ID not found")
     end
@@ -152,7 +152,7 @@ end
 
 function NodeID(value::Integer, node_ids::Vector{NodeID})::NodeID
     index = searchsortedfirst(node_ids, value; by = Int32)
-    if index == lastindex(node_ids) + 1
+    if index == lastindex(node_ids) + 1 || node_ids[index].value != value
         @error "Node ID #$value is not in the Node table."
         error("Node ID not found")
     end
@@ -426,9 +426,9 @@ end
 """
 Object for all information about allocation
 subnetwork_ids: The unique sorted allocation network IDs
-allocation_models: The allocation models for the primary network and subnetworks corresponding to
+allocation_models: The allocation models for the primary network and secondary networks corresponding to
     subnetwork_ids
-primary_network_connections: (from_id: pump or outlet in the primary network, to_id: node in the subnetwork, generally a basin)
+primary_network_connections: (from_id: pump or outlet in the primary network, to_id: node in the secondary network, generally a basin)
     per subnetwork
 demand_priorities_all: All used demand priority values from all subnetworks
 config: The Ribasim Model config
@@ -1023,8 +1023,6 @@ node_id: node ID of the Terminal node
     node_id::Vector{NodeID}
 end
 
-@enumx CacheType flow_rate_pump flow_rate_outlet basin_level basin_storage
-
 """
 A cache for intermediate results in `water_balance!` which depend only on the time `t`. A second version of this
 this cache is required for automatic differentiation (for Rosenbrock methods), where e.g. ForwardDiff requires these vectors
@@ -1056,26 +1054,6 @@ const TimeDependentCache{T} = @NamedTuple{
     user_demand::@NamedTuple{current_demand::Vector{T}, current_return_factor::Vector{T}},
     t_prev_call::Vector{T},
 } where {T}
-
-"""
-Get one of the vectors of the CurrentBasinProperties based on the passed type.
-"""
-function get_cache_vector(
-        current_basin_properties::CurrentBasinProperties,
-        type::CacheType.T,
-    )
-    return if type == CacheType.flow_rate_pump
-        current_basin_properties.current_flow_rate_pump
-    elseif type == CacheType.flow_rate_outlet
-        current_basin_properties.current_flow_rate_outlet
-    elseif type == CacheType.basin_level
-        current_basin_properties.current_level
-    elseif type == CacheType.basin_storage
-        current_basin_properties.current_storage
-    else
-        error("Invalid cache type $type passed.")
-    end
-end
 
 @kwdef struct SubVariable
     listen_node_id::NodeID
