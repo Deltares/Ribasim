@@ -407,6 +407,24 @@ end
     @test last(table.concentration[is_cl_2]) ≈ 2.5 rtol = 1.0e-2
 end
 
+@testitem "Tracers with a negative UserDemand return flow" begin
+    # A return volume that is negative by rounding is water that flows back. It leaves Basin #2
+    # with the concentration of the Basin, without the Cl that UserDemand #3 adds to its return flow.
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/tracer_user_demand/ribasim.toml")
+    @test ispath(toml_path) skip = true
+    model = Ribasim.Model(toml_path)
+    (; user_demand, basin, cumulative_flow_dt, tracer_transport) = model.integrator.p.p_independent
+    node_idx = findfirst(id -> id.value == 3, user_demand.node_id)
+    basin_idx = user_demand.outflow_link[node_idx].link[2].idx
+    cumulative_flow_dt.horizontal.user_demand_inflow .= 0.0
+    cumulative_flow_dt.horizontal.user_demand_outflow .= 0.0
+    cumulative_flow_dt.horizontal.user_demand_outflow[node_idx] = -1.0e-9
+    mass = copy(basin.concentration_data.mass)
+    Ribasim.mass_inflows_from_user_demand!(model.integrator)
+    @test basin.concentration_data.mass == mass
+    @test tracer_transport.backflow[basin_idx] == 1.0e-9
+end
+
 @testitem "Tracers with masses that round to below zero" begin
     # allocation_control has a Basin that loses nearly all its water in one timestep, and in
     # junction_allocation_shortage a UserDemand abstracts all water that flows into a Junction

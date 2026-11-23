@@ -5,10 +5,14 @@ as the UserDemand nodes are not conservative.
 The mass in the return flow is stored in `user_demand.return_mass`. If the return flow goes to a
 Basin that mass is added to the Basin, if it goes to Junction nodes it is passed on by `mass_through_junctions!`.
 UserDemand nodes in a Junction subgraph are also handled there.
+
+A return volume can be slightly negative, by the solver tolerance or by rounding. That water flows
+back, so it carries no mass from the UserDemand, and it leaves a Basin with the concentration of the
+Basin, as an outflow in `transport_tracers!`.
 """
 function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
     (; p, tprev) = integrator
-    (; basin, user_demand, cumulative_flow_dt) = p.p_independent
+    (; basin, user_demand, cumulative_flow_dt, tracer_transport) = p.p_independent
     (; concentration_state, mass) = basin.concentration_data
     (; return_mass) = user_demand
 
@@ -21,13 +25,17 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
         inflow_links = user_demand.inflow_links[node_idx]
         return_mass_node = view(return_mass, :, node_idx)
         return_mass_node .= 0.0
+        return_flow = cumulative_flow_dt.horizontal.user_demand_outflow[node_idx]
+        if return_flow < 0
+            to_node.is_basin && (tracer_transport.backflow[to_node.idx] -= return_flow)
+            continue
+        end
 
         # Mix concentrations of all inflow links weighted by each link's cumulative
         # flow. The return-flow concentration is a mass-weighted average of the
         # source basins' concentrations.
         inflows = get_inflows(cumulative_flow_dt, user_demand, node_idx)
         total_inflow = sum(inflows)
-        return_flow = cumulative_flow_dt.horizontal.user_demand_outflow[node_idx]
         if total_inflow > 0
             for node_inflow_idx in eachindex(inflow_links)
                 from_node = inflow_links[node_inflow_idx].link[1]
@@ -210,6 +218,13 @@ function mass_through_junctions!(integrator::DEIntegrator)::Nothing
             junction_id = only(user_demand.inflow_links[id.idx]).link[1]
             return_flow = cumulative_flow_dt.horizontal.user_demand_outflow[id.idx]
             return_mass_node = view(return_mass, :, id.idx)
+            target_id = user_demand.outflow_link[id.idx].link[2]
+            if return_flow < 0
+                # Water that flows back, see `mass_inflows_from_user_demand!`
+                return_mass_node .= 0.0
+                target_id.is_basin && (p_independent.tracer_transport.backflow[target_id.idx] -= return_flow)
+                continue
+            end
             return_mass_node .= return_flow .* view(concentration, :, junction_id.idx)
             add_substance_mass!(
                 return_mass_node,
@@ -219,7 +234,6 @@ function mass_through_junctions!(integrator::DEIntegrator)::Nothing
             )
 
             # The return mass into a Junction node is picked up there via `set_junction_source_mass!`
-            target_id = user_demand.outflow_link[id.idx].link[2]
             target_id.is_basin && (view(mass, :, target_id.idx) .+= return_mass_node)
         end
     end
