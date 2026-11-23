@@ -5,6 +5,7 @@ from typing import Any
 
 import netCDF4 as nc4
 import numpy as np
+import pandas as pd
 import pytest
 from qgis.core import QgsFeature, QgsVectorLayer
 from qgis.PyQt.QtWidgets import QCheckBox, QWidgetAction
@@ -14,6 +15,7 @@ from ribasim_qgis.core.junctions import (
     FlowGraph,
     read_junctions_in_static,
 )
+from ribasim_qgis.core.netcdf import NetCDFResult
 from ribasim_qgis.core.tracer_flow import (
     BoundaryConcentrations,
     TracerFlows,
@@ -1483,6 +1485,39 @@ def test_junction_flow_column_in_static(
     column = _junction_flow_column(node_types, links, flows, junctions_in_static)
     assert column is not None
     assert np.allclose(column, [expected])
+
+
+def test_user_demand_flow_traces_add_up_its_links():
+    # UserDemand 3 abstracts from Basins 1 and 2, and returns to Basin 1
+    _, link_layer = _layers(
+        {1: "Basin", 2: "Basin", 3: "UserDemand"},
+        {10: (1, 3), 20: (2, 3), 30: (3, 1)},
+    )
+    widget = DatasetWidget.__new__(DatasetWidget)
+    widget.results = {
+        "flow": NetCDFResult(
+            time=pd.DatetimeIndex(["2020-01-01"]),
+            ids=np.array([10, 20, 30]),
+            variables={"flow_rate": np.array([[1.0, 3.0, 2.0]])},
+            units={},
+        )
+    }
+    plot_data: PlotData = {}
+    widget._inject_node_flow_rate_traces(plot_data, [(3, "UserDemand")], link_layer)
+    traces = plot_data["flow"]["flow_rate"]
+    assert traces["UserDemand #3 inflow_rate"][1].tolist() == [4.0]
+    assert traces["UserDemand #3 outflow_rate"][1].tolist() == [2.0]
+
+
+def test_load_netcdf_results_forgets_removed_files(results_dir, monkeypatch):
+    widget = DatasetWidget.__new__(DatasetWidget)
+    widget.results = {}
+    monkeypatch.setattr(widget, "_results_dir", lambda: results_dir)
+    widget._load_netcdf_results()
+    assert "concentration" in widget.results
+    (results_dir / "concentration.nc").unlink()
+    widget._load_netcdf_results()
+    assert "concentration" not in widget.results
 
 
 def test_read_junctions_in_static(tmp_path):

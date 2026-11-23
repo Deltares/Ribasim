@@ -109,19 +109,16 @@ _FLOW_RATE_FROM_OUTGOING_LINK: frozenset[str] = frozenset(
     }
 )
 
-# Non-conservative node types: inflow and outflow can differ, so we plot both
-# the incoming and outgoing flow links as separate traces.
-_FLOW_RATE_FROM_INCOMING_AND_OUTGOING_LINKS: frozenset[str] = frozenset({"UserDemand"})
-
 # Node types with potentially multiple incoming flow links whose summed
 # inflow we plot. ``Terminal`` only has incoming flow.
 _FLOW_RATE_FROM_INCOMING_LINKS_SUM: frozenset[str] = frozenset({"Terminal"})
 
 # Node types with potentially multiple incoming and outgoing flow links
 # where inflow and outflow may differ. We plot the sum of incoming and the
-# sum of outgoing links as separate traces.
+# sum of outgoing links as separate traces. A UserDemand can abstract from
+# multiple sources.
 _FLOW_RATE_FROM_INCOMING_AND_OUTGOING_LINKS_SUM: frozenset[str] = frozenset(
-    {"LevelBoundary"}
+    {"LevelBoundary", "UserDemand"}
 )
 
 RIBASIM_HOME_SETTING = "ribasim/home"
@@ -684,6 +681,8 @@ class DatasetWidget:
 
     def _load_netcdf_results(self) -> None:
         """Load all NetCDF result files into self.results."""
+        # A file that is not there must not keep the results of an earlier model or run
+        self.results = {}
         results_dir = self._results_dir()
         readers = {
             "basin": read_basin_nc,
@@ -1121,17 +1120,15 @@ class DatasetWidget:
     ) -> None:
         """Add flow.nc flow_rate traces for selected non-Basin nodes.
 
-        Five cases:
+        Four cases:
 
         * Conservative single-link nodes (e.g. ``TabulatedRatingCurve``):
           show the outgoing flow link as the node's flow_rate.
-        * Non-conservative single-link nodes (e.g. ``UserDemand``): show
-          the incoming and outgoing flow links separately.
         * Multi-link inflow-only nodes (``Terminal``): show the sum of all
           incoming flow links.
         * ``Junction``: see :meth:`_node_flow_column`.
-        * Multi-link non-conservative nodes (``LevelBoundary``): show the
-          sum of incoming and the sum of outgoing flow links separately.
+        * Multi-link non-conservative nodes (``LevelBoundary``, ``UserDemand``):
+          show the sum of incoming and the sum of outgoing flow links separately.
         """
         flow_result = self.results.get("flow")
         if flow_result is None or link_layer is None:
@@ -1151,23 +1148,6 @@ class DatasetWidget:
                 )
                 if outgoing:
                     new_traces[f"{node_type} #{node_id} flow_rate"] = (
-                        time_strings,
-                        outgoing[0],
-                    )
-            elif node_type in _FLOW_RATE_FROM_INCOMING_AND_OUTGOING_LINKS:
-                incoming = self._connected_flow_columns(
-                    link_layer, node_id, "to", link_id_to_idx, flow_arr
-                )
-                outgoing = self._connected_flow_columns(
-                    link_layer, node_id, "from", link_id_to_idx, flow_arr
-                )
-                if incoming:
-                    new_traces[f"{node_type} #{node_id} inflow_rate"] = (
-                        time_strings,
-                        incoming[0],
-                    )
-                if outgoing:
-                    new_traces[f"{node_type} #{node_id} outflow_rate"] = (
                         time_strings,
                         outgoing[0],
                     )
