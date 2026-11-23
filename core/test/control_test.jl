@@ -455,7 +455,7 @@ end
 
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/pump_discrete_control/ribasim.toml")
-    @test ispath(toml_path) skip = true
+    @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
     (; p, u, t) = model.integrator
     (; pump) = p.p_independent
@@ -509,4 +509,65 @@ end
     @test t_switch ≈ 15.5 * 86400 atol = 86400
     @test q(8, 6)[1] == 0
     @test q(8, 6)[end] ≈ 1.0e-4
+end
+
+@testitem "Compound variable value" begin
+    using Ribasim: NodeID, CompoundVariable, SubVariable, compound_variable_value
+
+    # The value of a compound variable that listens to a single variable, with distinct flows
+    function listen(model_name)
+        toml_path = normpath(@__DIR__, "../../generated_testmodels/$model_name/ribasim.toml")
+        model = Ribasim.Model(toml_path)
+        (; p) = model.integrator
+        (; current_storage) = p.current_basin_properties
+        flow = Ribasim.get_du(model.integrator).flow
+        flow .= 1:length(flow)
+        function value(listen_node_id, variable; weight = 1.0)
+            compound_variable = CompoundVariable(;
+                node_id = NodeID(:DiscreteControl, 1, 1),
+                subvariables = [SubVariable(; listen_node_id, variable, weight, look_ahead = 0.0)],
+            )
+            return compound_variable_value(compound_variable, current_storage, flow, p, 0.0)
+        end
+        return value, flow, p.p_independent
+    end
+
+    value, flow, p_independent = listen("basic")
+    for name in (:pump, :tabulated_rating_curve, :linear_resistance, :manning_resistance)
+        node_ids = getfield(p_independent, name).node_id
+        @test !isempty(node_ids)
+        for id in node_ids
+            @test value(id, "flow_rate") == getproperty(flow.horizontal, name)[id.idx]
+        end
+    end
+    pump_id = first(p_independent.pump.node_id)
+    @test value(pump_id, "flow_rate"; weight = 2.0) == 2 * flow.horizontal.pump[pump_id.idx]
+
+    (; concentration_data) = p_independent.basin
+    basin_id = last(p_independent.basin.node_id)
+    substance_idx = length(concentration_data.substances)
+    substance = collect(concentration_data.substances)[substance_idx]
+    concentration_data.concentration_state[substance_idx, basin_id.idx] = 3.0
+    @test value(basin_id, "concentration.$substance") == 3.0
+
+    @test_throws "Cannot obtain variable `level` from $pump_id." value(pump_id, "level")
+    @test_throws "Cannot obtain variable `flow_rate` from $basin_id." value(basin_id, "flow_rate")
+    @test_throws "Unsupported listen variable foo." value(basin_id, "foo")
+
+    value, flow, p_independent = listen("outlet")
+    for id in p_independent.outlet.node_id
+        @test value(id, "flow_rate") == flow.horizontal.outlet[id.idx]
+    end
+end
+
+@testitem "Truth state without control state" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/pump_discrete_control/ribasim.toml")
+    model = Ribasim.Model(toml_path)
+    id = first(model.integrator.p.p_independent.discrete_control.node_id)
+
+    # Returns whether there was an error, and whether the control state changed
+    result = @test_logs (:error, r"^No control state specified for DiscreteControl #\d+ for truth state") Ribasim.set_new_control_state!(
+        model.integrator, id, Bool[],
+    )
+    @test result == (true, false)
 end

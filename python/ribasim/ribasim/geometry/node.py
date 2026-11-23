@@ -101,18 +101,18 @@ class NodeTable(SpatialTableModel[NodeSchema], ChildModel):
             ax.axis("off")
 
         COLOR_SUBNETWORK = "black"
-        COLOR_MAIN_NETWORK = "blue"
+        COLOR_PRIMARY_NETWORK = "blue"
         ALPHA = 0.25
 
-        contains_main_network = False
+        contains_primary_network = False
         contains_subnetworks = False
 
         for subnetwork_id, df_subnetwork in self.df.groupby("subnetwork_id"):
             if subnetwork_id is None:
                 continue
             elif subnetwork_id == 1:
-                contains_main_network = True
-                color = COLOR_MAIN_NETWORK
+                contains_primary_network = True
+                color = COLOR_PRIMARY_NETWORK
             else:
                 contains_subnetworks = True
                 color = COLOR_SUBNETWORK
@@ -125,8 +125,8 @@ class NodeTable(SpatialTableModel[NodeSchema], ChildModel):
         handles = []
         labels = []
 
-        if contains_main_network:
-            handles.append(Patch(facecolor=COLOR_MAIN_NETWORK, alpha=ALPHA))
+        if contains_primary_network:
+            handles.append(Patch(facecolor=COLOR_PRIMARY_NETWORK, alpha=ALPHA))
             labels.append("Primary network")
         if contains_subnetworks:
             handles.append(Patch(facecolor=COLOR_SUBNETWORK, alpha=ALPHA))
