@@ -620,7 +620,7 @@ The linear system for the transport of substances between Basins over a timestep
 substances share. See the section on substance concentrations in `docs/concept/core.qmd` for
 the derivation of the scheme, and [`transport_tracers!`](@ref) for its implementation.
 """
-struct TracerTransport
+@kwdef struct TracerTransport
     # Matrix with a fixed sparsity pattern: the diagonal and both directions of each Basin to Basin flow
     A::SparseMatrixCSC{Float64, Int}
     # Index into nonzeros(A) of the diagonal entry per Basin
@@ -629,15 +629,22 @@ struct TracerTransport
     forward_nz::Vector{Int}
     backward_nz::Vector{Int}
     # Volume that left each Basin with its mixed concentration over the timestep
-    outflow::Vector{Float64}
+    outflow::Vector{Float64} = zeros(size(A, 1))
+    # The outflow minus the flow from the Basin to itself
+    net_outflow::Vector{Float64} = zeros(size(A, 1))
     # Right hand side of the linear system, Basin x substance
     rhs::Matrix{Float64}
     # Per Basin the weight 1 - θ of the concentration at the start of the timestep in its outflows
-    weight_start::Vector{Float64}
+    weight_start::Vector{Float64} = zeros(size(A, 1))
     # Volume that flowed back from each Basin into a Junction node over the timestep
-    backflow::Vector{Float64}
+    backflow::Vector{Float64} = zeros(size(A, 1))
+    # The transpose of A, to gather the entries of a row: column i holds the entries of row i of A,
+    # in ascending order of the column of A, with the index into `nonzeros(A)` as value
+    A_rows::SparseMatrixCSC{Int, Int} = permutedims(
+        SparseMatrixCSC(size(A)..., A.colptr, A.rowval, collect(1:length(nonzeros(A)))),
+    )
     # KLU factorization of A, refactorized with new values each timestep
-    linear_solve::TracerLinearSolve
+    linear_solve::TracerLinearSolve = init_tracer_linear_solve(A, rhs)
 end
 
 @kwdef struct ConcentrationData

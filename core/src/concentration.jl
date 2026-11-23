@@ -282,7 +282,7 @@ function add_forcing_mass!(
         substance_idx, node_idx = Tuple(I)
         value[I] = itp[node_idx][substance_idx](t)
     end
-    for node_idx in axes(mass, 2)
+    @threaded TRACER_MIN_CHUNK_SIZE for node_idx in axes(mass, 2)
         flow = cumulative_flow isa Float64 ? cumulative_flow : cumulative_flow[node_idx]
         iszero(flow) && continue
         for substance_idx in axes(mass, 1)
@@ -342,19 +342,29 @@ function TracerTransport(
             end
         end
     end
-    rhs = zeros(n_basin, n_substance)
-    return TracerTransport(
+
+    return TracerTransport(;
         A,
         diagonal_nz,
         forward_nz,
         backward_nz,
-        zeros(n_basin),
-        rhs,
-        zeros(n_basin),
-        zeros(n_basin),
-        init_tracer_linear_solve(A, rhs),
+        rhs = zeros(n_basin, n_substance),
     )
 end
+
+"""
+The minimum number of Basins per chunk in the parallel loops of `transport_tracers!`. A
+Basin takes about a microsecond, so below this the tasks cost more than they save.
+"""
+const TRACER_MIN_CHUNK_SIZE = 256
+
+"""
+The number of Basins in a block of the loops over Basins and substances in `transport_tracers!`.
+`mass` and `concentration_state` hold the substances of a Basin contiguously, `rhs` the Basins
+of a substance. Looping over the substances and then the Basins of a block, with the data of the
+block in the L1 cache, avoids that every access touches a new cache line.
+"""
+const TRACER_BLOCK_SIZE = 64
 
 """
 Transport the substances over the last timestep: the exchange between Basins, the outflows
@@ -362,6 +372,11 @@ and the inflows from LevelBoundary, see the section on substance concentrations 
 `docs/concept/core.qmd`. The mass from the other sources is already added to `mass`,
 afterwards it holds the mass at the end of the timestep. `concentration_state` still holds
 the concentrations at the start of the timestep.
+
+The loops over the Basins run in parallel. A Basin only writes the data of its own, so the
+flows are gathered per Basin (a column of `incidence_matrix_transpose`) and the inflows from
+other Basins per row of the matrix (`A_rows`), instead of scattered per flow. Both are in
+ascending order, so all sums are added in the same order as in a loop over the flows.
 """
 function transport_tracers!(
         p_independent::ParametersIndependent,
@@ -369,88 +384,134 @@ function transport_tracers!(
         tprev::Float64,
         dt::Float64,
     )::Nothing
-    (; tracer_transport, basin, level_boundary, cumulative_flow_dt, inflow_id, outflow_id, flow_ranges) =
-        p_independent
-    (; A, diagonal_nz, forward_nz, backward_nz, outflow, rhs, weight_start, backflow, linear_solve) = tracer_transport
+    (;
+        tracer_transport,
+        basin,
+        level_boundary,
+        cumulative_flow_dt,
+        inflow_id,
+        outflow_id,
+        flow_ranges,
+        incidence_matrix_transpose,
+    ) = p_independent
+    (;
+        A,
+        diagonal_nz,
+        forward_nz,
+        backward_nz,
+        outflow,
+        net_outflow,
+        rhs,
+        weight_start,
+        backflow,
+        A_rows,
+        linear_solve,
+    ) = tracer_transport
     (; mass, evaporate_mass, concentration_state) = basin.concentration_data
     (; storage_prev_dt) = basin
     isempty(diagonal_nz) && return nothing
     nzval = nonzeros(A)
-    fill!(nzval, 0.0)
-    # Start with the water that flowed back into Junction nodes, see `mass_through_junctions!`
-    outflow .= backflow
-    fill!(backflow, 0.0)
+    n_basin = length(diagonal_nz)
+    n_chunks = parallel_chunk_count(n_basin, TRACER_MIN_CHUNK_SIZE)
+    A_row_cols = rowvals(A_rows)
+    A_row_nz = nonzeros(A_rows)
 
-    for flow_idx in eachindex(cumulative_flow_dt)
-        # Without evaporating mass, the evaporated water leaves the mass behind
-        !evaporate_mass && flow_idx in flow_ranges.vertical.evaporation && continue
-        # The mass of the UserDemand return flow is added in `mass_inflows_from_user_demand!`
-        flow_idx in flow_ranges.horizontal.user_demand_outflow && continue
+    # The outflows, the diagonal of the matrix and the right hand side. The outflows use a
+    # weighted average of the concentrations at the start and end of the timestep: θ = 1/2 is
+    # second order accurate, larger θ keeps the concentrations positive
+    parallel_chunks(n_chunks) do k
+        basins = chunk_range(1:n_basin, k, n_chunks)
+        for j in basins
+            fill!(view(nzval, nzrange(A, j)), 0.0)
+            # Start with the water that flowed back into Junction nodes, see `mass_through_junctions!`
+            outflow_j = backflow[j]
+            backflow[j] = 0.0
 
-        volume = cumulative_flow_dt[flow_idx]
-        upstream, downstream, nz = if volume > 0
-            inflow_id[flow_idx], outflow_id[flow_idx], forward_nz[flow_idx]
-        elseif volume < 0
-            outflow_id[flow_idx], inflow_id[flow_idx], backward_nz[flow_idx]
-        else
-            continue
+            # The flows of the Basin, in ascending order. These also include flows that reach the
+            # Basin via Junction nodes, which don't start or end in it and are skipped below.
+            for flow_idx in @view rowvals(incidence_matrix_transpose)[nzrange(incidence_matrix_transpose, j)]
+                # Without evaporating mass, the evaporated water leaves the mass behind
+                !evaporate_mass && flow_idx in flow_ranges.vertical.evaporation && continue
+                # The mass of the UserDemand return flow is added in `mass_inflows_from_user_demand!`
+                flow_idx in flow_ranges.horizontal.user_demand_outflow && continue
+
+                volume = cumulative_flow_dt[flow_idx]
+                upstream, downstream, nz = if volume > 0
+                    inflow_id[flow_idx], outflow_id[flow_idx], forward_nz[flow_idx]
+                elseif volume < 0
+                    outflow_id[flow_idx], inflow_id[flow_idx], backward_nz[flow_idx]
+                else
+                    continue
+                end
+                volume = abs(volume)
+
+                if upstream.is_basin && upstream.idx == j
+                    outflow_j += volume
+                    downstream.is_basin && (nzval[nz] -= volume)
+                end
+                # Inflow from other nodes than Basins
+                if downstream.is_basin && downstream.idx == j && !upstream.is_basin
+                    if upstream.type == NodeType.LevelBoundary
+                        add_substance_mass!(
+                            view(mass, :, j),
+                            level_boundary.concentration_itp[upstream.idx],
+                            volume,
+                            tprev,
+                        )
+                    elseif upstream.is_routed
+                        # The mass from Junction subgraphs is added in `mass_through_junctions!`
+                        nothing
+                    elseif !(upstream.type == NodeType.Terminal && upstream.value == 0)
+                        # The unset flow link defaults to Terminal #0
+                        warn_unsupported_flow(upstream, downstream, volume)
+                    end
+                end
+            end
+            outflow[j] = outflow_j
+
+            storage = storage_prev_dt[j]
+            # The diagonal can already hold a flow from a Basin to itself
+            net_outflow_j = outflow_j + nzval[diagonal_nz[j]]
+            # The weight 1 - θ is computed directly, since 1 - θ loses precision for θ close to 1
+            ω = if storage > 0 && net_outflow_j > 0
+                min(0.5, storage / net_outflow_j)
+            else
+                0.0
+            end
+            weight_start[j] = ω
+            net_outflow[j] = net_outflow_j
+            diagonal = current_storage[j] + (1 - ω) * net_outflow_j
+            # An empty Basin without inflow has no mass
+            nzval[diagonal_nz[j]] = diagonal > 0 ? diagonal : 1.0
+            # The residence time tracer gets older, integrated with the trapezoidal rule
+            mass[Substance.ResidenceTime, j] += dt * (storage + current_storage[j]) / 2
         end
-        volume = abs(volume)
 
-        upstream.is_basin && (outflow[upstream.idx] += volume)
-        downstream.is_basin || continue
-        if upstream.is_basin
-            nzval[nz] -= volume
-        elseif upstream.type == NodeType.LevelBoundary
-            add_substance_mass!(
-                view(mass, :, downstream.idx),
-                level_boundary.concentration_itp[upstream.idx],
-                volume,
-                tprev,
-            )
-        elseif upstream.is_routed
-            # The mass from Junction subgraphs is added in `mass_through_junctions!`
-            nothing
-        elseif !(upstream.type == NodeType.Terminal && upstream.value == 0)
-            # The unset flow link defaults to Terminal #0
-            warn_unsupported_flow(upstream, downstream, volume)
-        end
-    end
-
-    # The outflows use a weighted average of the concentrations at the start and end of the
-    # timestep: θ = 1/2 is second order accurate, larger θ keeps the concentrations positive
-    for i in eachindex(diagonal_nz)
-        storage = storage_prev_dt[i]
-        # The diagonal can already hold a flow from a Basin to itself
-        net_outflow = outflow[i] + nzval[diagonal_nz[i]]
-        # The weight 1 - θ is computed directly, since 1 - θ loses precision for θ close to 1
-        ω = if storage > 0 && net_outflow > 0
-            min(0.5, storage / net_outflow)
-        else
-            0.0
-        end
-        weight_start[i] = ω
-        diagonal = current_storage[i] + (1 - ω) * net_outflow
-        # An empty Basin without inflow has no mass
-        nzval[diagonal_nz[i]] = diagonal > 0 ? diagonal : 1.0
-        # The residence time tracer gets older, integrated with the trapezoidal rule
-        mass[Substance.ResidenceTime, i] += dt * (storage + current_storage[i]) / 2
-        for substance_idx in axes(mass, 1)
-            mass_start = mass[substance_idx, i]
-            remaining = mass_start - ω * net_outflow * concentration_state[substance_idx, i]
-            # If all water from the start of the timestep flows out, nothing remains of its mass,
-            # which can be negative by rounding
-            rhs[i, substance_idx] = -8eps(mass_start) <= remaining < 0 ? 0.0 : remaining
+        # The inner loop runs over the Basins, which is contiguous in `rhs`. The Basins are
+        # divided in blocks, so that the `mass` and `concentration_state` of a block stay in
+        # cache for all substances.
+        for block in Iterators.partition(basins, TRACER_BLOCK_SIZE)
+            for substance_idx in axes(mass, 1), j in block
+                mass_start = mass[substance_idx, j]
+                remaining =
+                    mass_start -
+                    weight_start[j] * net_outflow[j] * concentration_state[substance_idx, j]
+                # If all water from the start of the timestep flows out, nothing remains of its mass,
+                # which can be negative by rounding. The sign is checked first, since `eps` of the
+                # many zero masses is a subnormal number that makes the multiplication slow.
+                rhs[j, substance_idx] = remaining < 0 && -8eps(mass_start) <= remaining ? 0.0 : remaining
+            end
         end
     end
 
     # The inflows from other Basins with the same weights as their outflows
-    rows = rowvals(A)
-    for j in eachindex(diagonal_nz)
-        ω = weight_start[j]
-        for nz in nzrange(A, j)
-            i = rows[nz]
-            (i == j || iszero(nzval[nz])) && continue
+    parallel_chunks(n_chunks) do k
+        for i in chunk_range(1:n_basin, k, n_chunks), idx in nzrange(A_rows, i)
+            j = A_row_cols[idx]
+            j == i && continue
+            nz = A_row_nz[idx]
+            iszero(nzval[nz]) && continue
+            ω = weight_start[j]
             volume = -nzval[nz]
             nzval[nz] = -(1 - ω) * volume
             if ω > 0
@@ -469,9 +530,12 @@ function transport_tracers!(
         error("The linear solve of the tracer transport failed at t = $(tprev + dt) s.")
     concentration = solution.u
 
-    for i in eachindex(diagonal_nz)
-        for substance_idx in axes(mass, 1)
-            mass[substance_idx, i] = current_storage[i] * concentration[i, substance_idx]
+    parallel_chunks(n_chunks) do k
+        basins = chunk_range(1:n_basin, k, n_chunks)
+        for block in Iterators.partition(basins, TRACER_BLOCK_SIZE)
+            for substance_idx in axes(mass, 1), j in block
+                mass[substance_idx, j] = current_storage[j] * concentration[j, substance_idx]
+            end
         end
     end
     return nothing
