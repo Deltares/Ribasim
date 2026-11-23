@@ -189,6 +189,20 @@ end
     @test flow_rates(23, 25) ≈ 0.4 .* flow_rates(5, 23)
 end
 
+@testitem "Junction subgraphs in parallel tasks" begin
+    model = Ribasim.Model(normpath(@__DIR__, "../../generated_testmodels/junction_fraction/ribasim.toml"))
+    (; u, p, t) = model.integrator
+    du = zero(u)
+    Ribasim.water_balance!(du, u, p, t)
+
+    # With 512 subgraphs, the loop over them runs in parallel tasks if Julia has threads
+    (; routed_subgraphs) = p.p_independent.junction
+    append!(routed_subgraphs, [Ribasim.NodeID[] for _ in (length(routed_subgraphs) + 1):512])
+    du_parallel = zero(u)
+    Ribasim.water_balance!(du_parallel, u, p, t)
+    @test du_parallel == du
+end
+
 @testitem "FlowBoundary time series through Junction" begin
     import BasicModelInterface as BMI
 
