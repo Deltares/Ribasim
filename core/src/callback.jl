@@ -293,10 +293,11 @@ end
         mass_node::AbstractVector{Float64},
         substances::OrderedSet{Symbol},
     )::Nothing
-    for substance_idx in findall(<(0), mass_node)
-        substance_name = substances[substance_idx]
+    for (substance_idx, substance_name) in enumerate(substances)
         substance_mass = mass_node[substance_idx]
-        @error "$node_id has negative mass $substance_mass for substance $substance_name"
+        if substance_mass < 0
+            @error "$node_id has negative mass $substance_mass for substance $substance_name"
+        end
     end
     return nothing
 end
