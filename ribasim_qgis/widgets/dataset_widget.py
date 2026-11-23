@@ -67,8 +67,8 @@ from ribasim_qgis.core.nodes import (
 )
 from ribasim_qgis.core.observations import Observations, read_observations
 from ribasim_qgis.core.tracer_flow import (
-    BoundaryConcentrations,
-    read_boundary_concentrations,
+    InputConcentrations,
+    read_input_concentrations,
 )
 from ribasim_qgis.widgets.plot_widget import PlotData, PlotWidget, Trace, VariableTraces
 from ribasim_qgis.widgets.task import RibasimTask
@@ -156,8 +156,8 @@ class DatasetWidget:
         self.observations: Observations | None = None
         # The Junctions with rows in Junction / static
         self.junctions_in_static: frozenset[int] = frozenset()
-        # The concentrations of the FlowBoundary and LevelBoundary input
-        self.boundary_concentrations = BoundaryConcentrations()
+        # The concentration tables of FlowBoundary, LevelBoundary and UserDemand
+        self.input_concentrations = InputConcentrations()
 
         # Plot widget for timeseries
         self.plot_widget = PlotWidget(
@@ -167,7 +167,7 @@ class DatasetWidget:
             concentration_for_node_getter=self._get_concentration_for_node,
             flow_for_link_getter=self._get_flow_for_link,
             junctions_in_static_getter=lambda: self.junctions_in_static,
-            boundary_concentration_getter=self._get_boundary_concentration,
+            input_concentration_getter=self._get_input_concentration,
         )
 
         # Track running simulations by model path
@@ -627,7 +627,7 @@ class DatasetWidget:
         self._load_netcdf_results()
         self._load_observations()
         self._load_junctions_in_static()
-        self._load_boundary_concentrations()
+        self._load_input_concentrations()
         self._preload_plot_variables()
         self._set_node_results()
         self._set_link_results()
@@ -710,9 +710,9 @@ class DatasetWidget:
             None if netcdf_file is None else input_dir / netcdf_file,
         )
 
-    def _load_boundary_concentrations(self) -> None:
-        """Load the concentrations of the FlowBoundary and LevelBoundary input."""
-        self.boundary_concentrations = read_boundary_concentrations(
+    def _load_input_concentrations(self) -> None:
+        """Load the concentration tables of FlowBoundary, LevelBoundary and UserDemand."""
+        self.input_concentrations = read_input_concentrations(
             get_database_path_from_model_file(self.ribasim_widget.path)
         )
 
@@ -775,12 +775,12 @@ class DatasetWidget:
             sub: (time_strings, arr[:, idx]) for sub, arr in result.variables.items()
         }
 
-    def _get_boundary_concentration(self, node_id: int) -> dict[str, np.ndarray] | None:
-        """Return the input concentrations of a boundary node at the flow result times."""
+    def _get_input_concentration(self, node_id: int) -> dict[str, np.ndarray] | None:
+        """Return the input concentrations of a node at the flow result times."""
         result = self.results.get("flow")
         if result is None:
             return None
-        return self.boundary_concentrations.at(node_id, result.time.to_numpy())
+        return self.input_concentrations.at(node_id, result.time.to_numpy())
 
     def _get_flow_for_link(self, link_id: int) -> Trace | None:
         """Return the flow_rate trace for a single *link_id*."""

@@ -17,9 +17,9 @@ from ribasim_qgis.core.junctions import (
 )
 from ribasim_qgis.core.netcdf import NetCDFResult
 from ribasim_qgis.core.tracer_flow import (
-    BoundaryConcentrations,
+    InputConcentrations,
     TracerFlows,
-    read_boundary_concentrations,
+    read_input_concentrations,
 )
 from ribasim_qgis.widgets.dataset_widget import DatasetWidget
 from ribasim_qgis.widgets.plot_widget import (
@@ -705,7 +705,7 @@ def _tracer_flows(
     flows: dict[int, list[float]],
     concentrations: dict[int, dict[str, list[float]]],
     junctions_in_static: frozenset[int] = frozenset(),
-    boundary_concentrations: dict[int, dict[str, list[float]]] | None = None,
+    input_concentrations: dict[int, dict[str, list[float]]] | None = None,
 ) -> TracerFlows:
     """Return the tracer flows of a network with flows and Basin concentrations."""
 
@@ -721,8 +721,8 @@ def _tracer_flows(
         lambda link_id: np.array(flows[link_id]) if link_id in flows else None,
         lambda node_id: _as_arrays(concentrations, node_id),
         n_time=2,
-        boundary_concentration=lambda node_id: _as_arrays(
-            boundary_concentrations or {}, node_id
+        input_concentration=lambda node_id: _as_arrays(
+            input_concentrations or {}, node_id
         ),
     )
 
@@ -872,19 +872,20 @@ _USER_DEMAND_NETWORK = (
     },
     {1: _tracer(0.4), 6: _tracer(0.9)},
     frozenset({3, 5}),
-    {7: {"Foo": [2.0, 2.0]}},
+    {4: {"Bar": [4.0, 4.0]}, 7: {"Foo": [2.0, 2.0]}},
 )
 
 
 def test_tracer_flows_user_demand_return():
     tracer_flows = _tracer_flows(*_USER_DEMAND_NETWORK)
-    # The return flow has the water of Basin 1, which mixes with the FlowBoundary water
-    # and the substance of its input table
+    # The return flow has the water of Basin 1 plus the substance of the input table of
+    # the UserDemand, and mixes with the FlowBoundary water and the substance of its table
     expected = {
         "Tracer": [0.6, 0.6],
         "Other": [0.9, 0.9],
         "FlowBoundary": [0.5, 0.5],
         "Foo": [1.0, 1.0],
+        "Bar": [6.0, 6.0],
     }
     _assert_tracers(tracer_flows.link(7), expected, [2.0, 2.0])
     # The total inflow of the Junction is the same water
@@ -894,7 +895,11 @@ def test_tracer_flows_user_demand_return():
     # A UserDemand has its abstraction
     node_flows = tracer_flows.node(4, "inflow_rate")
     assert node_flows is not None
-    _assert_tracers(node_flows[1], {"Tracer": [1.2, 1.2], "Other": [1.8, 1.8]}, 3.0)
+    _assert_tracers(
+        node_flows[1],
+        {"Tracer": [1.2, 1.2], "Other": [1.8, 1.8], "Bar": [0.0, 0.0]},
+        3.0,
+    )
     # A flow out of a Terminal brings no tracers
     tracers = tracer_flows.link(8)
     assert tracers is not None
@@ -1552,13 +1557,17 @@ def test_read_junctions_in_static(tmp_path):
     assert read_junctions_in_static(path, netcdf_path) == frozenset({2})
 
 
-def test_read_boundary_concentrations(tmp_path):
+def test_read_input_concentrations(tmp_path):
     path = tmp_path / "database.gpkg"
     con = sqlite3.connect(path)
     con.execute("CREATE TABLE Node (node_id INTEGER, node_type TEXT, cyclic_time BOOL)")
     con.executemany(
         "INSERT INTO Node VALUES (?, ?, ?)",
-        [(1, "FlowBoundary", False), (2, "LevelBoundary", True)],
+        [
+            (1, "FlowBoundary", False),
+            (2, "LevelBoundary", True),
+            (3, "UserDemand", True),
+        ],
     )
     rows = {
         "FlowBoundary / concentration": [
@@ -1570,6 +1579,11 @@ def test_read_boundary_concentrations(tmp_path):
             (2, "2020-01-01 00:00:00", "Foo", 1.0),
             (2, "2020-01-02 00:00:00", "Foo", 5.0),
             (2, "2020-01-03 00:00:00", "Foo", 1.0),
+        ],
+        "UserDemand / concentration": [
+            (3, "2020-01-01 00:00:00", "Bar", 1.0),
+            (3, "2020-01-02 00:00:00", "Bar", 4.0),
+            (3, "2020-01-03 00:00:00", "Bar", 1.0),
         ],
     }
     for table, table_rows in rows.items():
@@ -1586,7 +1600,7 @@ def test_read_boundary_concentrations(tmp_path):
     con.commit()
     con.close()
 
-    concentrations = read_boundary_concentrations(path)
+    concentrations = read_input_concentrations(path)
     times = np.array(
         ["2020-01-01", "2020-01-02", "2020-01-03", "2020-01-04", "2020-01-05"],
         dtype="datetime64[ns]",
@@ -1600,9 +1614,12 @@ def test_read_boundary_concentrations(tmp_path):
     level_boundary = concentrations.at(2, times)
     assert level_boundary is not None
     assert np.allclose(level_boundary["Foo"], [1.0, 5.0, 1.0, 5.0, 1.0])
-    assert concentrations.at(3, times) is None
-    assert read_boundary_concentrations(tmp_path / "missing.gpkg") == (
-        BoundaryConcentrations()
+    user_demand = concentrations.at(3, times)
+    assert user_demand is not None
+    assert np.allclose(user_demand["Bar"], [1.0, 4.0, 1.0, 4.0, 1.0])
+    assert concentrations.at(4, times) is None
+    assert read_input_concentrations(tmp_path / "missing.gpkg") == (
+        InputConcentrations()
     )
 
 

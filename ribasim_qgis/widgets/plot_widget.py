@@ -403,7 +403,7 @@ class PlotWidget(QWidget):
         | None = None,
         flow_for_link_getter: Callable[[int], Trace | None] | None = None,
         junctions_in_static_getter: Callable[[], Collection[int]] | None = None,
-        boundary_concentration_getter: Callable[[int], dict[str, np.ndarray] | None]
+        input_concentration_getter: Callable[[int], dict[str, np.ndarray] | None]
         | None = None,
     ):
         super().__init__(parent)
@@ -425,7 +425,7 @@ class PlotWidget(QWidget):
         self._node_layer_getter = node_layer_getter
         self._link_layer_getter = link_layer_getter
         self._junctions_in_static_getter = junctions_in_static_getter
-        self._boundary_concentration_getter = boundary_concentration_getter
+        self._input_concentration_getter = input_concentration_getter
 
         row.addWidget(QLabel("Select"))
 
@@ -1262,7 +1262,7 @@ class PlotWidget(QWidget):
             basin_concentration,
             n_time,
             self._available.get("concentration", ()),
-            self._boundary_concentration_getter,
+            self._input_concentration_getter,
         )
 
     def _add_fractional_flow_traces(

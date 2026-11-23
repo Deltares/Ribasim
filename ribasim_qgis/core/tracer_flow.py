@@ -3,8 +3,9 @@
 The water on a link has the concentrations of the node it comes from. A Basin has the
 concentrations of the results, and a FlowBoundary or LevelBoundary has its own tracer and
 the concentrations of its input table. A connector node passes on the water from the node
-at its other side, and a UserDemand returns the water it abstracts. A Junction with rows
-in ``Junction / static`` mixes its inflows, like the core does.
+at its other side. A UserDemand returns the water it abstracts, with the concentrations of
+its input table added. A Junction with rows in ``Junction / static`` mixes its inflows,
+like the core does.
 
 The core removes the other Junctions, see :mod:`ribasim_qgis.core.junctions`. In a group of
 them with one Basin, every other neighbor exchanges water with that Basin directly, so
@@ -34,8 +35,10 @@ from ribasim_qgis.core.junctions import (
 Tracers = dict[str, np.ndarray]
 
 BOUNDARY_NODE_TYPES: tuple[str, ...] = ("FlowBoundary", "LevelBoundary")
-BOUNDARY_CONCENTRATION_TABLES: tuple[str, ...] = tuple(
-    f"{node_type} / concentration" for node_type in BOUNDARY_NODE_TYPES
+# The node types with a concentration table, see `InputConcentrations`.
+CONCENTRATION_NODE_TYPES: tuple[str, ...] = (*BOUNDARY_NODE_TYPES, "UserDemand")
+CONCENTRATION_TABLES: tuple[str, ...] = tuple(
+    f"{node_type} / concentration" for node_type in CONCENTRATION_NODE_TYPES
 )
 
 
@@ -59,8 +62,9 @@ class TracerFlows:
         The number of times, which all values must have.
     substances:
         The substances to always return, also when they are zero.
-    boundary_concentration:
-        The concentrations of a FlowBoundary or LevelBoundary from its input table.
+    input_concentration:
+        The concentrations of a FlowBoundary, LevelBoundary or UserDemand from its input
+        table.
 
     A missing substance has a concentration of zero. A result is ``None`` if the source of
     the water cannot be determined.
@@ -73,12 +77,12 @@ class TracerFlows:
         basin_concentration: Callable[[int], Tracers | None],
         n_time: int,
         substances: Collection[str] = (),
-        boundary_concentration: Callable[[int], Tracers | None] | None = None,
+        input_concentration: Callable[[int], Tracers | None] | None = None,
     ):
         self.graph = graph
         self._flow = flow
         self._basin_concentration = basin_concentration
-        self._boundary_concentration = boundary_concentration
+        self._input_concentration = input_concentration
         self._n_time = n_time
         self._substances = set(substances)
         self._sent: dict[tuple[int, int], Tracers | None] = {}
@@ -260,8 +264,8 @@ class TracerFlows:
         if node_type in BOUNDARY_NODE_TYPES:
             ones = np.ones(self._n_time)
             concentration = {"Continuity": ones, node_type: ones}
-            if self._boundary_concentration is not None:
-                concentration.update(self._boundary_concentration(node_id) or {})
+            if self._input_concentration is not None:
+                concentration.update(self._input_concentration(node_id) or {})
             return self._checked(concentration)
         if node_type == "Terminal":
             # A flow out of a Terminal is within the solver tolerance, without tracers
@@ -273,10 +277,22 @@ class TracerFlows:
             other = others[0]
             return self._sent_over(other.other(node_id), other)
         if node_type == "UserDemand":
-            # The return flow has the concentrations of the water it abstracts
-            return self._mix(
+            # The return flow has the concentrations of the water it abstracts, plus
+            # those of its input table, like in the core
+            abstracted = self._mix(
                 node_id, [other for other in others if other.to_node_id == node_id]
             )
+            added = (
+                None
+                if self._input_concentration is None
+                else self._input_concentration(node_id)
+            )
+            if abstracted is None or not added:
+                return abstracted
+            result: Tracers = {}
+            _add(result, abstracted, 1.0)
+            _add(result, added, 1.0)
+            return self._checked(result)
         if node_type == "Junction":
             if graph.is_plain_junction(node_id):
                 basin = graph.junction_group(node_id).basin
@@ -309,8 +325,8 @@ class TracerFlows:
 
 
 @dataclass
-class BoundaryConcentrations:
-    """The ``FlowBoundary / concentration`` and ``LevelBoundary / concentration`` input.
+class InputConcentrations:
+    """The ``concentration`` input of FlowBoundary, LevelBoundary and UserDemand nodes.
 
     Attributes
     ----------
@@ -347,20 +363,20 @@ class BoundaryConcentrations:
         return result
 
 
-def read_boundary_concentrations(gpkg_path: Path) -> BoundaryConcentrations:
-    """Read the concentrations of the boundary nodes from the GeoPackage.
+def read_input_concentrations(gpkg_path: Path) -> InputConcentrations:
+    """Read the concentration tables of FlowBoundary, LevelBoundary and UserDemand nodes.
 
     Ribasim Python writes these tables to the GeoPackage only, since NetCDF input doesn't
     support a substance dimension.
     """
-    result = BoundaryConcentrations()
+    result = InputConcentrations()
     if not gpkg_path.is_file():
         return result
     frames = []
     with sqlite3_cursor(gpkg_path) as cursor:
         cursor.execute(
-            "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (?, ?)",
-            BOUNDARY_CONCENTRATION_TABLES,
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (?, ?, ?)",
+            CONCENTRATION_TABLES,
         )
         tables = [row[0] for row in cursor.fetchall()]
         for table in tables:
@@ -380,7 +396,8 @@ def read_boundary_concentrations(gpkg_path: Path) -> BoundaryConcentrations:
             if "cyclic_time" in {row[1] for row in cursor.fetchall()}:
                 cursor.execute(
                     "SELECT node_id FROM Node WHERE cyclic_time "
-                    "AND node_type IN ('FlowBoundary', 'LevelBoundary')"
+                    "AND node_type IN (?, ?, ?)",
+                    CONCENTRATION_NODE_TYPES,
                 )
                 result.cyclic = frozenset(int(row[0]) for row in cursor.fetchall())
 
