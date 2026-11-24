@@ -23,7 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Allow repeated `subgrid_level` values in `Basin / subgrid` and `Basin / subgrid_time`, which give a flat segment in the relation from Basin level to subgrid level. Subgrid elements with such values were rejected before. [#3449](https://github.com/Deltares/Ribasim/pull/3449)
 - Allocation: the error for an infeasible allocation problem now lists the incompatible constraints, this list was empty. [#3449](https://github.com/Deltares/Ribasim/pull/3449)
 - Junction: a model with 512 or more separate groups of Junctions with rows in `Junction / static` no longer stops with an error when run with multiple threads. [#3480](https://github.com/Deltares/Ribasim/pull/3480)
-- Long simulations of large models initialize quickly again. In v2026.2.0-rc1 the initialization time grew quadratically with the number of Basins. A 3-year run with 20 000 Basins took 7 minutes to start instead of 20 seconds.
+- Long simulations of large models initialize quickly again. In v2026.2.0-rc1 the initialization time grew quadratically with the number of Basins. A 3-year run with 20 000 Basins took 7 minutes to start instead of 20 seconds. [#3484](https://github.com/Deltares/Ribasim/pull/3484)
 
 ## [v2026.2.0-rc1] - 2026-11-11
 
