@@ -373,10 +373,11 @@ and the inflows from LevelBoundary, see the section on substance concentrations 
 afterwards it holds the mass at the end of the timestep. `concentration_state` still holds
 the concentrations at the start of the timestep.
 
-The loops over the Basins run in parallel. A Basin only writes the data of its own, so the
-flows are gathered per Basin (a column of `incidence_matrix_transpose`) and the inflows from
-other Basins per row of the matrix (`A_rows`), instead of scattered per flow. Both are in
-ascending order, so all sums are added in the same order as in a loop over the flows.
+The loop over the flows runs on one thread, since it is cheap and writes to the Basins at
+both ends of a flow. The loops over the Basins run in parallel, and a Basin only writes its
+own data. So the inflows from other Basins are gathered per row of the matrix (`A_rows`)
+instead of scattered per column. A row is in ascending order of the column, so all sums are
+added in the same order as in a loop over the columns.
 """
 function transport_tracers!(
         p_independent::ParametersIndependent,
@@ -384,16 +385,8 @@ function transport_tracers!(
         tprev::Float64,
         dt::Float64,
     )::Nothing
-    (;
-        tracer_transport,
-        basin,
-        level_boundary,
-        cumulative_flow_dt,
-        inflow_id,
-        outflow_id,
-        flow_ranges,
-        incidence_matrix_transpose,
-    ) = p_independent
+    (; tracer_transport, basin, level_boundary, cumulative_flow_dt, inflow_id, outflow_id, flow_ranges) =
+        p_independent
     (;
         A,
         diagonal_nz,
@@ -415,63 +408,56 @@ function transport_tracers!(
     n_chunks = parallel_chunk_count(n_basin, TRACER_MIN_CHUNK_SIZE)
     A_row_cols = rowvals(A_rows)
     A_row_nz = nonzeros(A_rows)
+    fill!(nzval, 0.0)
+    # Start with the water that flowed back into Junction nodes, see `mass_through_junctions!`
+    outflow .= backflow
+    fill!(backflow, 0.0)
 
-    # The outflows, the diagonal of the matrix and the right hand side. The outflows use a
-    # weighted average of the concentrations at the start and end of the timestep: θ = 1/2 is
-    # second order accurate, larger θ keeps the concentrations positive
+    for flow_idx in eachindex(cumulative_flow_dt)
+        # Without evaporating mass, the evaporated water leaves the mass behind
+        !evaporate_mass && flow_idx in flow_ranges.vertical.evaporation && continue
+        # The mass of the UserDemand return flow is added in `mass_inflows_from_user_demand!`
+        flow_idx in flow_ranges.horizontal.user_demand_outflow && continue
+
+        volume = cumulative_flow_dt[flow_idx]
+        upstream, downstream, nz = if volume > 0
+            inflow_id[flow_idx], outflow_id[flow_idx], forward_nz[flow_idx]
+        elseif volume < 0
+            outflow_id[flow_idx], inflow_id[flow_idx], backward_nz[flow_idx]
+        else
+            continue
+        end
+        volume = abs(volume)
+
+        upstream.is_basin && (outflow[upstream.idx] += volume)
+        downstream.is_basin || continue
+        if upstream.is_basin
+            nzval[nz] -= volume
+        elseif upstream.type == NodeType.LevelBoundary
+            add_substance_mass!(
+                view(mass, :, downstream.idx),
+                level_boundary.concentration_itp[upstream.idx],
+                volume,
+                tprev,
+            )
+        elseif upstream.is_routed
+            # The mass from Junction subgraphs is added in `mass_through_junctions!`
+            nothing
+        elseif !(upstream.type == NodeType.Terminal && upstream.value == 0)
+            # The unset flow link defaults to Terminal #0
+            warn_unsupported_flow(upstream, downstream, volume)
+        end
+    end
+
+    # The diagonal of the matrix and the right hand side. The outflows use a weighted average
+    # of the concentrations at the start and end of the timestep: θ = 1/2 is second order
+    # accurate, larger θ keeps the concentrations positive
     parallel_chunks(n_chunks) do k
         basins = chunk_range(1:n_basin, k, n_chunks)
         for j in basins
-            fill!(view(nzval, nzrange(A, j)), 0.0)
-            # Start with the water that flowed back into Junction nodes, see `mass_through_junctions!`
-            outflow_j = backflow[j]
-            backflow[j] = 0.0
-
-            # The flows of the Basin, in ascending order. These also include flows that reach the
-            # Basin via Junction nodes, which don't start or end in it and are skipped below.
-            for flow_idx in @view rowvals(incidence_matrix_transpose)[nzrange(incidence_matrix_transpose, j)]
-                # Without evaporating mass, the evaporated water leaves the mass behind
-                !evaporate_mass && flow_idx in flow_ranges.vertical.evaporation && continue
-                # The mass of the UserDemand return flow is added in `mass_inflows_from_user_demand!`
-                flow_idx in flow_ranges.horizontal.user_demand_outflow && continue
-
-                volume = cumulative_flow_dt[flow_idx]
-                upstream, downstream, nz = if volume > 0
-                    inflow_id[flow_idx], outflow_id[flow_idx], forward_nz[flow_idx]
-                elseif volume < 0
-                    outflow_id[flow_idx], inflow_id[flow_idx], backward_nz[flow_idx]
-                else
-                    continue
-                end
-                volume = abs(volume)
-
-                if upstream.is_basin && upstream.idx == j
-                    outflow_j += volume
-                    downstream.is_basin && (nzval[nz] -= volume)
-                end
-                # Inflow from other nodes than Basins
-                if downstream.is_basin && downstream.idx == j && !upstream.is_basin
-                    if upstream.type == NodeType.LevelBoundary
-                        add_substance_mass!(
-                            view(mass, :, j),
-                            level_boundary.concentration_itp[upstream.idx],
-                            volume,
-                            tprev,
-                        )
-                    elseif upstream.is_routed
-                        # The mass from Junction subgraphs is added in `mass_through_junctions!`
-                        nothing
-                    elseif !(upstream.type == NodeType.Terminal && upstream.value == 0)
-                        # The unset flow link defaults to Terminal #0
-                        warn_unsupported_flow(upstream, downstream, volume)
-                    end
-                end
-            end
-            outflow[j] = outflow_j
-
             storage = storage_prev_dt[j]
             # The diagonal can already hold a flow from a Basin to itself
-            net_outflow_j = outflow_j + nzval[diagonal_nz[j]]
+            net_outflow_j = outflow[j] + nzval[diagonal_nz[j]]
             # The weight 1 - θ is computed directly, since 1 - θ loses precision for θ close to 1
             ω = if storage > 0 && net_outflow_j > 0
                 min(0.5, storage / net_outflow_j)
