@@ -1977,6 +1977,55 @@ def level_demand_with_rating_curve_model() -> Model:
     return model
 
 
+def allocation_rating_curve_max_downstream_level_model() -> Model:
+    """Create a model with an allocation-controlled TabulatedRatingCurve that is closed by its `max_downstream_level`.
+
+    The downstream Basin starts above `max_downstream_level`, and has a LevelDemand that it never meets.
+    Allocation must plan no flow through the rating curve, since the physical layer keeps it closed.
+    """
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 1, 21),
+        crs="EPSG:28992",
+        experimental=Experimental(allocation=True),
+    )
+
+    fb = model.flow_boundary.add(
+        Node(1, Point(0, 0), subnetwork_id=1),
+        [flow_boundary.Static(flow_rate=[0.2])],
+    )
+    up = model.basin.add(
+        Node(2, Point(1, 0), subnetwork_id=1),
+        [basin.Profile(area=1e5, level=[0.0, 5.0]), basin.State(level=[2.0])],
+    )
+    trc = model.tabulated_rating_curve.add(
+        Node(3, Point(2, 0), subnetwork_id=1),
+        [
+            tabulated_rating_curve.Static(
+                level=[0.0, 3.0],
+                flow_rate=[0.0, 3.0],
+                allocation_controlled=True,
+                max_downstream_level=1.2,
+            )
+        ],
+    )
+    down = model.basin.add(
+        Node(4, Point(3, 0), subnetwork_id=1),
+        [basin.Profile(area=1e5, level=[0.0, 5.0]), basin.State(level=[1.5])],
+    )
+    ld = model.level_demand.add(
+        Node(5, Point(3, 1), subnetwork_id=1),
+        [level_demand.Static(min_level=[2.5], max_level=[2.6], demand_priority=1)],
+    )
+
+    model.link.add(fb, up)
+    model.link.add(up, trc)
+    model.link.add(trc, down)
+    model.link.add(ld, down)
+
+    return model
+
+
 def basin_overflow_model() -> Model:
     """Test model for basin overflow handling in allocation."""
     model = Model(
