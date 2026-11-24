@@ -1214,9 +1214,10 @@ function formulate_junction_flow!(
     end
 
     # Different Junction subgraphs are independent from eachother, and the nodes in a subgraph
-    # are in topological order, so the flows of the UserDemand nodes upstream are known
-    @threaded for subgraph in routed_subgraphs
-        for id in subgraph
+    # are in topological order, so the flows of the UserDemand nodes upstream are known.
+    # @threaded needs a range of indices.
+    @threaded for subgraph_idx in eachindex(routed_subgraphs)
+        for id in routed_subgraphs[subgraph_idx]
             id.type == NodeType.UserDemand || continue
             junction_id = only(user_demand.inflow_links[id.idx]).link[1]
             inflow = routed_flow(inflow_weights[junction_id.idx], flow, boundary_flow)
