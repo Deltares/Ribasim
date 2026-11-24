@@ -291,6 +291,47 @@ function reduction_factor(x::T, threshold::Real)::T where {T <: Real}
     end
 end
 
+"""
+The product of the level based reduction factors of a TabulatedRatingCurve: one for the
+level difference and one for `max_downstream_level`. Shared by the physical layer and
+allocation.
+"""
+function level_reduction_factor(
+        tabulated_rating_curve::TabulatedRatingCurve,
+        node_id::NodeID,
+        h_a::Number,
+        h_b::Number,
+        level_difference_threshold::Number,
+    )::Number
+    max_downstream_level = tabulated_rating_curve.max_downstream_level[node_id.idx]
+    factor = reduction_factor(h_a - h_b, level_difference_threshold)
+    factor *= reduction_factor(max_downstream_level - h_b, level_difference_threshold)
+    return factor
+end
+
+"""
+The product of the level based reduction factors of a Pump or Outlet: for `min_upstream_level`,
+for `max_downstream_level` and, for an Outlet, for the level difference. Shared by the physical
+layer and allocation.
+"""
+function level_reduction_factor(
+        node::Union{Pump, Outlet},
+        src_level::Number,
+        dst_level::Number,
+        min_upstream_level::Number,
+        max_downstream_level::Number,
+        level_difference_threshold::Number,
+    )::Number
+    factor =
+        reduction_factor(src_level - min_upstream_level, level_difference_threshold) *
+        reduction_factor(max_downstream_level - dst_level, level_difference_threshold)
+    return if node isa Outlet
+        reduction_factor(src_level - dst_level, level_difference_threshold) * factor
+    else
+        factor
+    end
+end
+
 function get_low_storage_factor(
         storage::Number,
         p::Parameters,

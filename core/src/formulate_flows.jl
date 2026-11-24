@@ -528,42 +528,18 @@ function tabulated_rating_curve_flow(
 
     h_a = get_level(s_a, p, inflow_id, t)
     h_b = get_level(s_b, p, downstream_id, t)
-    Δh = h_a - h_b
 
     factor = apply_low_storage_factor ? get_low_storage_factor(s_a, p, inflow_id) : 1.0
     interpolation_index = current_interpolation_index[node_id.idx](t)
     qh = interpolations[interpolation_index]
     q = factor * qh(h_a)
-    q *= reduction_factor(Δh, level_difference_threshold)
-    max_downstream_level = tabulated_rating_curve.max_downstream_level[node_id.idx]
-    q *= reduction_factor(max_downstream_level - h_b, level_difference_threshold)
-    return q
-end
-
-function allocated_rating_curve_flow(
-        tabulated_rating_curve::TabulatedRatingCurve,
-        node_id::NodeID,
-        s_a::Number,
-        s_b::Number,
-        p::Parameters,
-        t::Number
-    )::Number
-    (; level_difference_threshold) = p.p_independent
-    inflow_link = tabulated_rating_curve.inflow_link[node_id.idx]
-    downstream_id = tabulated_rating_curve.downstream_level_id[node_id.idx]
-
-    inflow_id = inflow_link.link[1]
-
-    h_a = get_level(s_a, p, inflow_id, t)
-    h_b = get_level(s_b, p, downstream_id, t)
-    Δh = h_a - h_b
-
-    factor = get_low_storage_factor(s_a, p, inflow_id)
-    q = tabulated_rating_curve.flow_rate[node_id.idx]
-    q *= factor
-    q *= reduction_factor(Δh, level_difference_threshold)
-    max_downstream_level = tabulated_rating_curve.max_downstream_level[node_id.idx]
-    q *= reduction_factor(max_downstream_level - h_b, level_difference_threshold)
+    q *= level_reduction_factor(
+        tabulated_rating_curve,
+        node_id,
+        h_a,
+        h_b,
+        level_difference_threshold,
+    )
     return q
 end
 
@@ -582,7 +558,12 @@ function formulate_flow!(
 
         q_h = tabulated_rating_curve_flow(tabulated_rating_curve, id, s_a, s_b, p, t)
         q = if tabulated_rating_curve.allocation_controlled[node_idx]
-            q_alloc = allocated_rating_curve_flow(tabulated_rating_curve, id, s_a, s_b, p, t)
+            # The level difference and max_downstream_level factors are not applied to
+            # q_alloc, since q_h already applies them once
+            inflow_id = tabulated_rating_curve.inflow_link[node_idx].link[1]
+            q_alloc =
+                get_low_storage_factor(s_a, p, inflow_id) *
+                tabulated_rating_curve.flow_rate[node_idx]
             min(q_alloc, q_h)
         else
             q_h
@@ -886,8 +867,7 @@ function pump_or_outlet_flow(
         p::Parameters,
         t::Number,
         flow_rate::Number,
-        component_cache::NamedTuple,
-        reduce_Δlevel::Bool = false;
+        component_cache::NamedTuple;
         apply_low_storage_factor::Bool = true,
     )::Number
     (; allocation, flow_demand, level_difference_threshold) = p.p_independent
@@ -960,13 +940,14 @@ function pump_or_outlet_flow(
         # Allocation already limits its flow rate to the capacity that is left by the level
         # based reduction factors, see `connector_flow_capacity_bounds`. So here these
         # factors reduce the capacity too, not the flow rate itself: that would apply them twice.
-        level_factor =
-            reduction_factor(src_level - min_upstream_level_, level_difference_threshold)
-        level_factor *=
-            reduction_factor(max_downstream_level_ - dst_level, level_difference_threshold)
-        if reduce_Δlevel
-            level_factor *= reduction_factor(src_level - dst_level, level_difference_threshold)
-        end
+        level_factor = level_reduction_factor(
+            node,
+            src_level,
+            dst_level,
+            min_upstream_level_,
+            max_downstream_level_,
+            level_difference_threshold,
+        )
         return clamp(q, level_factor * lower_bound, level_factor * upper_bound)
     end
 
@@ -975,7 +956,7 @@ function pump_or_outlet_flow(
     q = clamp(q, lower_bound, upper_bound)
 
     # Special case for outlet: check level difference
-    if reduce_Δlevel
+    if node isa Outlet
         Δlevel = src_level - dst_level
         q *= reduction_factor(Δlevel, level_difference_threshold)
     end
@@ -997,7 +978,6 @@ function formulate_pump_or_outlet_flow!(
         t::Number,
         relevant_control_type::ContinuousControlType.T,
         component_cache::NamedTuple,
-        reduce_Δlevel::Bool = false,
     )::Nothing
     # Flows controlled by PidControl can depend on other flows, so these are formulated in order
     min_chunk_size = relevant_control_type == ContinuousControlType.None ? 256 : typemax(Int)
@@ -1026,9 +1006,7 @@ function formulate_pump_or_outlet_flow!(
             s_b = storage_downlink.horizontal.outlet[node_idx]
         end
 
-        q = pump_or_outlet_flow(
-            node, id, s_a, s_b, p, t, flow_rate, component_cache, reduce_Δlevel
-        )
+        q = pump_or_outlet_flow(node, id, s_a, s_b, p, t, flow_rate, component_cache)
 
         if node isa Pump
             du.flow.horizontal.pump[id.idx] = q
@@ -1088,7 +1066,6 @@ function formulate_flow!(
         t,
         relevant_control_type,
         time_dependent_cache.outlet,
-        true,
     )
 end
 

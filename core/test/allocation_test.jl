@@ -480,7 +480,7 @@ end
         # Evaluate min_upstream_level again
         p.p_mutable.new_time_dependent_cache = true
         return Ribasim.pump_or_outlet_flow(
-            outlet, outlet_id, 0.0, 0.0, p, t, flow_rate, p.time_dependent_cache.outlet, true
+            outlet, outlet_id, 0.0, 0.0, p, t, flow_rate, p.time_dependent_cache.outlet
         )
     end
 
