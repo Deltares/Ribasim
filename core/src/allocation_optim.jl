@@ -1591,13 +1591,36 @@ function update_flow_variable_bounds!(
     return nothing
 end
 
+"""
+The largest level reduction factor of the allocation controlled Pump and Outlet nodes that flow
+into this Basin, which is the fraction of their capacity they can use in this allocation timestep.
+"""
+function allocated_inflow_reduction_factor(
+        basin_id::NodeID,
+        p::Parameters,
+        t::Float64,
+    )::Float64
+    (; basin, pump, outlet) = p.p_independent
+    f_reduction = 0.0
+    for other_id in basin.inflow_ids[basin_id.idx]
+        if other_id.type == NodeType.Pump && pump.allocation_controlled[other_id.idx]
+            f_reduction = max(f_reduction, level_reduction_factor(pump, other_id, p, t))
+        elseif other_id.type == NodeType.Outlet && outlet.allocation_controlled[other_id.idx]
+            f_reduction = max(f_reduction, level_reduction_factor(outlet, other_id, p, t))
+        end
+    end
+    return f_reduction
+end
+
 function update_user_demand_flow_bounds!(
         allocation_model::AllocationModel,
-        p_independent::ParametersIndependent,
+        p::Parameters,
+        t::Float64,
     )::Nothing
     (; problem, node_ids_in_subnetwork) = allocation_model
     (; user_demand_ids_subnetwork) = node_ids_in_subnetwork
-    (; user_demand) = p_independent
+    (; p_independent) = p
+    (; user_demand, level_difference_threshold) = p_independent
     flow = problem[:flow]
     user_demand_allocated = problem[:user_demand_allocated]
 
@@ -1606,9 +1629,30 @@ function update_user_demand_flow_bounds!(
             JuMP.upper_bound(user_demand_allocated[node_id, demand_priority]) for
                 demand_priority in DemandPriorityIterator(node_id, p_independent)
         )
+        min_level = user_demand.min_level[node_id.idx]
         for link_metadata in user_demand.inflow_links[node_id.idx]
+            # The physical layer reduces the abstraction from a Basin in the
+            # level_difference_threshold above the min_level, by multiplying the allocated flow
+            # rate. Allocation reduces it one threshold higher, so that what it allocates can be
+            # abstracted. This uses the level at the start of the timestep.
+            # A Junction has no level, and its min_level is not used.
+            source_id = link_metadata.link[1]
+            f_reduction = 1.0
+            if source_id.is_basin
+                # Outside of automatic differentiation get_level ignores the storage argument
+                source_level = get_level(0.0, p, source_id, t)
+                # An allocated inflow can raise the level. Without this a UserDemand at its
+                # min_level would never get a supply, since nothing would ask for the water.
+                f_reduction = max(
+                    reduction_factor(
+                        source_level - min_level - level_difference_threshold,
+                        level_difference_threshold,
+                    ),
+                    allocated_inflow_reduction_factor(source_id, p, t),
+                )
+            end
             JuMP.set_lower_bound(flow[link_metadata.link], 0.0)
-            JuMP.set_upper_bound(flow[link_metadata.link], total_demand)
+            JuMP.set_upper_bound(flow[link_metadata.link], total_demand * f_reduction)
         end
         outflow_link = user_demand.outflow_link[node_id.idx].link
         JuMP.set_lower_bound(flow[outflow_link], 0.0)
@@ -1736,7 +1780,7 @@ function update_allocation!(
         reset_demand_coefficients(secondary_network)
         set_demands!(secondary_network, p, t, Δt)
         update_flow_variable_bounds!(secondary_network, p, t, Δt)
-        update_user_demand_flow_bounds!(secondary_network, p_independent)
+        update_user_demand_flow_bounds!(secondary_network, p, t)
         update_flow_demand_variable_bounds!(secondary_network, p_independent)
         normalize_flow_demand_objectives!(secondary_network)
     end
@@ -1770,7 +1814,7 @@ function update_allocation!(
 
         set_demands!(primary_network, p, t, Δt)
         update_flow_variable_bounds!(primary_network, p, t, Δt)
-        update_user_demand_flow_bounds!(primary_network, p_independent)
+        update_user_demand_flow_bounds!(primary_network, p, t)
         update_flow_demand_variable_bounds!(primary_network, p_independent)
         normalize_flow_demand_objectives!(primary_network)
     end

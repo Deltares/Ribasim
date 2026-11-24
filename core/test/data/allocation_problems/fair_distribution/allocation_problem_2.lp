@@ -109,55 +109,55 @@ Bounds
 basin_storage_change_Basin_#1_ >= 0
 0 <= low_storage_factor_Basin_#1_ <= 1
 0 <= flow_(UserDemand_#2,_Basin_#1)_ <= 0.0009230769230769231
-0 <= flow_(Basin_#1,_UserDemand_#2)_ <= 0.0009230769230769231
+flow_(Basin_#1,_UserDemand_#2)_ = 0
 0 <= flow_(UserDemand_#3,_Basin_#1)_ <= 0.0018461538461538461
-0 <= flow_(Basin_#1,_UserDemand_#3)_ <= 0.0018461538461538461
+flow_(Basin_#1,_UserDemand_#3)_ = 0
 0 <= flow_(UserDemand_#4,_Basin_#1)_ <= 0.0027692307692307695
-0 <= flow_(Basin_#1,_UserDemand_#4)_ <= 0.0027692307692307695
+flow_(Basin_#1,_UserDemand_#4)_ = 0
 0 <= flow_(UserDemand_#5,_Basin_#1)_ <= 0.0036923076923076922
-0 <= flow_(Basin_#1,_UserDemand_#5)_ <= 0.0036923076923076922
+flow_(Basin_#1,_UserDemand_#5)_ = 0
 0 <= flow_(UserDemand_#6,_Basin_#1)_ <= 0.004615384615384616
-0 <= flow_(Basin_#1,_UserDemand_#6)_ <= 0.004615384615384616
+flow_(Basin_#1,_UserDemand_#6)_ = 0
 0 <= flow_(UserDemand_#7,_Basin_#1)_ <= 0.005538461538461539
-0 <= flow_(Basin_#1,_UserDemand_#7)_ <= 0.005538461538461539
+flow_(Basin_#1,_UserDemand_#7)_ = 0
 0 <= flow_(UserDemand_#8,_Basin_#1)_ <= 0.006461538461538462
-0 <= flow_(Basin_#1,_UserDemand_#8)_ <= 0.006461538461538462
+flow_(Basin_#1,_UserDemand_#8)_ = 0
 0 <= flow_(UserDemand_#9,_Basin_#1)_ <= 0.0073846153846153844
-0 <= flow_(Basin_#1,_UserDemand_#9)_ <= 0.0073846153846153844
+flow_(Basin_#1,_UserDemand_#9)_ = 0
 0 <= flow_(UserDemand_#10,_Basin_#1)_ <= 0.008307692307692308
-0 <= flow_(Basin_#1,_UserDemand_#10)_ <= 0.008307692307692308
+flow_(Basin_#1,_UserDemand_#10)_ = 0
 0 <= flow_(UserDemand_#11,_Basin_#1)_ <= 0.009230769230769232
-0 <= flow_(Basin_#1,_UserDemand_#11)_ <= 0.009230769230769232
+flow_(Basin_#1,_UserDemand_#11)_ = 0
 0 <= flow_(UserDemand_#12,_Basin_#1)_ <= 0.010153846153846154
-0 <= flow_(Basin_#1,_UserDemand_#12)_ <= 0.010153846153846154
+flow_(Basin_#1,_UserDemand_#12)_ = 0
 0 <= flow_(UserDemand_#13,_Basin_#1)_ <= 0.011076923076923078
-0 <= flow_(Basin_#1,_UserDemand_#13)_ <= 0.011076923076923078
+flow_(Basin_#1,_UserDemand_#13)_ = 0
 0 <= flow_(UserDemand_#14,_Basin_#1)_ <= 0.012000000000000002
-0 <= flow_(Basin_#1,_UserDemand_#14)_ <= 0.012000000000000002
+flow_(Basin_#1,_UserDemand_#14)_ = 0
 0 <= flow_(UserDemand_#15,_Basin_#1)_ <= 0.012923076923076924
-0 <= flow_(Basin_#1,_UserDemand_#15)_ <= 0.012923076923076924
+flow_(Basin_#1,_UserDemand_#15)_ = 0
 0 <= flow_(UserDemand_#16,_Basin_#1)_ <= 0.013846153846153848
-0 <= flow_(Basin_#1,_UserDemand_#16)_ <= 0.013846153846153848
+flow_(Basin_#1,_UserDemand_#16)_ = 0
 0 <= flow_(UserDemand_#17,_Basin_#1)_ <= 0.014769230769230769
-0 <= flow_(Basin_#1,_UserDemand_#17)_ <= 0.014769230769230769
+flow_(Basin_#1,_UserDemand_#17)_ = 0
 0 <= flow_(UserDemand_#18,_Basin_#1)_ <= 0.015692307692307693
-0 <= flow_(Basin_#1,_UserDemand_#18)_ <= 0.015692307692307693
+flow_(Basin_#1,_UserDemand_#18)_ = 0
 0 <= flow_(UserDemand_#19,_Basin_#1)_ <= 0.016615384615384615
-0 <= flow_(Basin_#1,_UserDemand_#19)_ <= 0.016615384615384615
+flow_(Basin_#1,_UserDemand_#19)_ = 0
 0 <= flow_(UserDemand_#20,_Basin_#1)_ <= 0.01753846153846154
-0 <= flow_(Basin_#1,_UserDemand_#20)_ <= 0.01753846153846154
+flow_(Basin_#1,_UserDemand_#20)_ = 0
 0 <= flow_(UserDemand_#21,_Basin_#1)_ <= 0.018461538461538463
-0 <= flow_(Basin_#1,_UserDemand_#21)_ <= 0.018461538461538463
+flow_(Basin_#1,_UserDemand_#21)_ = 0
 0 <= flow_(UserDemand_#22,_Basin_#1)_ <= 0.019384615384615386
-0 <= flow_(Basin_#1,_UserDemand_#22)_ <= 0.019384615384615386
+flow_(Basin_#1,_UserDemand_#22)_ = 0
 0 <= flow_(UserDemand_#23,_Basin_#1)_ <= 0.020307692307692308
-0 <= flow_(Basin_#1,_UserDemand_#23)_ <= 0.020307692307692308
+flow_(Basin_#1,_UserDemand_#23)_ = 0
 0 <= flow_(UserDemand_#24,_Basin_#1)_ <= 0.02123076923076923
-0 <= flow_(Basin_#1,_UserDemand_#24)_ <= 0.02123076923076923
+flow_(Basin_#1,_UserDemand_#24)_ = 0
 0 <= flow_(UserDemand_#25,_Basin_#1)_ <= 0.022153846153846156
-0 <= flow_(Basin_#1,_UserDemand_#25)_ <= 0.022153846153846156
+flow_(Basin_#1,_UserDemand_#25)_ = 0
 0 <= flow_(UserDemand_#26,_Basin_#1)_ <= 0.023076923076923078
-0 <= flow_(Basin_#1,_UserDemand_#26)_ <= 0.023076923076923078
+flow_(Basin_#1,_UserDemand_#26)_ = 0
 0 <= user_demand_allocated_UserDemand_#2,1_ <= 0.0009230769230769231
 0 <= user_demand_allocated_UserDemand_#3,1_ <= 0.0018461538461538461
 0 <= user_demand_allocated_UserDemand_#4,1_ <= 0.0027692307692307695

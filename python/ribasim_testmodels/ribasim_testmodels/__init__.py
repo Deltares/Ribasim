@@ -35,6 +35,7 @@ from ribasim_testmodels.allocation import (
     switch_allocation_control_model,
     tied_routes_model,
     two_basin_user_demand_model,
+    user_demand_min_level_model,
     user_demand_model,
 )
 from ribasim_testmodels.backwater import backwater_model
@@ -263,6 +264,7 @@ __all__ = [
     "trivial_model",
     "two_basin_model",
     "two_basin_user_demand_model",
+    "user_demand_min_level_model",
     "user_demand_model",
 ]
 

@@ -211,7 +211,7 @@ $$
 	\in UD.
 $$
 
-Note that this means that we enforce that only allocated flow can enter a UserDemand node, and so there can not be more flow into the UserDemand node than the total demand of that node.
+Note that this means that we enforce that only allocated flow can enter a UserDemand node, and so there can not be more flow into the UserDemand node than the total demand of that node. Like in the physical layer, the flow over each inflow link from a Basin is furthermore multiplied by a reduction factor that goes to zero when the level of the Basin at the start of the allocation timestep approaches the `min_level` of the UserDemand, so that allocation does not allocate water that cannot be abstracted. Since the physical layer multiplies the allocated flow rate by its own reduction factor, which is below 1 within `level_difference_threshold` of the `min_level`, the reduction factor in allocation reaches zero one `level_difference_threshold` higher. If an allocation controlled Pump or Outlet flows into the source Basin, the factor is at least the level based reduction factor of its capacity (see @sec-flow-capacities), since the inflow can raise the level.
 For FlowDemand we do allow that there is more flow through the node with the flow demand than the total demand (or even negative flow). To allow this freedom, we introduce a special 'demand priority 0' variable
 
 $$
