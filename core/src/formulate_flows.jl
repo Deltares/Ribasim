@@ -301,22 +301,21 @@ function get_pid_value(
     K_i = eval_time_interpolation(pid_control.integral[idx], current_integral, idx, p, t)
     K_d = eval_time_interpolation(pid_control.derivative[idx], current_derivative, idx, p, t)
 
-    D = if !iszero(K_d)
+    # The sparsity pattern of the Jacobian is traced once, so the terms below must not depend on the
+    # gains of the current control state: they are added whenever they can be nonzero in any state.
+    with_derivative = pid_control.has_derivative_term[idx]
+
+    D = if with_derivative
         # dlevel/dstorage = 1/area
         1.0 - K_d / current_area
     else
         1.0
     end
 
-    if !iszero(K_p)
-        value += K_p * current_error / D
-    end
+    value += K_p * current_error / D
+    value += K_i * pid_integral[idx] / D
 
-    if !iszero(K_i)
-        value += K_i * pid_integral[idx] / D
-    end
-
-    if !iszero(K_d)
+    if with_derivative
         # derivative() of ScalarConstantInterpolation returns a NaN at discontinuities
         dtarget = (target[idx] isa ScalarConstantInterpolation) ? 0.0 : derivative(target[idx], t)
         dstorage_listened_basin_old = formulate_dstorage_single_basin(du.flow, p_independent, listened_node_id; t)

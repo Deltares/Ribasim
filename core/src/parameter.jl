@@ -1192,6 +1192,8 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
     derivative::Vector{ScalarConstantInterpolation} =
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
+    # Whether the derivative gain is nonzero in any control state, set after parsing
+    has_derivative_term::Vector{Bool} = fill(false, length(node_id))
     control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
         OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
 end

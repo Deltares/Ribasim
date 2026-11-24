@@ -368,6 +368,18 @@ end
     @test level[end] ≈ pid_control.target[1](t) atol = 1.0e-2
 end
 
+@testitem "PidControl derivative term is in the Jacobian when it is zero at initialization" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_derivative_switch/ribasim.toml")
+    model = Ribasim.Model(toml_path)
+    @test model.integrator.p.p_independent.pid_control.has_derivative_term == [true]
+    Ribasim.solve!(model)
+    @test success(model)
+
+    # The derivative is 0 at initialization and nonzero after day 20. Without its entries in the
+    # sparsity pattern the reduced Jacobian is wrong after the switch: 6418 steps instead of ~240.
+    @test model.integrator.stats.naccept < 1000
+end
+
 @testitem "Circular dependency in the control of flows" begin
     using Logging
 

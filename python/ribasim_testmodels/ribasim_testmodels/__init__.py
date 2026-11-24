@@ -54,6 +54,7 @@ from ribasim_testmodels.continuous_control import (
     chained_continuous_control_model,
     outlet_continuous_control_model,
     pid_continuous_control_model,
+    pid_derivative_switch_model,
 )
 from ribasim_testmodels.discrete_control import (
     circular_flow_model,
@@ -231,6 +232,7 @@ __all__ = [
     "pid_continuous_control_model",
     "pid_control_equation_model",
     "pid_control_model",
+    "pid_derivative_switch_model",
     "polder_management_model",
     "precompile_workload_allocation_model",
     "precompile_workload_model",

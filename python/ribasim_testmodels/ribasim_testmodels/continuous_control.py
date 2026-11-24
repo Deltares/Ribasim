@@ -8,6 +8,7 @@ from ribasim.model import Model
 from ribasim.nodes import (
     basin,
     continuous_control,
+    discrete_control,
     level_boundary,
     linear_resistance,
     outlet,
@@ -177,4 +178,55 @@ def pid_continuous_control_model() -> Model:
     model.link.add(lr, lb_downstream)
     model.link.add(cc, out)
     model.link.add(pid, pmp)
+    return model
+
+
+def pid_derivative_switch_model() -> Model:
+    """Set up `pid_continuous_control_model` with a derivative gain that is 0 at the start.
+
+    A DiscreteControl node switches PidControl #8 to a control state with a nonzero derivative
+    gain on day 20. The control state with derivative 0 sorts last, so it sets the initial value.
+    The derivative term must still be in the Jacobian sparsity pattern, which is traced once.
+    """
+    model = pid_continuous_control_model()
+    static = pid_control.Static(
+        listen_node_id=3,
+        control_state=["zoff", "aon"],
+        target=5.0,
+        proportional=-1e-2,
+        integral=-1e-8,
+        derivative=[0.0, -3e2],
+    ).df
+    assert static is not None
+    static["node_id"] = 8
+    model.pid_control.static.df = static
+
+    # Raise the upstream level on day 20, which switches to "aon"
+    assert model.level_boundary.static.df is not None
+    model.level_boundary.static.df = model.level_boundary.static.df.query(
+        "node_id != 1"
+    )
+    time = level_boundary.Time(
+        time=["2020-01-01", "2020-01-19", "2020-01-21", "2021-01-01"],
+        level=[10.0, 10.0, 10.2, 10.2],
+    ).df
+    assert time is not None
+    time["node_id"] = 1
+    model.level_boundary.time.df = time
+
+    dc = model.discrete_control.add(
+        Node(30, Point(0, 5)),
+        [
+            discrete_control.Variable(
+                listen_node_id=[1], variable="level", compound_variable_id=1
+            ),
+            discrete_control.Condition(
+                threshold_high=[10.1], compound_variable_id=1, condition_id=1
+            ),
+            discrete_control.Logic(
+                truth_state=["F", "T"], control_state=["zoff", "aon"]
+            ),
+        ],
+    )
+    model.link.add(dc, model.pid_control[8])
     return model
