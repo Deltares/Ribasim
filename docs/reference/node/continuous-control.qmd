@@ -11,7 +11,6 @@ The `ContinuousControl` node allows for fine control of a controllable property 
 :::{.callout-note}
 A `ContinuousControl` node can listen to a flow that is set by another `ContinuousControl` or `PidControl` node, also via a [Junction](/reference/node/junction.qmd): the listened flow is computed first.
 A circular dependency, for instance two `ContinuousControl` nodes that listen to the flow the other one sets, is an error.
-The solver handles such chained control less efficiently, see [the numerics](/concept/numerics.qmd#continuous-control).
 :::
 
 # Tables
