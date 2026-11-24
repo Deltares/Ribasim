@@ -65,9 +65,9 @@ end
     )
 
     @test Ribasim.basin_levels(basin, 2)[1] === 4.0
-    @test Ribasim.basin_bottom(basin, NodeID(:Basin, 5, 1))[2] === 0.0
-    @test Ribasim.basin_bottom(basin, NodeID(:Basin, 7, 2))[2] === 4.0
-    @test !Ribasim.basin_bottom(basin, NodeID(:Terminal, 6, 1))[1]
+    @test Ribasim.basin_bottom(basin, NodeID(:Basin, 5, 1)) === 0.0
+    @test Ribasim.basin_bottom(basin, NodeID(:Basin, 7, 2)) === 4.0
+    @test_throws AssertionError Ribasim.basin_bottom(basin, NodeID(:Terminal, 6, 1))
 end
 
 @testitem "Profile" begin
@@ -517,7 +517,7 @@ end
     reserve_depth = Ribasim.low_storage_reserve_depth(depth_threshold)
     @test reserve_depth ≈ 0.001
     for i in eachindex(basin.node_id)
-        bottom = Ribasim.basin_bottom(basin, basin.node_id[i])[2]
+        bottom = Ribasim.basin_bottom(basin, basin.node_id[i])
         reserve = basin.low_storage_reserve[i]
         @test Ribasim.get_level_from_storage(basin, i, reserve) ≈ bottom + reserve_depth
         # Outflows are switched off at the reserve, not at zero storage

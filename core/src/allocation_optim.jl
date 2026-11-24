@@ -876,7 +876,7 @@ function set_demands!(
         level_demand_id = basin.level_demand_id[basin_id.idx]
 
         level_now = current_level[basin_id.idx]
-        level_min_prev_priority = basin_bottom(basin, basin_id)[2]
+        level_min_prev_priority = basin_bottom(basin, basin_id)
         level_max_prev_priority = Inf
         A = current_area[basin_id.idx]
         storage_now = current_storage[basin_id.idx]

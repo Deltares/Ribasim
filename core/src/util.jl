@@ -172,7 +172,7 @@ function get_level(
                 storage_to_level[node_id.idx](storage)
             else
                 # For negative storage mirror the Basin profile in the bottom
-                2 * basin_bottom(basin, node_id)[2] - storage_to_level[node_id.idx](-storage)
+                2 * basin_bottom(basin, node_id) - storage_to_level[node_id.idx](-storage)
             end
         else
             current_basin_properties.current_level[node_id.idx]
@@ -210,16 +210,11 @@ function get_area(
     end
 end
 
-"Return the bottom elevation of the basin with index i, or nothing if it doesn't exist"
-function basin_bottom(basin::Basin, node_id::NodeID)::Tuple{Bool, Float64}
-    return if node_id.is_basin
-        # get level(storage) interpolation function
-        level_discrete = basin_levels(basin, node_id.idx)
-        # and return the first level in this vector, representing the bottom
-        return true, first(level_discrete)
-    else
-        return false, 0.0
-    end
+"Return the bottom elevation of the Basin `node_id`"
+function basin_bottom(basin::Basin, node_id::NodeID)::Float64
+    @assert node_id.is_basin "$node_id is not a Basin"
+    # the first level in the level(storage) vector represents the bottom
+    return first(basin_levels(basin, node_id.idx))
 end
 
 """
