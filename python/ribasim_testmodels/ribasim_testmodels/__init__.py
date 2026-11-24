@@ -52,7 +52,12 @@ from ribasim_testmodels.basic import (
     tabulated_rating_curve_model,
 )
 from ribasim_testmodels.bucket import bucket_model, leaky_bucket_model
-from ribasim_testmodels.continuous_control import outlet_continuous_control_model
+from ribasim_testmodels.continuous_control import (
+    chained_continuous_control_model,
+    outlet_continuous_control_model,
+    pid_continuous_control_model,
+    pid_derivative_switch_model,
+)
 from ribasim_testmodels.discrete_control import (
     circular_flow_model,
     compound_variable_condition_model,
@@ -80,6 +85,7 @@ from ribasim_testmodels.equations import (
     rating_curve_model,
 )
 from ribasim_testmodels.invalid import (
+    invalid_circular_control_model,
     invalid_control_states_model,
     invalid_discrete_control_model,
     invalid_junction_connector_split_model,
@@ -150,6 +156,7 @@ __all__ = [
     "basic_transient_model",
     "basin_overflow_model",
     "bucket_model",
+    "chained_continuous_control_model",
     "circular_flow_model",
     "compound_variable_condition_model",
     "concentration_condition_model",
@@ -168,6 +175,7 @@ __all__ = [
     "flow_condition_model",
     "flow_demand_discrete_control_model",
     "flow_demand_model",
+    "invalid_circular_control_model",
     "invalid_control_states_model",
     "invalid_discrete_control_model",
     "invalid_junction_connector_split_model",
@@ -223,8 +231,10 @@ __all__ = [
     "outlet_allocation_discrete_control_model",
     "outlet_continuous_control_model",
     "outlet_model",
+    "pid_continuous_control_model",
     "pid_control_equation_model",
     "pid_control_model",
+    "pid_derivative_switch_model",
     "polder_management_model",
     "polder_management_short_supply_model",
     "precompile_workload_allocation_model",

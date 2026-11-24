@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - Add `[logging] progress` TOML option and `RIBASIM_PROGRESS` environment variable, which takes precedence, to disable the progress bar, which avoids repeated progress lines in logs and documentation. [#3111](https://github.com/Deltares/Ribasim/issues/3111)
+- ContinuousControl can listen to flows set by other ContinuousControl or PidControl nodes, also via Junctions. Before, such a flow was read as 0 without an error. A circular dependency in the control of flows is now an error. [#3408](https://github.com/Deltares/Ribasim/issues/3408)
 
 ### Changed
 - Docs: explain the hydrological meaning, units and tuning of the PidControl parameters. [#1544](https://github.com/Deltares/Ribasim/issues/1544)

@@ -185,7 +185,7 @@ $$
 	\frac{\partial\mathbf{q}}{\partial\mathbf{c}}\left(\frac{\partial\mathbf{c}}{\partial\mathbf{S}} + \frac{\partial\mathbf{c}}{\partial\mathbf{q}}Q_S\right)
 $$
 to $Q_S$, and thus $M$ times this term to $J_\text{inner}$.
-Here only the direct dependence of listened flows on their own Basin storages is taken into account, since chaining control (listening to a flow that is itself controlled by PidControl or ContinuousControl) is not supported.
+Here only the direct dependence of listened flows on their own Basin storages is taken into account. When control is chained (ContinuousControl listening to a flow that is itself controlled by PidControl or ContinuousControl), the right-hand side computes the listened flow first, but the further dependence of that flow on the storages and PID integrals is not part of this term.
 
 ### Junction {#sec-numerics-junction}
 
@@ -197,7 +197,7 @@ $$
 $$
 $K$ is the identity except for the rows of these UserDemand flows, which hold the dependence on the flows entering the subgraph.
 It is computed with automatic differentiation like the other Jacobians, and only if the model has Junction nodes in `Junction / static`.
-For the derivative term of PID control, which uses the storage rate of the listened Basin, these UserDemand flows are computed once more before the PID controlled flows, from the flows known at that point.
+For the derivative term of PID control, which uses the storage rate of the listened Basin, and for ContinuousControl listening to these flows, the UserDemand flows they depend on are computed before the controlled flows, from the flows they depend on in turn.
 
 Since $K$ is applied after $\mathbf{q}^\text{np}$, the flow rows of the linear system have $Q_S$ and $G$ replaced by $KQ_S$ and $KG$, and the solution of the flow states becomes
 $$

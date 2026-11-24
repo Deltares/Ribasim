@@ -110,23 +110,17 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
     flow_input = cvector_from_axes(flow_input_axes)
 
     # The flow formulation of water_balance!, where the inputs are not computed from the state
-    # but are the input of the Jacobian, and without the Junction flows (see jac_junction)
+    # but are the input of the Jacobian, and without the final Junction flows (see jac_junction)
     function formulate_flows_closure!(du, flow_input, t)
         check_new_t!(p, t)
         set_current_boundary_flow_rate!(p_independent.flow_boundary, p, t)
         du .= 0.0
 
-        formulate_flows_args = (
-            du,
-            flow_input.storage_uplink,
-            flow_input.storage_downlink,
-            flow_input.continuous_control_compound,
-            flow_input.pid_integral,
-            p, t,
+        (; storage_uplink, storage_downlink, continuous_control_compound, pid_integral) = flow_input
+        formulate_uncontrolled_flows!(du, storage_uplink, storage_downlink, p, t)
+        formulate_controlled_flows!(
+            du, storage_uplink, storage_downlink, continuous_control_compound, pid_integral, p, t
         )
-
-        formulate_flows_before_continuous_control!(formulate_flows_args...)
-        formulate_flows!(formulate_flows_args...; control_type = ContinuousControlType.Continuous)
         return nothing
     end
 
@@ -139,11 +133,11 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
 
     continuous_control_input_axes = concatenate_axes((; storage = 1:length(basin), flow = flow_ranges))
     continuous_control_input = cvector_from_axes(continuous_control_input_axes)
-    # The compound variables can depend on the flows in the Junction subgraphs, which are computed
-    # provisionally from the input flows first. These flows are part of the output, before the compound
-    # variables, so that they have the element type of the input. Without provisional Junction flows
-    # this part is empty.
-    has_flow_output = has_provisional_junction_flow(p_independent, ContinuousControlType.Continuous)
+    # The compound variables can depend on the flows in the Junction subgraphs. These are computed
+    # from the input flows first, so that the compound variables are differentiated with respect to
+    # the flows that enter the subgraphs. They are part of the output, before the compound variables,
+    # so that they have the element type of the input. Without routed Junction nodes this part is empty.
+    has_flow_output = !isempty(p_independent.junction.routed_ids) && !isempty(continuous_control.node_id)
     continuous_control_output_axes = concatenate_axes(
         (;
             flow = has_flow_output ? flow_ranges : CVectors.empty_axes(typeof(flow_ranges)),
@@ -154,13 +148,16 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
     continuous_control_output = zero(cvector_from_axes(continuous_control_output_axes))
 
     function continuous_control_closure!(continuous_control_output, continuous_control_input, t)
-        formulate_continuous_control_compound_variables!(
-            continuous_control_output.compound,
-            continuous_control_input.storage,
-            has_flow_output ? continuous_control_output.flow : continuous_control_input.flow,
-            p,
-            t;
-            flow_in = continuous_control_input.flow,
+        flow = if has_flow_output
+            formulate_junction_flow!(
+                continuous_control_output.flow, p, t; flow_in = continuous_control_input.flow
+            )
+            continuous_control_output.flow
+        else
+            continuous_control_input.flow
+        end
+        compute_continuous_control_compound_variables!(
+            continuous_control_output.compound, continuous_control_input.storage, flow, p, t
         )
         return nothing
     end
