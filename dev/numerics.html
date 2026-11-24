@@ -520,7 +520,7 @@ Note
 <li>Explicit algorithms (<code>Tsit5</code>, <code>RK4</code>, <code>Euler</code>) need neither. <code>get_diff_eval</code> is currently called for every algorithm, so the preparation below is also done for them, but the result is not used.</li>
 </ul>
 <p>The Jacobian is prepared in one of two forms, set by <code>reduced_implicit_solve</code>. This is <code>true</code> by default for the implicit algorithms with a Newton solver, and always <code>false</code> for Rosenbrock and explicit algorithms.</p>
-<p>With <code>reduced_implicit_solve = true</code>, <code>RibasimJacobianEvaluationCache</code> prepares three Jacobians:</p>
+<p>With <code>reduced_implicit_solve = true</code>, <code>RibasimJacobianEvaluationCache</code> prepares three Jacobians, of closures that call the same steps as <code>water_balance!</code> (<code>formulate_flows_before_continuous_control!</code>, <code>formulate_continuous_control_compound_variables!</code> and <code>formulate_junction_flow!</code>), each prepared by the <code>SubJacobian</code> constructor:</p>
 <ul>
 <li><code>∂flow_∂flow_input</code>: the Jacobian of the flow formulation (<code>formulate_flows_closure!</code>) with respect to the input vector <code>flow_input = (storage_uplink, storage_downlink, pid_integral, continuous_control_compound)</code>. Its output is the flow rates and the PID errors. This is <span class="math inline">\(\partial\mathbf{q}/\partial\mathbf{v}\)</span> from the <a href="../concept/numerics.html#structure-of-the-right-hand-side">concept documentation</a>;</li>
 <li><code>∂continuous_control_compound_∂continuous_control_input</code>: the Jacobian of the ContinuousControl compound variables with respect to <code>(storage, flow)</code>;</li>

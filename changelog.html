@@ -343,6 +343,7 @@ ul.task-list li input[type="checkbox"] {
 <li>Stricter input validation: an unknown <code>node_id</code> in <code>Basin / subgrid</code> or <code>Basin / subgrid_time</code> now stops the model with a clear error, where the first only logged an error and dropped the subgrid element, and the second crashed. A ContinuousControl function with a single data point and a missing value in a required column now also give a clear error. <a href="https://github.com/Deltares/Ribasim/pull/3449">#3449</a></li>
 <li>Allow repeated <code>subgrid_level</code> values in <code>Basin / subgrid</code> and <code>Basin / subgrid_time</code>, which give a flat segment in the relation from Basin level to subgrid level. Subgrid elements with such values were rejected before. <a href="https://github.com/Deltares/Ribasim/pull/3449">#3449</a></li>
 <li>Allocation: the error for an infeasible allocation problem now lists the incompatible constraints, this list was empty. <a href="https://github.com/Deltares/Ribasim/pull/3449">#3449</a></li>
+<li>Junction: a model with 512 or more separate groups of Junctions with rows in <code>Junction / static</code> no longer stops with an error when run with multiple threads. <a href="https://github.com/Deltares/Ribasim/pull/3480">#3480</a></li>
 </ul>
 </section>
 </section>
