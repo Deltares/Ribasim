@@ -310,6 +310,96 @@ end
     @test get_link_flow(5, 7) ≈ max.(0.4 .* inflow, 0) rtol = 1.0e-3
 end
 
+@testitem "ContinuousControl listens to a flow set by ContinuousControl" begin
+    using DataFrames: DataFrame
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/chained_continuous_control/ribasim.toml")
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    # The compound variable of ContinuousControl #9 is computed after the flow of Outlet #4,
+    # which is set by ContinuousControl #8
+    (; control_order) = model.integrator.p.p_independent
+    @test [level.compound_idx for level in control_order] == [[1], [], [2], []]
+    @test [level.continuous_idx for level in control_order] == [[], [1], [], [2]]
+
+    flow_data = DataFrame(Ribasim.flow_data(model))
+    get_link_flow(from_node_id, to_node_id) =
+        filter(row -> row.from_node_id == from_node_id && row.to_node_id == to_node_id, flow_data).flow_rate
+    inflow = get_link_flow(2, 3)
+    # Where the inflow changes sign within a saveat interval, the mean flows of the Outlets
+    # are not proportional to the mean inflow
+    positive = inflow .> 0
+    @test get_link_flow(3, 4)[positive] ≈ 0.6 .* inflow[positive] rtol = 1.0e-3
+    # Outlet #5 follows 2/3 of Outlet #4, before it saw a flow of 0
+    @test get_link_flow(3, 5) ≈ (2 / 3) .* get_link_flow(3, 4) rtol = 1.0e-3
+    @test get_link_flow(3, 5)[positive] ≈ 0.4 .* inflow[positive] rtol = 1.0e-3
+    @test maximum(get_link_flow(3, 5)) > 1.0e-3
+end
+
+@testitem "PidControl derivative term sees a flow set by ContinuousControl" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_continuous_control/ribasim.toml")
+    model = Ribasim.Model(toml_path)
+    (; u, p, t) = model.integrator
+    (; control_order, pid_control, basin) = p.p_independent
+
+    # The flow of Outlet #2 into the listened Basin is computed before the flow of Pump #4
+    @test [level.compound_idx for level in control_order] == [[1], [], []]
+    @test [level.continuous_idx for level in control_order] == [[], [1], []]
+    @test [level.pid_idx for level in control_order] == [[], [], [1]]
+
+    # The PID controlled flow solves its implicit equation with the storage rate of Basin #3
+    # including all flows, so also the flow of Outlet #2
+    du = zero(u)
+    Ribasim.water_balance!(du, u, p, t)
+    q_pid = du.flow.horizontal.pump[1]
+    @test du.flow.horizontal.outlet[1] > 1.0e-3
+    dstorage = Ribasim.formulate_dstorage_single_basin(du.flow, p.p_independent, basin.node_id[1]; t)
+    pid_error = pid_control.target[1](t) - p.current_basin_properties.current_level[1]
+    area = p.current_basin_properties.current_area[1]
+    K_p = pid_control.proportional[1](t)
+    K_d = pid_control.derivative[1](t)
+    @test q_pid > 0
+    @test q_pid ≈ K_p * pid_error + K_d * (0.0 - dstorage / area)
+
+    Ribasim.solve!(model)
+    @test success(model)
+    level = Ribasim.get_storages_and_levels(model).level[1, :]
+    @test level[end] ≈ pid_control.target[1](t) atol = 1.0e-2
+end
+
+@testitem "PidControl derivative term is in the Jacobian when it is zero at initialization" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_derivative_switch/ribasim.toml")
+    model = Ribasim.Model(toml_path)
+    @test model.integrator.p.p_independent.pid_control.has_derivative_term == [true]
+    Ribasim.solve!(model)
+    @test success(model)
+
+    # The derivative is 0 at initialization and nonzero after day 20. Without its entries in the
+    # sparsity pattern the reduced Jacobian is wrong after the switch: 6418 steps instead of ~240.
+    @test model.integrator.stats.naccept < 1000
+end
+
+@testitem "Circular dependency in the control of flows" begin
+    using Logging
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/invalid_circular_control/ribasim.toml")
+    logger = TestLogger()
+    with_logger(logger) do
+        @test_throws "Circular dependency in the control of flows." Ribasim.Model(toml_path)
+    end
+    messages = [string(log.message) for log in logger.logs if log.level == Logging.Error]
+    @test messages == [
+        """
+        Circular dependency in the control of flows, so they cannot be computed one after the other:
+          the flow of Outlet #4 set by ContinuousControl #8
+          which depends on the variables ContinuousControl #8 listens to
+          which depends on the flow of Outlet #5 set by ContinuousControl #9
+          which depends on the variables ContinuousControl #9 listens to
+          which depends on the flow of Outlet #4 set by ContinuousControl #8""",
+    ]
+end
+
 @testitem "Concentration discrete control" begin
     using DataFrames: DataFrame
 
@@ -455,7 +545,7 @@ end
 
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/pump_discrete_control/ribasim.toml")
-    @test ispath(toml_path) skip = true
+    @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
     (; p, u, t) = model.integrator
     (; pump) = p.p_independent
@@ -478,4 +568,96 @@ end
     # The right hand side at the same time uses the new maximum flow rate
     Ribasim.water_balance!(du, u, p, t)
     @test du.flow.horizontal.pump[pump_id.idx] == 0
+end
+
+@testitem "Listen to Junction flow rate" begin
+    using DataFrames: DataFrame
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/junction_control/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    flow = DataFrame(Ribasim.flow_data(model))
+    function q(from_node_id, to_node_id)
+        return flow.flow_rate[(flow.from_node_id .== from_node_id) .& (flow.to_node_id .== to_node_id)]
+    end
+
+    # The flow rates that the control nodes listen to
+    @test q(3, 2) ≈ q(4, 3) .- q(3, 5)
+    @test q(2, 1) ≈ q(3, 2) .+ q(7, 2)
+
+    # ContinuousControl sets the Outlet to half of the flow rate of Junction 2
+    @test q(1, 10) ≈ 0.5 .* q(2, 1) rtol = 1.0e-3
+
+    # DiscreteControl switches on the Pump when the flow rate of Junction 3 exceeds
+    # 5e-4, so when the increasing FlowBoundary reaches 1e-3, halfway the simulation
+    control = DataFrame(Ribasim.discrete_control_data(model))
+    @test control.control_state == ["off", "on"]
+    t_switch = Ribasim.seconds_since(control.time[2], model.config.starttime)
+    @test t_switch ≈ 15.5 * 86400 atol = 86400
+    @test q(8, 6)[1] == 0
+    @test q(8, 6)[end] ≈ 1.0e-4
+end
+
+@testitem "Compound variable value" begin
+    using Ribasim: NodeID, CompoundVariable, SubVariable, compound_variable_value
+
+    # The value of a compound variable that listens to a single variable, with distinct flows
+    function listen(model_name)
+        toml_path = normpath(@__DIR__, "../../generated_testmodels/$model_name/ribasim.toml")
+        model = Ribasim.Model(toml_path)
+        (; p) = model.integrator
+        (; current_storage) = p.current_basin_properties
+        flow = Ribasim.get_du(model.integrator).flow
+        flow .= 1:length(flow)
+        function value(listen_node_id, variable; weight = 1.0)
+            compound_variable = CompoundVariable(;
+                node_id = NodeID(:DiscreteControl, 1, 1),
+                subvariables = [SubVariable(; listen_node_id, variable, weight, look_ahead = 0.0)],
+            )
+            return compound_variable_value(compound_variable, current_storage, flow, p, 0.0)
+        end
+        return value, flow, p.p_independent
+    end
+
+    value, flow, p_independent = listen("basic")
+    for name in (:pump, :tabulated_rating_curve, :linear_resistance, :manning_resistance)
+        node_ids = getfield(p_independent, name).node_id
+        @test !isempty(node_ids)
+        for id in node_ids
+            @test value(id, "flow_rate") == getproperty(flow.horizontal, name)[id.idx]
+        end
+    end
+    pump_id = first(p_independent.pump.node_id)
+    @test value(pump_id, "flow_rate"; weight = 2.0) == 2 * flow.horizontal.pump[pump_id.idx]
+
+    (; concentration_data) = p_independent.basin
+    basin_id = last(p_independent.basin.node_id)
+    substance_idx = length(concentration_data.substances)
+    substance = collect(concentration_data.substances)[substance_idx]
+    concentration_data.concentration_state[substance_idx, basin_id.idx] = 3.0
+    @test value(basin_id, "concentration.$substance") == 3.0
+
+    @test_throws "Cannot obtain variable `level` from $pump_id." value(pump_id, "level")
+    @test_throws "Cannot obtain variable `flow_rate` from $basin_id." value(basin_id, "flow_rate")
+    @test_throws "Unsupported listen variable foo." value(basin_id, "foo")
+
+    value, flow, p_independent = listen("outlet")
+    for id in p_independent.outlet.node_id
+        @test value(id, "flow_rate") == flow.horizontal.outlet[id.idx]
+    end
+end
+
+@testitem "Truth state without control state" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/pump_discrete_control/ribasim.toml")
+    model = Ribasim.Model(toml_path)
+    id = first(model.integrator.p.p_independent.discrete_control.node_id)
+
+    # Returns whether there was an error, and whether the control state changed
+    result = @test_logs (:error, r"^No control state specified for DiscreteControl #\d+ for truth state") Ribasim.set_new_control_state!(
+        model.integrator, id, Bool[],
+    )
+    @test result == (true, false)
 end

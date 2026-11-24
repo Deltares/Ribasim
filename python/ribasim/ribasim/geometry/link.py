@@ -134,6 +134,13 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         link_id : int
             An optional non-negative link ID. If not supplied, it will be automatically generated.
         **kwargs : Dict
+
+        Notes
+        -----
+        Adding a link that already exists replaces it with a warning, which
+        makes it safe to re-run the code that builds a model. A link already
+        exists if it has the same `link_id`, or the same `from_node` and `to_node`.
+        If no `link_id` is supplied, the replacing link keeps the ID of the link it replaces.
         """
         link_type = _infer_link_type(from_node.node_type, to_node.node_type)
 
@@ -148,10 +155,22 @@ class LinkTable(SpatialTableModel[LinkSchema]):
                 f"Listen links must point to a control node, got to_node type '{to_node.node_type}'."
             )
 
+        # Links with the same ID or between the same nodes are replaced.
+        # Validate against the table without them, and only modify the table once all checks pass.
+        same_nodes = (self.df["from_node_id"] == from_node.node_id) & (
+            self.df["to_node_id"] == to_node.node_id
+        )
+        replaced_ids = [int(i) for i in dict.fromkeys(self.df.index[same_nodes])]
+        if link_id is None:
+            link_id = replaced_ids[0] if replaced_ids else self._used_link_ids.new_id()
+        elif link_id in self.df.index and link_id not in replaced_ids:
+            replaced_ids.append(link_id)
+        df = self.df.drop(index=replaced_ids)
+
         reverse_link_types = set(
-            self.df.loc[
-                (self.df.from_node_id == to_node.node_id)
-                & (self.df.to_node_id == from_node.node_id),
+            df.loc[
+                (df.from_node_id == to_node.node_id)
+                & (df.to_node_id == from_node.node_id),
                 "link_type",
             ]
         )
@@ -171,16 +190,7 @@ class LinkTable(SpatialTableModel[LinkSchema]):
             if geometry is None
             else [geometry]
         )
-        self._validate_link(to_node, from_node, link_type)
-        if link_id is None:
-            link_id = self._used_link_ids.new_id()
-        elif link_id in self._used_link_ids:
-            warnings.warn(
-                f"Replacing link #{link_id}",
-                UserWarning,
-                stacklevel=2,
-            )
-            self._remove_link_id(link_id)
+        self._validate_link(to_node, from_node, link_type, df)
 
         table_to_append = gpd.GeoDataFrame(
             data={
@@ -195,16 +205,18 @@ class LinkTable(SpatialTableModel[LinkSchema]):
             index=pd.Index([link_id], name="link_id"),
         )
 
+        # Warn before modifying the table, such that it is unchanged if the warning is raised as an error.
+        for replaced_id in replaced_ids:
+            warnings.warn(f"Replacing link #{replaced_id}", UserWarning, stacklevel=2)
+
         if kwargs:
             # User-provided extra columns go through validation (checks meta_ prefix).
-            self.df = _concat([self.df, table_to_append])
+            self.df = _concat([df, table_to_append])
         else:
             with self._no_validate():
-                self.df = _concat([self.df, table_to_append])
-        if self.df.duplicated(subset=["from_node_id", "to_node_id"]).any():
-            raise ValueError(
-                f"Links have to be unique, but link with from_node_id {from_node.node_id} to_node_id {to_node.node_id} already exists."
-            )
+                self.df = _concat([df, table_to_append])
+
+        self._used_link_ids.node_ids.difference_update(replaced_ids)
         self._used_link_ids.add(link_id)
 
         # When a control link is added from a listen-capable control node,
@@ -285,22 +297,46 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         self._used_link_ids.node_ids.difference_update(links_to_remove)
 
     def _validate_link(
-        self, to_node: NodeData, from_node: NodeData, link_type: str
+        self,
+        to_node: NodeData,
+        from_node: NodeData,
+        link_type: str,
+        df: pd.DataFrame,
     ) -> None:
-        """Raise ``ValueError`` if adding this link would exceed the neighbor bounds."""
-        in_neighbor: int = self.df.loc[
-            (self.df["to_node_id"] == to_node.node_id)
-            & (self.df["link_type"] == link_type)
+        """Raise ``ValueError`` if adding this link to ``df`` would exceed the neighbor bounds."""
+        in_neighbor: int = df.loc[
+            (df["to_node_id"] == to_node.node_id) & (df["link_type"] == link_type)
         ].shape[0]
 
-        out_neighbor: int = self.df.loc[
-            (self.df["from_node_id"] == from_node.node_id)
-            & (self.df["link_type"] == link_type)
-        ].shape[0]
+        out_to_node_ids = df.loc[
+            (df["from_node_id"] == from_node.node_id) & (df["link_type"] == link_type),
+            "to_node_id",
+        ]
+        out_neighbor: int = out_to_node_ids.shape[0]
         neighbor_bounds = link_neighbor_amount[link_type]
 
         max_in: int = neighbor_bounds[to_node.node_type][1]
         max_out: int = neighbor_bounds[from_node.node_type][3]
+
+        # The Junction nodes with rows in `Junction / static` divide the flow or supply a UserDemand
+        model = cast("Model | None", self._parent)
+        if link_type == "flow" and model is not None and model.node.df is not None:
+            routed_ids = model.junction._routed_node_ids()
+            if to_node.node_type == "UserDemand":
+                # A UserDemand abstracts from Basins, or from exactly one such Junction
+                in_from_node_ids = df.loc[
+                    (df["to_node_id"] == to_node.node_id)
+                    & (df["link_type"] == link_type),
+                    "from_node_id",
+                ].tolist()
+                in_from_node_ids.append(from_node.node_id)
+                if len(in_from_node_ids) > 1 and any(
+                    node_id in routed_ids for node_id in in_from_node_ids
+                ):
+                    raise ValueError(
+                        f"Node {to_node.node_id} must have either one or more Basin inflow links, or exactly one inflow link from a Junction in Junction / static"
+                    )
+
         if in_neighbor >= max_in:
             raise ValueError(
                 f"Node {to_node.node_id} can have at most {max_in} {link_type} link inneighbor(s)"

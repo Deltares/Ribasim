@@ -216,7 +216,7 @@ which can be for instance an average or a difference of variables. If a variable
 table_from_schema(
     Ribasim.Schema.DiscreteControl.Variable;
     restrictions = Dict(
-        :listen_node_id => "cannot be a Junction",
+        :listen_node_id => "a Junction only with variable `flow_rate`",
         :variable => "must be `level`, `storage`, `flow_rate`, `concentration.<substance>` or `concentration_external.<substance>`",
         :look_ahead => "only on transient boundary conditions, non-negative",
     ),
@@ -231,6 +231,7 @@ These variables can be listened to:
 - The flow rate through one of these node types: Pump, Outlet, TabulatedRatingCurve, LinearResistance, ManningResistance
 - The inflow rate of a UserDemand
 - The flow rate of a FlowBoundary (supports look ahead)
+- The flow rate of a [Junction](/reference/node/junction.qmd#equations)
 - The concentration of a substance in a Basin, with variable `concentration.<substance>`, e.g. `concentration.Cl`
 - The external concentration of a substance in a Basin, with variable `concentration_external.<substance>`, as given in the [`Basin / concentration_external`](/reference/node/basin.qmd#concentration-external) table
 
@@ -329,3 +330,9 @@ table_from_schema(
     ),
 )
 ```
+
+# Behavior in allocation
+
+[Allocation](/concept/allocation.qmd) uses the parameters that DiscreteControl has set at the moment allocation runs, at each intervention time.
+It cannot foresee that DiscreteControl changes them before the next intervention time, set by `intervention_interval` in the [allocation settings](/reference/usage.qmd#sec-allocation-settings), so after such a change the simulated flows can differ from what allocation planned.
+Since `allocation_controlled` of a Pump, Outlet or TabulatedRatingCurve can differ per control state, DiscreteControl can switch allocation control of these nodes on and off.

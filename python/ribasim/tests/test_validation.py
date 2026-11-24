@@ -13,6 +13,7 @@ from ribasim.nodes import (
     pid_control,
     pump,
 )
+from ribasim_testmodels import junction_bidirectional
 from shapely import MultiPolygon, Point, Polygon
 
 
@@ -24,7 +25,7 @@ def test_multiple_outflows(basic):
     ):
         model.link.add(
             model.flow_boundary[16],
-            model.basin[1],
+            model.basin[3],
             name="multiple-outflows",
         )
 
@@ -359,4 +360,48 @@ def test_node_id_unexpected_without_node_type():
     with pytest.raises(
         ValueError, match=r"FlowBoundary partition.*unexpected node_ids"
     ):
+        model._validate_model()
+
+
+def test_junction_group_one_basin():
+    model = junction_bidirectional()
+    model._validate_model()
+
+    # A link that closes a cycle through the Basin
+    invalid = junction_bidirectional()
+    invalid.link.add(invalid.junction[3], invalid.basin[1])
+    with pytest.raises(ValueError, match="must form a tree"):
+        invalid._validate_model()
+
+    # A Junction at the end of the tree
+    invalid = junction_bidirectional()
+    invalid.junction.add(Node(20, Point(4.0, 0.0)))
+    invalid.link.add(invalid.junction[3], invalid.junction[20])
+    with pytest.raises(ValueError, match="Junction #20 must have at least 2 flow"):
+        invalid._validate_model()
+
+    # A node that reaches the Basin through two links
+    invalid = junction_bidirectional()
+    invalid.link.add(invalid.junction[2], invalid.user_demand[9])
+    with pytest.raises(ValueError, match="through multiple links"):
+        invalid._validate_model()
+
+    # Only a UserDemand can connect to the Basin in both directions
+    invalid = junction_bidirectional()
+    invalid.pump.add(Node(20, Point(4.0, 0.0)), [pump.Static(flow_rate=[1.0])])
+    invalid.link.add(invalid.junction[2], invalid.pump[20])
+    invalid.link.add(invalid.pump[20], invalid.junction[3])
+    with pytest.raises(ValueError, match="in both directions"):
+        invalid._validate_model()
+
+
+def test_junction_group_other_basins():
+    # Without exactly one Basin a Junction needs both an inflow and an outflow
+    model = junction_bidirectional()
+    model.junction.add(Node(20, Point(4.0, 0.0)))
+    model.flow_boundary.add(
+        Node(21, Point(4.0, 1.0)), [flow_boundary.Static(flow_rate=[1.0])]
+    )
+    model.link.add(model.flow_boundary[21], model.junction[20])
+    with pytest.raises(ValueError, match="Junction #20 must have at least 1 flow inn"):
         model._validate_model()

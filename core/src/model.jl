@@ -126,6 +126,9 @@ function Model(
             error("Invalid PidControl connectivity.")
         end
 
+        # Errors for a circular dependency in the control of flows
+        set_control_order!(parameters)
+
         if !valid_min_upstream_level!(graph, outlet, basin)
             error("Invalid minimum upstream level of Outlet.")
         end
@@ -154,7 +157,7 @@ function Model(
 
     u0 = build_state_vector(p_independent)
     if isempty(u0)
-        @error "Models without states are unsupported, please add a Basin node."
+        @error "Models without states are unsupported. All flows in this model are FlowBoundary flows, which are integrated exactly without a state. Add a Basin, a connector node (e.g. a Pump or Outlet) or a UserDemand."
         error("Model has no state.")
     end
     # u_prev_saveat starts undefined; it must match u0 so save_flow computes correct
@@ -197,7 +200,7 @@ function Model(
     integrator = init(
         prob,
         alg;
-        progress = true,
+        progress = show_progress(config.logging),
         progress_name = "Simulating",
         progress_steps = 100,
         save_everystep = false,

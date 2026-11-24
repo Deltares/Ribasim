@@ -32,7 +32,8 @@ function create_callbacks(
     tstops = Vector{Float64}[]
     t_end = seconds_since(config.endtime, config.starttime)
     get_timeseries_tstops!(tstops, t_end, basin.forcing.precipitation)
-    tstops = sort(unique(reduce(vcat, tstops)))
+    # Not `init = Float64[]`: reduce then concatenates pairwise, quadratic in the number of Basins
+    tstops = sort(unique(isempty(tstops) ? Float64[] : reduce(vcat, tstops)))
     basin_cb = PresetTimeCallback(tstops, update_basin!; save_positions = (false, false))
     push!(callbacks, basin_cb)
 
@@ -142,32 +143,42 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     for allocation_model in allocation.allocation_models
         (; cumulative_supplied_volume) = allocation_model
         for link in keys(cumulative_supplied_volume)
-            cumulative_supplied_volume[link] += get_flow(cumulative_flow_dt, link, p)
+            cumulative_supplied_volume[link] += get_flow(cumulative_flow_dt, link, p_independent)
         end
     end
     return nothing
 end
 
-const CUMULATIVE_FLOW_RESET_THRESHOLD = 1.0e12 # m³ s⁻¹
+"""
+The cumulative volume (m³) at which the cumulative flows are reset. The states are cumulative
+volumes, and the Newton iteration can't converge below their floating point rounding: at
+the rounding floor its updates no longer shrink, so every step fails until the run ends
+`Unstable`. Resetting before the rounding reaches a thousandth of `abstol` avoids this.
+"""
+cumulative_flow_reset_threshold(abstol::Real)::Float64 = 1.0e-3 * abstol / eps(1.0)
 
 function cumulative_flow_reset_condition(u, t, integrator)::Bool
     (; basin, flow_boundary) = integrator.p.p_independent
-    return any(volume -> abs(volume) >= CUMULATIVE_FLOW_RESET_THRESHOLD, u.flow) ||
-        any(volume -> abs(volume) >= CUMULATIVE_FLOW_RESET_THRESHOLD, basin.forcing.exact_cumulative_forcing_since_reset) ||
-        any(volume -> abs(volume) >= CUMULATIVE_FLOW_RESET_THRESHOLD, flow_boundary.cumulative_flow_since_reset)
+    threshold = cumulative_flow_reset_threshold(integrator.opts.abstol)
+    return any(volume -> abs(volume) >= threshold, u.flow) ||
+        any(volume -> abs(volume) >= threshold, basin.forcing.exact_cumulative_forcing_since_reset) ||
+        any(volume -> abs(volume) >= threshold, flow_boundary.cumulative_flow_since_reset)
 end
 
 function reset_cumulative_flows!(integrator)::Nothing
     (; u, p) = integrator
     (; p_independent, current_basin_properties, time_dependent_cache) = p
-    (; basin, flow_boundary, u_prev_saveat, cumulative_flow_prev_allocation_dt) = p_independent
+    (; basin, flow_boundary, u_prev_saveat, u_accepted, cumulative_flow_prev_allocation_dt) = p_independent
     (; forcing) = basin
 
     basin.storage0 .= current_basin_properties.current_storage
     u_prev_saveat.flow .-= u.flow
+    # If no time step follows the reset, the final results are computed from this
+    u_accepted.flow .-= u.flow
     cumulative_flow_prev_allocation_dt .-= u.flow
     forcing.exact_cumulative_forcing_prev_saveat .-= forcing.exact_cumulative_forcing_since_reset
     flow_boundary.cumulative_flow_prev_saveat .-= flow_boundary.cumulative_flow_since_reset
+    shifted = shift_solver_history!(integrator.cache, u.flow)
 
     fill!(u.flow, 0.0)
     fill!(forcing.exact_cumulative_forcing_since_reset, 0.0)
@@ -175,19 +186,31 @@ function reset_cumulative_flows!(integrator)::Nothing
     fill!(time_dependent_cache.basin, 0.0)
     fill!(time_dependent_cache.flow_boundary.current_cumulative_boundary_flow, 0.0)
     p.p_mutable.new_time_dependent_cache = true
-    derivative_discontinuity!(integrator, true)
+    derivative_discontinuity!(integrator, !shifted)
     return nothing
 end
+
+"""
+Subtract the volumes that are reset from the solver history, so that the solver continues
+without a restart. This is valid because the right hand side depends on the cumulative flows
+only through the storages, which the reset doesn't change. Of the Nordsieck array only the
+first column holds the states; the others are scaled derivatives. Returns whether the
+history was shifted, otherwise the solver restarts.
+"""
+function shift_solver_history!(cache::OrdinaryDiffEqBDF.NordsieckBDFCache, flow)::Bool
+    first(cache.zn).flow .-= flow
+    return true
+end
+
+shift_solver_history!(cache, flow)::Bool = false
 
 function update_concentrations!(u, t, integrator)::Nothing
     (; p, tprev) = integrator
     (; p_independent, current_basin_properties) = p
     (; current_storage) = current_basin_properties
-    (; basin, flow_boundary, do_concentration, cumulative_flow_dt) = p_independent
+    (; basin, flow_boundary, do_concentration) = p_independent
     (; storage_prev_dt, concentration_data, forcing) = basin
     (;
-        evaporate_mass,
-        cumulative_in,
         concentration_state,
         concentration_drainage,
         concentration_precipitation,
@@ -204,61 +227,41 @@ function update_concentrations!(u, t, integrator)::Nothing
 
     dt = t - tprev
 
+    # The concentrations in the input are constant over the timestep, since these are tstops.
+    # At t they may already have the next value, so they are evaluated at tprev.
+
     # Basin forcings
     (; drainage, precipitation, surface_runoff) = forcing.exact_cumulative_forcing_dt
-    add_forcing_mass!(mass, concentration_drainage, drainage, t)
-    add_forcing_mass!(mass, concentration_precipitation, precipitation, t)
-    add_forcing_mass!(mass, concentration_surface_runoff, surface_runoff, t)
+    add_forcing_mass!(mass, concentration_drainage, drainage, tprev)
+    add_forcing_mass!(mass, concentration_precipitation, precipitation, tprev)
+    add_forcing_mass!(mass, concentration_surface_runoff, surface_runoff, tprev)
     # Loads are per second, not volume, so the flow is just the time step
-    add_forcing_mass!(mass, loads, dt, t)
+    add_forcing_mass!(mass, loads, dt, tprev)
 
     # Exact boundary flow over time step
     for (id, outflow_link) in zip(flow_boundary.node_id, flow_boundary.outflow_link)
-        outflow_id = outflow_link.link[2]
+        to_node = outflow_link.link[2]
+        # The mass into a Junction node is handled in `mass_through_junctions!`,
+        # and the mass into a Terminal or LevelBoundary leaves the model
+        to_node.is_basin || continue
         add_substance_mass!(
-            view(mass, :, outflow_id.idx),
+            view(mass, :, to_node.idx),
             flow_boundary.concentration_itp[id.idx],
             flow_boundary.cumulative_flow_dt[id.idx],
-            t,
+            tprev,
         )
     end
 
     mass_inflows_from_user_demand!(integrator)
-    mass_inflows_basin!(integrator)
-    aggregate_flows!(
-        cumulative_in,
-        cumulative_flow_dt,
-        p_independent;
-        do_outflows = false,
-        positive_vertical_forcing = forcing.exact_cumulative_forcing_dt,
-        boundary_flow = flow_boundary.cumulative_flow_dt,
-    )
+    mass_through_junctions!(integrator)
 
-    # Update the Basin concentrations based on the added mass and flows
-    for node_id in basin.node_id
-        storage_only_in = storage_prev_dt[node_id.idx] + cumulative_in[node_id.idx]
+    transport_tracers!(p_independent, current_storage, tprev, dt)
 
-        # The residence time tracer gets older
-        mass[Substance.ResidenceTime, node_id.idx] += dt * storage_prev_dt[node_id.idx]
-        if iszero(storage_only_in)
-            concentration_state[:, node_id.idx] .= 0
-        else
-            concentration_state[:, node_id.idx] .= view(mass, :, node_id.idx) ./ storage_only_in
-        end
-    end
+    negative_mass = Threads.Atomic{Bool}(false)
 
-    mass_outflows_basin!(integrator)
-
-    errors = false
-
-    for node_id in basin.node_id
-        mass_node = view(mass, :, node_id.idx)
-
-        # Evaporate mass to keep the mass balance, if enabled in model config
-        if evaporate_mass
-            evaporated_volume = cumulative_flow_dt.vertical.evaporation[node_id.idx]
-            mass_node .-= @view(concentration_state[:, node_id.idx]) .* evaporated_volume
-        end
+    @threaded TRACER_MIN_CHUNK_SIZE for basin_idx in eachindex(basin.node_id)
+        node_idx = basin.node_id[basin_idx].idx
+        mass_node = view(mass, :, node_idx)
 
         # Take care of too small masses, possibly becoming negative due to truncation.
         for I in eachindex(mass_node)
@@ -267,23 +270,27 @@ function update_concentrations!(u, t, integrator)::Nothing
             end
         end
 
-        # Check for negative masses
-        if any(<(0), mass_node)
-            errors = true
-            log_negative_mass(node_id, mass_node, concentration_data.substances)
-        end
+        # Check for negative masses, which are logged below
+        any(<(0), mass_node) && (negative_mass[] = true)
 
-        # Update the Basin concentrations again based on the removed mass
-        s = current_storage[node_id.idx]
+        s = current_storage[node_idx]
         if iszero(s)
-            concentration_state[:, node_id.idx] .= 0
+            concentration_state[:, node_idx] .= 0
         else
-            concentration_state[:, node_id.idx] .= mass_node ./ s
+            concentration_state[:, node_idx] .= mass_node ./ s
+        end
+    end
+
+    if negative_mass[]
+        for node_id in basin.node_id
+            mass_node = view(mass, :, node_id.idx)
+            any(<(0), mass_node) &&
+                log_negative_mass(node_id, mass_node, concentration_data.substances)
         end
     end
 
     storage_prev_dt .= current_storage
-    errors && error("Negative mass(es) detected at t = $t s")
+    negative_mass[] && error("Negative mass(es) detected at t = $t s")
     return nothing
 end
 
@@ -293,10 +300,11 @@ end
         mass_node::AbstractVector{Float64},
         substances::OrderedSet{Symbol},
     )::Nothing
-    for substance_idx in findall(<(0), mass_node)
-        substance_name = substances[substance_idx]
+    for (substance_idx, substance_name) in enumerate(substances)
         substance_mass = mass_node[substance_idx]
-        @error "$node_id has negative mass $substance_mass for substance $substance_name"
+        if substance_mass < 0
+            @error "$node_id has negative mass $substance_mass for substance $substance_name"
+        end
     end
     return nothing
 end
@@ -414,7 +422,8 @@ function save_mean_flows!(saved::SavedResults, u, t::Float64, integrator)::Bool
         (forcing.exact_cumulative_forcing_since_reset - forcing.exact_cumulative_forcing_prev_saveat) / Δt
 
     save_mean_convergence!(mean_flows, p_independent)
-    errors = check_water_balance_error!(mean_flows, integrator, Δt)
+    errors = check_basin_water_balance_error!(mean_flows, integrator, Δt)
+    errors |= check_junction_water_balance_error!(p_independent, t, flow, boundary_flow)
 
     # Basin results
     (; variables) = saved.basin
@@ -480,10 +489,47 @@ function save_mean_convergence!(mean_flows::MeanFlows, p_independent::Parameters
 end
 
 """
+Check the water balance per routed Junction node, and return whether there are too large errors.
+"""
+function check_junction_water_balance_error!(
+        p_independent::ParametersIndependent,
+        t::Float64,
+        flow_mean::FlowCVector{Float64},
+        boundary_flow_mean::Vector{Float64},
+    )::Bool
+    (; junction, water_balance_abstol, water_balance_reltol) = p_independent
+    (; routed_ids, inflow_links, outflow_links) = junction
+
+    errors = false
+
+    for id in routed_ids
+        inflow_rate = sum(
+            get_flow(flow_mean, link.link, p_independent; boundary_flow = boundary_flow_mean, t)
+                for link in inflow_links[id.idx]
+        )
+        outflow_rate = sum(
+            get_flow(flow_mean, link.link, p_independent; boundary_flow = boundary_flow_mean, t)
+                for link in outflow_links[id.idx]
+        )
+
+        balance_error = outflow_rate - inflow_rate
+        mean_flow_rate = (inflow_rate + outflow_rate) / 2
+        relative_error = iszero(mean_flow_rate) ? 0.0 : balance_error / mean_flow_rate
+
+        if abs(balance_error) > water_balance_abstol &&
+                abs(relative_error) > water_balance_reltol
+            errors = true
+            @error "Too large Junction water balance error" id balance_error relative_error inflow_rate outflow_rate
+        end
+    end
+    return errors
+end
+
+"""
 Check the water balance per Basin, and return whether there are too large errors. The
 error is thrown after saving the results, so that the results show them.
 """
-function check_water_balance_error!(
+function check_basin_water_balance_error!(
         mean_flows::MeanFlows,
         integrator::DEIntegrator,
         Δt::Float64,
@@ -553,9 +599,13 @@ function save_external_flows!(file::SavedFile, mean_flows::MeanFlows, p::Paramet
         if link.link[1].type == NodeType.FlowBoundary
             internal_flow_rate[fi] = boundary_flow[link.link[1].idx]
             internal_convergence[fi] = missing
+        elseif link.link[1].is_routed && link.link[2].type != NodeType.UserDemand
+            # A weighted sum of other flows, so it has no convergence of its own
+            internal_flow_rate[fi] = get_flow(flow, link.link, p.p_independent; boundary_flow)
+            internal_convergence[fi] = missing
         else
-            internal_flow_rate[fi] = get_flow(flow, link.link, p)
-            internal_convergence[fi] = get_flow(flow_convergence.flow, link.link, p)
+            internal_flow_rate[fi] = get_flow(flow, link.link, p.p_independent)
+            internal_convergence[fi] = get_flow(flow_convergence.flow, link.link, p.p_independent)
         end
     end
     resize!(flow_rate, n_new)
@@ -903,6 +953,8 @@ function compound_variable_value(
                 flow.horizontal.manning_resistance[listen_node_id.idx]
             elseif listen_node_id.type == NodeType.UserDemand
                 sum(get_inflows(flow, user_demand, listen_node_id.idx))
+            elseif listen_node_id.type == NodeType.Junction
+                get_junction_flow(flow, listen_node_id, p, t)
             else
                 error("Cannot obtain variable `$variable` from $listen_node_id.")
             end
@@ -1138,6 +1190,7 @@ function update_basin!(basin::Basin, t)::Bool
     return new_flux
 end
 
+# Called by the `update_subgrid_level` entry point of libribasim, see build/libribasim.jl
 function update_subgrid_level(model::Model)::Model
     update_subgrid_level!(model.integrator)
     return model

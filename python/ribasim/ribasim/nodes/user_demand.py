@@ -1,6 +1,5 @@
 from ribasim.input_base import TableModel
 from ribasim.schemas import (
-    UserDemandConcentrationSchema,
     UserDemandStaticSchema,
     UserDemandTimeSchema,
 )
@@ -13,8 +12,4 @@ class Static(TableModel[UserDemandStaticSchema]):
 
 
 class Time(TableModel[UserDemandTimeSchema]):
-    pass
-
-
-class Concentration(TableModel[UserDemandConcentrationSchema]):
     pass

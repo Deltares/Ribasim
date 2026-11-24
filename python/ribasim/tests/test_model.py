@@ -679,7 +679,6 @@ def test_model_compatibility(basic):
     assert len(basic.basin.node.df) < len(basic.node.df)
     assert (basic.basin.node.df["node_type"] == "Basin").all()
 
-    assert basic.node == basic.node
     df = basic.node.df
     df.iloc[0, 0] = "9999"
     assert basic.node.df.iloc[0, 0] == "9999"

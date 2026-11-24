@@ -81,6 +81,7 @@ website:
             - section: "Waterbody"
               contents:
                 - reference/node/basin.qmd
+                - reference/node/junction.qmd
             - section: "Connector"
               contents:
                 - reference/node/tabulated-rating-curve.qmd
@@ -105,7 +106,6 @@ website:
                 - reference/node/pid-control.qmd
             - section: "Other"
               contents:
-                - reference/node/junction.qmd
                 - reference/node/observation.qmd
     - title: "Contributing"
       contents:
@@ -119,7 +119,7 @@ website:
         - dev/bmi.qmd
         - dev/ci.qmd
         - dev/release.qmd
-        - dev/copilot.qmd
+        - dev/agents.qmd
         - section: QGIS
           contents:
             - dev/qgis.qmd
@@ -129,6 +129,11 @@ format:
     theme: cosmo
     css: assets/styles.css
     toc: true
+    # Plotly figures always load MathJax 3, which breaks the MathJax 4 default
+    # of Pandoc >= 3.8, so stay on MathJax 3 for the whole site.
+    html-math-method:
+      method: mathjax
+      url: "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js"
 bibliography: references.bib
 number-sections: true
 quartodoc:

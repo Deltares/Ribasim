@@ -25,23 +25,59 @@ const ContinuousControlInputTuple = NamedTuple{continuous_control_input_componen
 const ContinuousControlInputCVector{T} = CVector{T, Vector{T}, ContinuousControlInputTuple}
 
 """
+Data related to the Jacobian of a some function `f` which is part of `water_balance`.
+
+ - input: The input vector of the function `f`
+ - ranges: The ranges of the input
+ - jac: The data of the Jacobian itself, either sparse or dense
+ - jac_func!: The function which updates `jac`
+"""
+@kwdef struct SubJacobian{I, R, M <: AbstractMatrix{Float64}}
+    input::I
+    ranges::R = CVector(collect(eachindex(input)), getaxes(input))
+    jac::M
+    jac_func!::Function
+end
+
+"""
+Prepare the Jacobian of `f!(output, input, t)` with respect to `input`, either sparse or dense.
+If `with_value`, `jac_func!(t)` also computes `output`.
+"""
+function SubJacobian(
+        f!::F,
+        output::AbstractVector,
+        input::AbstractVector,
+        backend_jac,
+        p::Parameters,
+        sparse::Bool;
+        with_value::Bool = false,
+    ) where {F}
+    t = 0.0
+    prep = @ad_active p prepare_jacobian(f!, output, backend_jac, input, Constant(t))
+    jac = sparse ? prep.sparsity * 1.0 : zeros(length(output), length(input))
+    jac_func! = if with_value
+        t -> @ad_active p value_and_jacobian!(f!, output, jac, prep, backend_jac, input, Constant(t))
+    else
+        t -> @ad_active p jacobian!(f!, output, jac, prep, backend_jac, input, Constant(t))
+    end
+    return SubJacobian(; input, jac, jac_func!)
+end
+
+"""
 Cache for evaluating the lazy Ribasim Jacobian. For more details
 see the RibasmimJacobian docstring.
 """
 @kwdef struct RibasimJacobianEvaluationCache{M <: AbstractMatrix{Float64}}
-    # Jacobian of mapping (storage_uplink, storage_downlink, pid_integral, continuous_control_compound) -> (flow, pid_error)
-    flow_input::FlowInputCVector{Float64}
-    flow_input_ranges::FlowInputCVector{Int} = CVector(collect(eachindex(flow_input)), getaxes(flow_input))
-    ∂flow_∂flow_input::M
-    # Closures stored as Function to keep their large types out of the integrator type
-    eval_∂flow_∂flow_input!::Function
     # Cached flows used for continuous control input
     du_cache::RibasimStateCVector{Float64}
-    # Jacobian of mapping (storage, flow) -> continuous_control_compound
-    continuous_control_input::ContinuousControlInputCVector{Float64}
-    continuous_control_input_ranges::ContinuousControlInputCVector{Int} = CVector(collect(eachindex(continuous_control_input)), getaxes(continuous_control_input))
-    ∂continuous_control_compound_∂continuous_control_input::M
-    eval_∂continuous_control_compound_∂continuous_control_input!::Function
+    # Jacobian of mapping (storage_uplink, storage_downlink, pid_integral, continuous_control_compound) -> (flow, pid_error)
+    jac_flow::SubJacobian{FlowInputCVector{Float64}, FlowInputCVector{Int}, M}
+    # Jacobian of mapping (storage, flow) -> continuous_control_compound, where the flows are those before
+    # the Junction subgraphs. With routed Junction nodes the rows of the compound variables come after
+    # the rows of the flows in the Junction subgraphs they are computed from, which are not used.
+    jac_continuous_control::SubJacobian{ContinuousControlInputCVector{Float64}, ContinuousControlInputCVector{Int}, M}
+    # Jacobian of mapping flow -> Junction subnetwork flow
+    jac_junction::SubJacobian{FlowCVector{Float64}, FlowCVector{Int}, M}
 end
 
 function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
@@ -57,10 +93,10 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
             sparsity_detector = TracerSparsityDetector(),
             coloring_algorithm = GreedyColoringAlgorithm(),
         ) : backend
-    t = 0.0
+    sub_jacobian_args = (backend_jac, p, solver.sparse)
 
     ###
-    #### Jacobian of mapping (storage_uplink, storage_downlink, pid_integral, continuous_control_compound) -> (flow, pid_error)
+    #### jac_flow
     ###
 
     flow_input_axes = concatenate_axes(
@@ -73,101 +109,273 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
     )
     flow_input = cvector_from_axes(flow_input_axes)
 
+    # The flow formulation of water_balance!, where the inputs are not computed from the state
+    # but are the input of the Jacobian, and without the final Junction flows (see jac_junction)
     function formulate_flows_closure!(du, flow_input, t)
         check_new_t!(p, t)
+        set_current_boundary_flow_rate!(p_independent.flow_boundary, p, t)
         du .= 0.0
 
-        formulate_flows_args = (
-            du,
-            flow_input.storage_uplink,
-            flow_input.storage_downlink,
-            flow_input.continuous_control_compound,
-            flow_input.pid_integral,
-            p, t,
+        (; storage_uplink, storage_downlink, continuous_control_compound, pid_integral) = flow_input
+        formulate_uncontrolled_flows!(du, storage_uplink, storage_downlink, p, t)
+        formulate_controlled_flows!(
+            du, storage_uplink, storage_downlink, continuous_control_compound, pid_integral, p, t
         )
-
-        formulate_vertical_flux!(du.flow, flow_input.storage_uplink, p, t)
-        formulate_flows!(formulate_flows_args...)
-        formulate_PID_control!(du.pid_integral, flow_input.storage_uplink, flow_input.storage_downlink, p, t)
-        formulate_flows!(formulate_flows_args...; control_type = ContinuousControlType.PID)
-        formulate_flows!(formulate_flows_args...; control_type = ContinuousControlType.Continuous)
         return nothing
     end
 
-
-    ∂flow_∂flow_input_prep = @ad_active p prepare_jacobian(
-        formulate_flows_closure!,
-        du,
-        backend_jac,
-        flow_input,
-        Constant(t),
-    )
-    ∂flow_∂flow_input = solver.sparse ?
-        ∂flow_∂flow_input_prep.sparsity * 1.0 :
-        zeros(length(du), length(flow_input))
-
-    # Also compute value to cache flows for continuous control input
-    eval_∂flow_∂flow_input!(t) = @ad_active p value_and_jacobian!(
-        formulate_flows_closure!,
-        du,
-        ∂flow_∂flow_input,
-        ∂flow_∂flow_input_prep,
-        backend_jac,
-        flow_input,
-        Constant(t),
-    )
+    # Also compute the value to cache the flows for the ContinuousControl input
+    jac_flow = SubJacobian(formulate_flows_closure!, du, flow_input, sub_jacobian_args...; with_value = true)
 
     ###
-    #### Jacobian of mapping (storage, flow) -> continuous_control_compound
+    #### jac_continuous_control
     ###
 
     continuous_control_input_axes = concatenate_axes((; storage = 1:length(basin), flow = flow_ranges))
     continuous_control_input = cvector_from_axes(continuous_control_input_axes)
+    # The compound variables can depend on the flows in the Junction subgraphs. These are computed
+    # from the input flows first, so that the compound variables are differentiated with respect to
+    # the flows that enter the subgraphs. They are part of the output, before the compound variables,
+    # so that they have the element type of the input. Without routed Junction nodes this part is empty.
+    has_flow_output = !isempty(p_independent.junction.routed_ids) && !isempty(continuous_control.node_id)
+    continuous_control_output_axes = concatenate_axes(
+        (;
+            flow = has_flow_output ? flow_ranges : CVectors.empty_axes(typeof(flow_ranges)),
+            compound = 1:length(continuous_control),
+        )
+    )
     # Separate buffer so the compound variables cached by water_balance! are not overwritten
-    continuous_control_compound = zeros(length(continuous_control))
+    continuous_control_output = zero(cvector_from_axes(continuous_control_output_axes))
 
-    function continuous_control_closure!(compound_variables, continuous_control_input, t)
+    function continuous_control_closure!(continuous_control_output, continuous_control_input, t)
+        flow = if has_flow_output
+            formulate_junction_flow!(
+                continuous_control_output.flow, p, t; flow_in = continuous_control_input.flow
+            )
+            continuous_control_output.flow
+        else
+            continuous_control_input.flow
+        end
         compute_continuous_control_compound_variables!(
-            compound_variables,
-            continuous_control_input.storage,
-            continuous_control_input.flow,
-            p,
-            t
+            continuous_control_output.compound, continuous_control_input.storage, flow, p, t
         )
         return nothing
     end
 
-    ∂continuous_control_compound_∂continuous_control_input_prep = @ad_active p prepare_jacobian(
-        continuous_control_closure!,
-        continuous_control_compound,
-        backend_jac,
-        continuous_control_input,
-        Constant(t),
+    jac_continuous_control = SubJacobian(
+        continuous_control_closure!, continuous_control_output, continuous_control_input, sub_jacobian_args...
     )
 
-    ∂continuous_control_compound_∂continuous_control_input = solver.sparse ?
-        ∂continuous_control_compound_∂continuous_control_input_prep.sparsity * 1.0 :
-        zeros(length(continuous_control), length(continuous_control_input))
+    ###
+    #### jac_junction
+    ###
 
-    eval_∂continuous_control_compound_∂continuous_control_input!(t) = @ad_active p jacobian!(
-        continuous_control_closure!,
-        continuous_control_compound,
-        ∂continuous_control_compound_∂continuous_control_input,
-        ∂continuous_control_compound_∂continuous_control_input_prep,
-        backend_jac,
-        continuous_control_input,
-        Constant(t),
-    )
+    non_junction_flow = cvector_from_axes(p_independent.flow_ranges)
+    junction_flow = zero(non_junction_flow)
+
+    function junction_closure!(junction_flow, non_junction_flow, t)
+        formulate_junction_flow!(junction_flow, p, t; flow_in = non_junction_flow)
+        return nothing
+    end
+
+    jac_junction = if isempty(p_independent.junction.routed_ids)
+        # Without routed Junction nodes K is the identity and is never evaluated, see `has_routed_junctions`
+        SubJacobian(;
+            input = non_junction_flow,
+            jac = solver.sparse ? spzeros(0, 0) : zeros(0, 0),
+            jac_func! = Returns(nothing),
+        )
+    else
+        SubJacobian(junction_closure!, junction_flow, non_junction_flow, sub_jacobian_args...)
+    end
 
     return RibasimJacobianEvaluationCache(;
-        flow_input,
-        ∂flow_∂flow_input,
-        eval_∂flow_∂flow_input!,
         du_cache = du,
-        continuous_control_input,
-        ∂continuous_control_compound_∂continuous_control_input,
-        eval_∂continuous_control_compound_∂continuous_control_input!,
+        jac_flow,
+        jac_continuous_control,
+        jac_junction
     )
+end
+
+###
+##### Total derivatives of the compound variables
+###
+
+"""
+Per row in `rows` the (column, value index) of the stored entries of that row of `A`, where the
+value index is into `nonzeros(A)` for a sparse matrix and a linear index for a dense matrix.
+The sparsity pattern of the Jacobians is fixed, so these stay valid when the values change.
+"""
+function row_entries(A::SparseMatrixCSC, rows)::Dict{Int, Vector{Tuple{Int, Int}}}
+    entries = Dict(row => Tuple{Int, Int}[] for row in rows)
+    row_vals = rowvals(A)
+    for col in axes(A, 2), k in nzrange(A, col)
+        row_entries = get(entries, row_vals[k], nothing)
+        isnothing(row_entries) || push!(row_entries, (col, k))
+    end
+    return entries
+end
+
+function row_entries(A::AbstractMatrix, rows)::Dict{Int, Vector{Tuple{Int, Int}}}
+    linear_indices = LinearIndices(A)
+    return Dict(row => [(col, linear_indices[row, col]) for col in axes(A, 2)] for row in rows)
+end
+
+stored_value(A::SparseMatrixCSC, k::Int) = nonzeros(A)[k]
+stored_value(A::AbstractMatrix, k::Int) = A[k]
+
+"A dense vector with the list of the indices that were added to, to collect a sparse result."
+struct SparseAccumulator
+    values::Vector{Float64}
+    touched::Vector{Bool}
+    indices::Vector{Int}
+end
+
+SparseAccumulator(n::Int) = SparseAccumulator(zeros(n), fill(false, n), Int[])
+
+function add!(acc::SparseAccumulator, idx::Int, value::Float64)::Nothing
+    if !acc.touched[idx]
+        acc.touched[idx] = true
+        push!(acc.indices, idx)
+    end
+    acc.values[idx] += value
+    return nothing
+end
+
+"Move the accumulated (index, value) entries into `out` and reset the accumulator."
+function collect!(out::Vector{Tuple{Int, Float64}}, acc::SparseAccumulator)::Nothing
+    empty!(out)
+    for idx in sort!(acc.indices)
+        push!(out, (idx, acc.values[idx]))
+        acc.values[idx] = 0.0
+        acc.touched[idx] = false
+    end
+    empty!(acc.indices)
+    return nothing
+end
+
+"""
+The total derivatives of the ContinuousControl compound variables with respect to the Basin
+storages and the PID integral states. A compound variable can listen to a flow that depends on
+other compound variables or on PID integrals (chained control), so these follow from the
+compound variables of earlier levels in `control_order`, see `update_compound_derivatives!`.
+
+The entries are those of the sparsity patterns of the Jacobians, also when their value is 0, so
+that the sparsity pattern of the inner linear system is the same for every Jacobian.
+
+- ∂storage, ∂pid_integral: per compound variable the (Basin index, derivative) and
+  (PidControl index, derivative) entries
+- compound_row_entries: per compound variable the stored entries of its row of
+  `cache.jac_continuous_control.jac`, see `row_entries`
+- flow_row_entries: per flow that a compound variable depends on the stored entries of its row
+  of `cache.jac_flow.jac`
+"""
+struct CompoundDerivatives
+    ∂storage::Vector{Vector{Tuple{Int, Float64}}}
+    ∂pid_integral::Vector{Vector{Tuple{Int, Float64}}}
+    compound_row_entries::Vector{Vector{Tuple{Int, Int}}}
+    flow_row_entries::Dict{Int, Vector{Tuple{Int, Int}}}
+    storage_acc::SparseAccumulator
+    pid_integral_acc::SparseAccumulator
+end
+
+function CompoundDerivatives(
+        cache::RibasimJacobianEvaluationCache,
+        p_independent::ParametersIndependent,
+    )::CompoundDerivatives
+    (; jac_continuous_control) = cache
+    n_continuous_control = length(p_independent.continuous_control.node_id)
+    ∂c_∂input = jac_continuous_control.jac
+    # The rows of the compound variables come last, see `RibasimJacobianEvaluationCache`
+    row_offset = size(∂c_∂input, 1) - n_continuous_control
+    compound_entries = row_entries(∂c_∂input, row_offset .+ (1:n_continuous_control))
+    compound_row_entries = [compound_entries[row_offset + cc_idx] for cc_idx in 1:n_continuous_control]
+
+    # The flows the compound variables depend on, which come after the storages in the input
+    n_storage_input = length(jac_continuous_control.ranges.storage)
+    listened_flow_idxs = Set{Int}()
+    for entries in compound_row_entries, (col, _) in entries
+        col > n_storage_input && push!(listened_flow_idxs, col - n_storage_input)
+    end
+
+    derivatives = CompoundDerivatives(
+        [Tuple{Int, Float64}[] for _ in 1:n_continuous_control],
+        [Tuple{Int, Float64}[] for _ in 1:n_continuous_control],
+        compound_row_entries,
+        row_entries(cache.jac_flow.jac, listened_flow_idxs),
+        SparseAccumulator(length(p_independent.basin.node_id)),
+        SparseAccumulator(length(p_independent.pid_control.node_id)),
+    )
+    # Before the first evaluation the sparse Jacobians hold their sparsity pattern, so this
+    # gives all entries
+    update_compound_derivatives!(derivatives, cache, p_independent)
+    return derivatives
+end
+
+"""
+Compute the total derivatives of the compound variables, in the order of `control_order`:
+
+dc_m/dS = ∂c_m/∂S + Σ_k ∂c_m/∂q_k * dq_k/dS,
+dq_k/dS = ∂q_k/∂storage_uplink * P_up + ∂q_k/∂storage_downlink * P_down + Σ_m' ∂q_k/∂c_m' * dc_m'/dS,
+
+and in the same way with respect to the PID integrals, where dq_k/dI also has ∂q_k/∂pid_integral.
+The compound variables c_m' that a listened flow q_k depends on are in earlier levels. The listened
+flows are those that enter the Junction subgraphs, see `RibasimJacobianEvaluationCache`.
+"""
+function update_compound_derivatives!(
+        derivatives::CompoundDerivatives,
+        cache::RibasimJacobianEvaluationCache,
+        p_independent::ParametersIndependent,
+    )::Nothing
+    (; ∂storage, ∂pid_integral, compound_row_entries, flow_row_entries, storage_acc, pid_integral_acc) =
+        derivatives
+    (; jac_flow, jac_continuous_control) = cache
+    (; inflow_id, downlink_level_id, control_order) = p_independent
+    ∂c_∂input = jac_continuous_control.jac
+    ∂q_∂v = jac_flow.jac
+    ranges = jac_flow.ranges
+    n_storage_input = length(jac_continuous_control.ranges.storage)
+
+    # The columns of ∂q_∂v are in the contiguous blocks of `flow_input_components`
+    col_range(cols) = isempty(cols) ? (1:0) : (first(cols):last(cols))
+    uplink_cols = col_range(ranges.storage_uplink)
+    downlink_cols = col_range(ranges.storage_downlink)
+    pid_cols = col_range(ranges.pid_integral)
+    compound_cols = col_range(ranges.continuous_control_compound)
+
+    for level in control_order, cc_idx in level.compound_idx
+        for (col, k) in compound_row_entries[cc_idx]
+            ∂c_∂input_val = stored_value(∂c_∂input, k)
+            if col <= n_storage_input
+                add!(storage_acc, col, ∂c_∂input_val)
+                continue
+            end
+            for (v_col, v_k) in flow_row_entries[col - n_storage_input]
+                val = ∂c_∂input_val * stored_value(∂q_∂v, v_k)
+                if v_col in uplink_cols
+                    basin_id = inflow_id[v_col - first(uplink_cols) + 1]
+                    basin_id.is_basin && add!(storage_acc, basin_id.idx, val)
+                elseif v_col in downlink_cols
+                    basin_id = downlink_level_id[v_col - first(downlink_cols) + 1]
+                    basin_id.is_basin && add!(storage_acc, basin_id.idx, val)
+                elseif v_col in pid_cols
+                    add!(pid_integral_acc, v_col - first(pid_cols) + 1, val)
+                else
+                    # A compound variable of an earlier level
+                    upstream_cc_idx = v_col - first(compound_cols) + 1
+                    for (basin_idx, d) in ∂storage[upstream_cc_idx]
+                        add!(storage_acc, basin_idx, val * d)
+                    end
+                    for (pid_idx, d) in ∂pid_integral[upstream_cc_idx]
+                        add!(pid_integral_acc, pid_idx, val * d)
+                    end
+                end
+            end
+        end
+        collect!(∂storage[cc_idx], storage_acc)
+        collect!(∂pid_integral[cc_idx], pid_integral_acc)
+    end
+    return nothing
 end
 
 ###
@@ -182,6 +390,15 @@ The rhs of the ODE problem is composed of:
 - Computing levels and areas from the storages
 - Computing flows from the levels and areas
 - Computing continuously controlled variables via ContinuousControl and PidControl
+- Computing Continuously controlled flows (both ContinuousControl and PidControl)
+- Computing the Junction flows as the function of the input flows
+
+The full Jacobian is of the form
+
+J = [∂q_∂Q ∂q_I]
+    [∂e_Q     0]
+
+### ∂q_∂Q
 
 Within the solve, The Jacobian is formulated as a function of v = (storage_uplink, storage_downlink, pid_integral, continuous_control_compound), where:
 - storage_uplink is the storage uplink per cumulative flow state
@@ -195,11 +412,11 @@ This means that the computed Jacobian has the following structure:
 
 This relates to the Jacobian of water_balance! as follows:
 
- ∂water_balance!_∂Q = ∂q_∂v * ∂v_∂Q
-                    = ∂q_∂storage_uplink * ∂storage_uplink_∂Q +
-                      ∂q_∂storage_downlink * ∂storage_downlink_∂Q +
-                      ∂q_∂pid_integral * ∂pid_integral_∂Q +
-                      ∂q_∂continuous_control_compound * ∂continuous_control_compound_∂Q
+ ∂q_∂Q = ∂q_∂v * ∂v_∂Q
+       = ∂q_∂storage_uplink * ∂storage_uplink_∂Q +
+         ∂q_∂storage_downlink * ∂storage_downlink_∂Q +
+         ∂q_∂pid_integral * ∂pid_integral_∂Q +
+         ∂q_∂continuous_control_compound * ∂continuous_control_compound_∂Q
 
 Here:
 - ∂q_∂storage_uplink and ∂q_∂storage_downlink are diagonal matrices, except for the rows of flows
@@ -210,6 +427,21 @@ Here:
 
 The reason we do this is because of sparse matrix coloring (https://github.com/JuliaDiff/SparseMatrixColorings.jl);
 this formulation requires far fewer right hand side calls in the Jacobian computation than the standard way.
+
+### Junction
+If there are routed Junction nodes (with rows in `Junction / static`) there is another step at the end of `water_balance!`, which computes the flows
+in the Junction subgraphs (the `junction` flow component and the UserDemand flows in the subgraphs) as a function of
+the other flows. Call the flows from the above `q_np` (non-Junction), then all flows are
+
+q = K * q_np,    K = ∂q_∂q_np (`cache.jac_junction.jac`)
+
+where K is the identity for the flows that are not computed in the Junction subgraphs. As such, we obtain
+
+∂q_∂Q = K * ∂q_np_∂Q,    ∂q_∂pid_integral = K * ∂q_np_∂pid_integral
+
+where ∂q_np_∂Q is equivalent to ∂q_∂Q in the above. The incidence matrix M is defined for all flows, including the flows
+over the links in the Junction subgraphs, so the reduced linear solve only has the extra factor K, see `dolinsolve`.
+Without routed Junction nodes K is the identity, and it is not evaluated.
 
 A mutable struct with only const fields, like [`ParametersIndependent`](@ref).
 """
@@ -227,7 +459,14 @@ A mutable struct with only const fields, like [`ParametersIndependent`](@ref).
     const J_inner_local::SparseMatrixCSC{Float64, Int} = spzeros(n_basin, n_basin)
     # The area of PID controlled Basins
     const area_pid_controlled::Vector{Float64} = zeros(n_pid)
+    # Work vector for the flows before applying the Junction Jacobian in the linear solve
+    const flow_buffer::FlowCVector{Float64} = cvector_from_axes(p_independent.flow_ranges)
+    # The total derivatives of the ContinuousControl compound variables
+    const compound_derivatives::CompoundDerivatives = CompoundDerivatives(cache, p_independent)
 end
+
+"Whether the model has routed Junction nodes, which are the reason for the flows to depend on each other."
+has_routed_junctions(J::RibasimJacobian)::Bool = !isempty(J.p_independent.junction.routed_ids)
 
 # SciMLOperators interface
 SciMLOperators.isconstant(::RibasimJacobian) = false
@@ -248,13 +487,8 @@ function SciMLOperators.update_coefficients!(
         t::Number,
     )
     (; cache, area_pid_controlled, n_pid) = J
-    (;
-        flow_input,
-        eval_∂flow_∂flow_input!,
-        continuous_control_input,
-        eval_∂continuous_control_compound_∂continuous_control_input!,
-        du_cache,
-    ) = cache
+    (; du_cache, jac_flow, jac_continuous_control, jac_junction) = cache
+    flow_input = jac_flow.input
     (; storage_uplink, storage_downlink) = flow_input
     (; p_independent, p_mutable, current_basin_properties) = p
     (; pid_control, basin) = p_independent
@@ -270,13 +504,13 @@ function SciMLOperators.update_coefficients!(
         p_independent
     )
     check_new_t!(p, t)
-    flow_input.pid_integral .= u.pid_integral
+    jac_flow.input.pid_integral .= u.pid_integral
     # Cached by the last water_balance! call
-    flow_input.continuous_control_compound .=
+    jac_flow.input.continuous_control_compound .=
         p_independent.continuous_control.continuous_control_compound_variables
 
     # Compute derivatives
-    eval_∂flow_∂flow_input!(t)
+    jac_flow.jac_func!(t)
 
     # Area of PID controlled Basins
     for pid_idx in 1:n_pid
@@ -287,9 +521,16 @@ function SciMLOperators.update_coefficients!(
     end
 
     # Compute Jacobian of the ContinuousControl output w.r.t. the input
-    continuous_control_input.storage .= current_basin_properties.current_storage
-    continuous_control_input.flow .= du_cache.flow
-    eval_∂continuous_control_compound_∂continuous_control_input!(t)
+    jac_continuous_control.input.storage .= current_basin_properties.current_storage
+    jac_continuous_control.input.flow .= du_cache.flow
+    jac_continuous_control.jac_func!(t)
+    update_compound_derivatives!(J.compound_derivatives, cache, p_independent)
+
+    # Compute the Junction Jacobian at the flows cached by jac_flow.jac_func!
+    if has_routed_junctions(J)
+        jac_junction.input .= du_cache.flow
+        jac_junction.jac_func!(t)
+    end
 
     # Compute local part of the reduced linear solve Jacobian
     update_J_inner_local!(J)
@@ -331,25 +572,20 @@ flows on the Basin storages (excluding the dependence via the PID integral state
               ∂q_∂continuous_control_compound * ∂continuous_control_compound_∂storage
 
 ∂q_∂storage_uplink and ∂q_∂storage_downlink are not necessarily diagonal, e.g. the derivative term of PID control
-depends on all flows of the listened Basin. For ∂continuous_control_compound_∂storage only the dependence of
-listened flows on their own up- and downlink storage is taken into account, as chained control is not supported.
+depends on all flows of the listened Basin. ∂continuous_control_compound_∂storage is the total derivative, which
+includes the dependence of the listened flows on other compound variables, see `update_compound_derivatives!`.
 """
 function foreach_∂flow_∂storage(f::F, J::RibasimJacobian) where {F}
-    (; p_independent, cache) = J
-    (;
-        flow_input_ranges,
-        ∂flow_∂flow_input,
-        continuous_control_input_ranges,
-        ∂continuous_control_compound_∂continuous_control_input,
-    ) = cache
-    (; inflow_id, outflow_id) = p_independent
+    (; p_independent, cache, compound_derivatives) = J
+    (; jac_flow) = cache
+    flow_input_ranges = jac_flow.ranges
+    ∂flow_∂flow_input = jac_flow.jac
+
+    (; inflow_id, downlink_level_id) = p_independent
     n_flow = length(inflow_id)
 
     # Dependence via the up- and downlink storages
-    for (storage_input_range, storage_node_id) in (
-            (flow_input_ranges.storage_uplink, inflow_id),
-            (flow_input_ranges.storage_downlink, outflow_id),
-        )
+    function foreach_storage_dependence(storage_input_range, storage_node_id)
         for (storage_flow_idx, col) in enumerate(storage_input_range)
             basin_id = storage_node_id[storage_flow_idx]
             basin_id.is_basin || continue
@@ -357,33 +593,37 @@ function foreach_∂flow_∂storage(f::F, J::RibasimJacobian) where {F}
                 flow_idx <= n_flow && f(flow_idx, basin_id.idx, val)
             end
         end
+        return nothing
     end
+    foreach_storage_dependence(flow_input_ranges.storage_uplink, inflow_id)
+    foreach_storage_dependence(flow_input_ranges.storage_downlink, downlink_level_id)
 
     # Dependence via the ContinuousControl compound variables
-    storage_offset = first(continuous_control_input_ranges.storage) - 1
-    n_storage_input = length(continuous_control_input_ranges.storage)
-    flow_offset = first(continuous_control_input_ranges.flow) - 1
-    for input_idx in axes(∂continuous_control_compound_∂continuous_control_input, 2)
-        foreach_column_entry(∂continuous_control_compound_∂continuous_control_input, input_idx) do cc_idx, cc_val
-            col = flow_input_ranges.continuous_control_compound[cc_idx]
-            foreach_column_entry(∂flow_∂flow_input, col) do flow_idx, val
-                flow_idx <= n_flow || return
-                basin_idx = input_idx - storage_offset
-                if basin_idx <= n_storage_input
-                    f(flow_idx, basin_idx, val * cc_val)
-                else
-                    listen_flow_idx = input_idx - flow_offset
-                    id_in_listen = inflow_id[listen_flow_idx]
-                    id_out_listen = outflow_id[listen_flow_idx]
-                    if id_in_listen.is_basin
-                        ∂q_listen_∂storage = ∂flow_∂flow_input[listen_flow_idx, flow_input_ranges.storage_uplink[listen_flow_idx]]
-                        f(flow_idx, id_in_listen.idx, val * cc_val * ∂q_listen_∂storage)
-                    end
-                    if id_out_listen.is_basin
-                        ∂q_listen_∂storage = ∂flow_∂flow_input[listen_flow_idx, flow_input_ranges.storage_downlink[listen_flow_idx]]
-                        f(flow_idx, id_out_listen.idx, val * cc_val * ∂q_listen_∂storage)
-                    end
-                end
+    foreach_∂flow_∂compound(J, compound_derivatives.∂storage) do flow_idx, basin_idx, val
+        f(flow_idx, basin_idx, val)
+    end
+    return nothing
+end
+
+"""
+Call `f(flow_idx, idx, ∂q_∂c * dc_∂x)` for each flow that depends on a compound variable c, and
+each entry (idx, dc_∂x) of the total derivative of c in `compound_∂x` (per compound variable).
+"""
+@inline function foreach_∂flow_∂compound(
+        f::F,
+        J::RibasimJacobian,
+        compound_∂x::Vector{Vector{Tuple{Int, Float64}}},
+    ) where {F}
+    (; jac_flow) = J.cache
+    ∂flow_∂flow_input = jac_flow.jac
+    n_flow = length(J.p_independent.inflow_id)
+    for (cc_idx, col) in enumerate(jac_flow.ranges.continuous_control_compound)
+        entries = compound_∂x[cc_idx]
+        isempty(entries) && continue
+        foreach_column_entry(∂flow_∂flow_input, col) do flow_idx, val
+            flow_idx <= n_flow || return
+            for (idx, ∂c_∂x) in entries
+                f(flow_idx, idx, val * ∂c_∂x)
             end
         end
     end
@@ -391,11 +631,14 @@ function foreach_∂flow_∂storage(f::F, J::RibasimJacobian) where {F}
 end
 
 """
-Call `f(flow_idx, pid_idx, ∂q_∂pid_integral)` for each dependence of a flow on a PID integral state.
+Call `f(flow_idx, pid_idx, ∂q_∂pid_integral)` for each dependence of a flow on a PID integral state,
+directly or via a compound variable that listens to a flow controlled by PidControl.
 """
 function foreach_∂flow_∂pid_integral(f::F, J::RibasimJacobian) where {F}
-    (; p_independent, cache) = J
-    (; flow_input_ranges, ∂flow_∂flow_input) = cache
+    (; p_independent, cache, compound_derivatives) = J
+    (; jac_flow) = cache
+    flow_input_ranges = jac_flow.ranges
+    ∂flow_∂flow_input = jac_flow.jac
     n_flow = length(p_independent.inflow_id)
 
     for (pid_idx, col) in enumerate(flow_input_ranges.pid_integral)
@@ -403,32 +646,125 @@ function foreach_∂flow_∂pid_integral(f::F, J::RibasimJacobian) where {F}
             flow_idx <= n_flow && f(flow_idx, pid_idx, val)
         end
     end
-    return nothing
-end
-
-"""
-Compute J_inner_local = M * ∂q_∂storage, see `foreach_∂flow_∂storage`.
-If `structural`, all contributions are set to 1.0 to initialize the sparsity pattern.
-"""
-function update_J_inner_local!(J::RibasimJacobian; structural::Bool = false)
-    (; p_independent, J_inner_local) = J
-    (; inflow_id, outflow_id) = p_independent
-
-    J_inner_local .= 0.0
-    foreach_∂flow_∂storage(J) do flow_idx, basin_idx, ∂q_∂storage
-        add_flow_contribution!(
-            J_inner_local,
-            inflow_id[flow_idx],
-            outflow_id[flow_idx],
-            basin_idx,
-            structural ? 1.0 : ∂q_∂storage,
-        )
+    foreach_∂flow_∂compound(J, compound_derivatives.∂pid_integral) do flow_idx, pid_idx, val
+        f(flow_idx, pid_idx, val)
     end
     return nothing
 end
 
 """
-Compute v_out = ∂q_∂storage * v_in, see `foreach_∂flow_∂storage`.
+Call `f(flow_idx_all, ∂q_all_∂q_np)` for the flows that depend on the flow `flow_idx` computed
+before the Junction subgraphs, i.e. the nonzeros of column `flow_idx` of K, see `RibasimJacobian`.
+Without routed Junction nodes K is the identity.
+"""
+@inline function foreach_∂flow_∂flow_np(f::F, J::RibasimJacobian, flow_idx::Int) where {F}
+    if has_routed_junctions(J)
+        foreach_column_entry(f, J.cache.jac_junction.jac, flow_idx)
+    else
+        f(flow_idx, 1.0)
+    end
+    return nothing
+end
+
+"""
+Compute J_inner_local = M * K * ∂q_np_∂storage, see `foreach_∂flow_∂storage`.
+If `structural`, all contributions are set to 1.0 to initialize the sparsity pattern.
+"""
+function update_J_inner_local!(J::RibasimJacobian; structural::Bool = false)
+    (; p_independent, J_inner_local) = J
+    zero_entries!(J_inner_local)
+    foreach_∂flow_∂storage(J) do flow_idx, basin_idx, ∂q_np_∂storage
+        foreach_∂flow_∂flow_np(J, flow_idx) do flow_idx_all, ∂q_all_∂q_np
+            add_flow_contribution!(
+                J_inner_local,
+                p_independent,
+                flow_idx_all,
+                basin_idx,
+                structural ? 1.0 : ∂q_all_∂q_np * ∂q_np_∂storage;
+                structural,
+            )
+        end
+    end
+    return nothing
+end
+
+"Set all stored entries of A to zero, keeping the sparsity pattern of a sparse matrix."
+zero_entries!(A::SparseMatrixCSC) = fill!(nonzeros(A), 0.0)
+zero_entries!(A::AbstractMatrix) = fill!(A, 0.0)
+
+"""
+Add `value` to the entry (row, col) of A. The entry is found by scanning the column: the columns
+of the inner Jacobian are short, so this is faster than `A[row, col] += value`, which searches the
+column twice. If the entry is not stored, or `structural`, it is added to the sparsity pattern.
+
+With sparse Jacobians (`solver.sparse = true`) the entries are in the sparsity pattern set up at
+initialization, which must stay the same for the sparse factorization of J_inner. With dense
+Jacobians there is no sparsity pattern to set it up from, but then J_inner is dense, and the
+pattern of the sparse J_inner_local can grow.
+"""
+@inline function add_to_entry!(
+        A::SparseMatrixCSC{Float64},
+        row::Int,
+        col::Int,
+        value::Float64,
+        structural::Bool,
+    )::Nothing
+    if !structural
+        rows = rowvals(A)
+        for k in nzrange(A, col)
+            if rows[k] == row
+                nonzeros(A)[k] += value
+                return nothing
+            end
+        end
+    end
+    A[row, col] += value
+    return nothing
+end
+
+@inline function add_to_entry!(
+        A::AbstractMatrix{Float64}, row::Int, col::Int, value::Float64, ::Bool
+    )::Nothing
+    A[row, col] += value
+    return nothing
+end
+
+"""
+Add the sparse matrix B to A, where the sparsity pattern of B is part of that of A. Both patterns
+are sorted per column, so the columns are walked side by side.
+"""
+function add_sparse!(A::SparseMatrixCSC{Float64}, B::SparseMatrixCSC{Float64}; structural::Bool = false)::Nothing
+    A_rows, A_vals = rowvals(A), nonzeros(A)
+    B_rows, B_vals = rowvals(B), nonzeros(B)
+    if structural
+        # Contributions to B can cancel, but the entry is still structurally nonzero
+        for col in axes(B, 2), k_B in nzrange(B, col)
+            A[B_rows[k_B], col] += 1.0
+        end
+        return nothing
+    end
+    for col in axes(B, 2)
+        k_A, k_A_last = first(nzrange(A, col)), last(nzrange(A, col))
+        for k_B in nzrange(B, col)
+            row = B_rows[k_B]
+            while k_A <= k_A_last && A_rows[k_A] != row
+                k_A += 1
+            end
+            k_A <= k_A_last ||
+                error("Entry ($row, $col) is not in the sparsity pattern of the inner Jacobian.")
+            A_vals[k_A] += B_vals[k_B]
+        end
+    end
+    return nothing
+end
+
+function add_sparse!(A::AbstractMatrix{Float64}, B::AbstractMatrix{Float64}; structural::Bool = false)::Nothing
+    A .+= structural ? (B .!= 0) : B
+    return nothing
+end
+
+"""
+Compute v_out = ∂q_np_∂storage * v_in, see `foreach_∂flow_∂storage`.
 """
 function ∂flow_∂storage_mul!(
         v_out::FlowCVector,
@@ -444,8 +780,28 @@ function ∂flow_∂storage_mul!(
 end
 
 """
-Compute J_inner = J_inner_local - γ * M * ∂q_∂pid_integral * ∂pid_integral_∂storage.
-If `structural`, all PID contributions are set to 1.0 to initialize the sparsity pattern.
+Compute v_out = K * v_in, see `RibasimJacobian`. Only used with routed Junction nodes, v_in and v_out
+must be different vectors.
+"""
+function ∂flow_∂flow_np_mul!(
+        v_out::FlowCVector,
+        J::RibasimJacobian,
+        v_in::FlowCVector,
+    )
+    v_out .= 0.0
+    for flow_idx in eachindex(v_in)
+        v = v_in[flow_idx]
+        iszero(v) && continue
+        foreach_∂flow_∂flow_np(J, flow_idx) do flow_idx_all, ∂q_all_∂q_np
+            v_out[flow_idx_all] += ∂q_all_∂q_np * v
+        end
+    end
+    return nothing
+end
+
+"""
+Compute J_inner = J_inner_local - γ * M * K * ∂q_np_∂pid_integral * ∂pid_integral_∂storage.
+If `structural`, all contributions are set to 1.0 to initialize the sparsity pattern.
 """
 function build_J_inner!(
         J_inner::AbstractMatrix{Float64},
@@ -454,35 +810,69 @@ function build_J_inner!(
         structural::Bool = false,
     )
     (; p_independent, J_inner_local, area_pid_controlled) = J
-    (; pid_control, inflow_id, outflow_id) = p_independent
+    (; pid_control) = p_independent
 
     # Add J_inner_local into J_inner rather than copying it, which would reset the sparsity
     # pattern of J_inner and drop the entries that are only structurally nonzero
-    J_inner .= 0.0
-    J_local_rows = rowvals(J_inner_local)
-    J_local_vals = nonzeros(J_inner_local)
-    for col in axes(J_inner_local, 2), k in nzrange(J_inner_local, col)
-        # Contributions to J_inner_local can cancel, but the entry is still structurally nonzero
-        J_inner[J_local_rows[k], col] += structural ? 1.0 : J_local_vals[k]
-    end
+    zero_entries!(J_inner)
+    add_sparse!(J_inner, J_inner_local; structural)
 
-    foreach_∂flow_∂pid_integral(J) do flow_idx, pid_idx, ∂q_∂pid_integral
+    foreach_∂flow_∂pid_integral(J) do flow_idx, pid_idx, ∂q_np_∂pid_integral
         listen_node_id = pid_control.listen_node_id[pid_idx]
-        contribution = structural ? 1.0 : -gamma * ∂q_∂pid_integral / area_pid_controlled[pid_idx]
-        add_flow_contribution!(J_inner, inflow_id[flow_idx], outflow_id[flow_idx], listen_node_id.idx, contribution)
+        foreach_∂flow_∂flow_np(J, flow_idx) do flow_idx_all, ∂q_all_∂q_np
+            contribution =
+                structural ? 1.0 :
+                -gamma * ∂q_all_∂q_np * ∂q_np_∂pid_integral / area_pid_controlled[pid_idx]
+            add_flow_contribution!(
+                J_inner,
+                p_independent,
+                flow_idx_all,
+                listen_node_id.idx,
+                contribution;
+                structural,
+            )
+        end
     end
     return nothing
 end
 
+"""
+Add `∂q_∂storage` times the column of the incidence matrix M of a flow state to a column of J_inner,
+including the Basins the flow reaches via Junction nodes. Unless `structural`, the entries must be
+in the sparsity pattern of J_inner, see `add_to_entry!`.
+"""
 function add_flow_contribution!(
         J_inner::AbstractMatrix{Float64},
-        id_in::NodeID,
-        id_out::NodeID,
+        p_independent::ParametersIndependent,
+        flow_idx::Int,
         basin_idx::Int,
-        ∂q_∂storage::Float64,
+        ∂q_∂storage::Float64;
+        structural::Bool = false,
     )
-    id_in.is_basin && (J_inner[id_in.idx, basin_idx] -= ∂q_∂storage)
-    id_out.is_basin && (J_inner[id_out.idx, basin_idx] += ∂q_∂storage)
+    id_in = p_independent.inflow_id[flow_idx]
+    id_out = p_independent.outflow_id[flow_idx]
+    id_in.is_basin && add_to_entry!(J_inner, id_in.idx, basin_idx, -∂q_∂storage, structural)
+    id_out.is_basin && add_to_entry!(J_inner, id_out.idx, basin_idx, ∂q_∂storage, structural)
+    for (routed_basin_idx, weight) in p_independent.routed_basins[flow_idx]
+        add_to_entry!(J_inner, routed_basin_idx, basin_idx, weight * ∂q_∂storage, structural)
+    end
+    return nothing
+end
+
+"Add `value` times the column of the incidence matrix M of a flow state to a vector in storage space."
+function add_flow_contribution!(
+        v::AbstractVector{Float64},
+        p_independent::ParametersIndependent,
+        flow_idx::Int,
+        value::Float64,
+    )
+    id_in = p_independent.inflow_id[flow_idx]
+    id_out = p_independent.outflow_id[flow_idx]
+    id_in.is_basin && (v[id_in.idx] -= value)
+    id_out.is_basin && (v[id_out.idx] += value)
+    for (routed_basin_idx, weight) in p_independent.routed_basins[flow_idx]
+        v[routed_basin_idx] += weight * value
+    end
     return nothing
 end
 
@@ -562,13 +952,15 @@ where
 
 W_inner = [-γ⁻¹I_n + J_inner]
 J_inner as shown in the `build_J_inner!` docstring
-b_inner = M(b.flow + γ * ∂q_∂pid_integral * b.pid_integral)
+b_inner = M(b.flow + γ * K * ∂q_np_∂pid_integral * b.pid_integral)
 
 and then computing
 
 linu.pid_integral = -γ * [b.pid_integral + x_inner[listen_node_id] / area]
-linu.flow         = γ * [∂q_∂storage * x_inner + ∂q_∂pid_integral * linu.pid_integral - b.flow]
+linu.flow         = γ * [K * (∂q_np_∂storage * x_inner + ∂q_np_∂pid_integral * linu.pid_integral) - b.flow]
 
+where K is the Jacobian of the flows in the Junction subgraphs with respect to the other flows, see
+`RibasimJacobian`. Without routed Junction nodes K is the identity.
 """
 function OrdinaryDiffEqDifferentiation.dolinsolve(
         integrator::DEIntegrator,
@@ -583,7 +975,7 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
     (; cache_inner, W) = linsolve
     (; gamma, J) = W
     (; p_independent, area_pid_controlled, n_pid) = J
-    (; pid_control, inflow_id, outflow_id) = p_independent
+    (; pid_control) = p_independent
 
     W_inner = cache_inner.A
     J_inner = W_inner.J
@@ -595,12 +987,15 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
     # Set up inner (storage space) problem rhs
     W_inner.gamma = gamma
     aggregate_flows!(b_inner, b.flow, p_independent)
-    foreach_∂flow_∂pid_integral(J) do flow_idx, pid_idx, ∂q_∂pid_integral
-        contribution = gamma * ∂q_∂pid_integral * b_pid_integral[pid_idx]
-        id_in = inflow_id[flow_idx]
-        id_out = outflow_id[flow_idx]
-        id_in.is_basin && (b_inner[id_in.idx] -= contribution)
-        id_out.is_basin && (b_inner[id_out.idx] += contribution)
+    foreach_∂flow_∂pid_integral(J) do flow_idx, pid_idx, ∂q_np_∂pid_integral
+        foreach_∂flow_∂flow_np(J, flow_idx) do flow_idx_all, ∂q_all_∂q_np
+            add_flow_contribution!(
+                b_inner,
+                p_independent,
+                flow_idx_all,
+                gamma * ∂q_all_∂q_np * ∂q_np_∂pid_integral * b_pid_integral[pid_idx],
+            )
+        end
     end
 
     # Set up inner (storage space) problem matrix, and refactorize it only if the Jacobian
@@ -625,6 +1020,9 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
         linu = nothing,
         b = nothing,
     )
+    # Without Basins the inner system is empty, which the sparse factorization reports as
+    # infeasible, while the flows follow from the right hand side alone
+    retcode = iszero(J.n_basin) ? SciMLBase.ReturnCode.Success : linres.retcode
 
     # Compute PID integral component solution
     for pid_idx in 1:n_pid
@@ -635,18 +1033,22 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
         )
     end
 
-    # Compute flow component solution
-    ∂flow_∂storage_mul!(linu_flow, J, cache_inner.u)
-    linu_flow .-= b.flow
+    # Compute flow component solution, where the flows computed before the Junction subgraphs
+    # are accumulated in y and K is applied to those
+    y = has_routed_junctions(J) ? J.flow_buffer : linu_flow
+    ∂flow_∂storage_mul!(y, J, cache_inner.u)
     foreach_∂flow_∂pid_integral(J) do flow_idx, pid_idx, ∂q_∂pid_integral
-        linu_flow[flow_idx] += ∂q_∂pid_integral * linu_pid_integral[pid_idx]
+        y[flow_idx] += ∂q_∂pid_integral * linu_pid_integral[pid_idx]
     end
+    has_routed_junctions(J) && ∂flow_∂flow_np_mul!(linu_flow, J, y)
+    linu_flow .-= b.flow
     linu_flow .*= gamma
 
+    # The solution is linu itself: with Vector{Float64} as its type, it would be copied
     return LinearSolution{
         Float64,
         1,
-        Vector{Float64},
+        typeof(linu),
         typeof(linres.resid),
         typeof(linres.alg),
         typeof(linsolve),
@@ -655,7 +1057,7 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
         linu,
         linres.resid,
         linres.alg,
-        linres.retcode,
+        retcode,
         linres.iters,
         linsolve,
         linres.stats,
@@ -678,6 +1080,8 @@ const MAX_JACOBIAN_AGE = 50
 # update_coefficients!. Also refresh it when it is too old, or when the previous attempt at
 # this step failed to converge: OrdinaryDiffEq considers a Jacobian requested at the same time
 # current and only shrinks the step, so the retries would keep failing on the same Jacobian.
+# When W changes, forget the convergence rate of the Newton iteration, see
+# `reset_convergence_rate!`.
 function OrdinaryDiffEqDifferentiation.do_newJW(
         integrator::OrdinaryDiffEqCore.ODEIntegrator{A, B, C, D, E, <:Parameters},
         alg,
@@ -699,8 +1103,23 @@ function OrdinaryDiffEqDifferentiation.do_newJW(
     if new_jac
         p_mutable.jac_naccept = naccept
     end
+    new_W && reset_convergence_rate!(nlsolver)
     p_mutable.refresh_jac = new_jac
     return new_jac, new_W
+end
+
+"""
+Forget the convergence rate θ of the Newton iteration, so that the next nonlinear solve
+measures it again for the new iteration matrix W, like CVODE does (`crate = 1` in
+`cvNlsLSetup`). See https://ribasim.org/concept/numerics.html#sec-newton-convergence
+
+This can be removed once https://github.com/SciML/OrdinaryDiffEq.jl/issues/4983 is fixed.
+"""
+function reset_convergence_rate!(nlsolver::T)::Nothing where {T}
+    if hasfield(T, :prev_θ)
+        nlsolver.prev_θ = one(nlsolver.prev_θ)
+    end
+    return nothing
 end
 
 # The norm applied to the residuals to obtain the final scalar solver error
