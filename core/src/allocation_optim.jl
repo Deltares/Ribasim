@@ -1631,8 +1631,10 @@ function update_user_demand_flow_bounds!(
         )
         min_level = user_demand.min_level[node_id.idx]
         for link_metadata in user_demand.inflow_links[node_id.idx]
-            # Like in the physical layer, the abstraction from a Basin stops when it reaches
-            # the minimum level. This uses the level at the start of the timestep.
+            # The physical layer reduces the abstraction from a Basin in the
+            # level_difference_threshold above the min_level, by multiplying the allocated flow
+            # rate. Allocation reduces it one threshold higher, so that what it allocates can be
+            # abstracted. This uses the level at the start of the timestep.
             # A Junction has no level, and its min_level is not used.
             source_id = link_metadata.link[1]
             f_reduction = 1.0
@@ -1642,7 +1644,10 @@ function update_user_demand_flow_bounds!(
                 # An allocated inflow can raise the level. Without this a UserDemand at its
                 # min_level would never get a supply, since nothing would ask for the water.
                 f_reduction = max(
-                    reduction_factor(source_level - min_level, level_difference_threshold),
+                    reduction_factor(
+                        source_level - min_level - level_difference_threshold,
+                        level_difference_threshold,
+                    ),
                     allocated_inflow_reduction_factor(source_id, p, t),
                 )
             end
