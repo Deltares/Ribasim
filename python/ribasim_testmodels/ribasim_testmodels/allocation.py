@@ -275,7 +275,7 @@ def allocation_example_model() -> Model:
         Node(3, Point(1, 1), subnetwork_id=2),
         [
             user_demand.Static(
-                demand=[1.5], return_factor=0.0, min_level=-1.0, demand_priority=1
+                demand=[1.5], return_factor=0.0, min_level=0.0, demand_priority=1
             )
         ],
     )
@@ -288,7 +288,7 @@ def allocation_example_model() -> Model:
         Node(6, Point(3, 1), subnetwork_id=2),
         [
             user_demand.Static(
-                demand=[1.0], return_factor=0.0, min_level=-1.0, demand_priority=3
+                demand=[1.0], return_factor=0.0, min_level=0.0, demand_priority=3
             )
         ],
     )
@@ -1234,7 +1234,7 @@ def allocation_control_model() -> Model:
                 time=["2020-01-01", "2020-06-01", "2021-01-01"],
                 demand=[0.0, 10.0, 0.0],
                 return_factor=0.0,
-                min_level=-5.0,
+                min_level=0.0,
                 demand_priority=1,
             )
         ],
@@ -1582,7 +1582,7 @@ def tied_routes_model() -> Model:
                 time=time,
                 demand=1 + 0.1 * np.sin(day / 5),
                 return_factor=0,
-                min_level=-5,
+                min_level=0.0,
             )
         ],
     )

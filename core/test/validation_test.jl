@@ -869,6 +869,29 @@ end
         ["UserDemand #2 abstracts from a Basin, so a min_level must be provided."]
 end
 
+@testitem "UserDemand min_level above Basin bottom" begin
+    using Logging
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/user_demand/ribasim.toml")
+    @test ispath(toml_path)
+
+    model = Ribasim.Model(toml_path)
+    (; user_demand, basin) = model.integrator.p.p_independent
+
+    # The model has min_levels at or above the Basin bottom of 0.0
+    @test Ribasim.valid_user_demand_min_level_above_bottom(user_demand, basin)
+
+    user_demand.min_level[1] = -1.0
+    logger = TestLogger()
+    with_logger(logger) do
+        @test !Ribasim.valid_user_demand_min_level_above_bottom(user_demand, basin)
+    end
+    @test length(logger.logs) == 1
+    @test logger.logs[1].level == Error
+    @test logger.logs[1].message ==
+        "Minimum level of UserDemand #2 is lower than bottom of source Basin #1"
+end
+
 @testitem "Node table validation" begin
     import SQLite
     using Logging
