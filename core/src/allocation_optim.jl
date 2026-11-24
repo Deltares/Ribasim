@@ -1592,26 +1592,21 @@ function update_flow_variable_bounds!(
 end
 
 """
-The largest reduction factor of the allocation controlled Pump and Outlet nodes that flow into this
-Basin, at the current levels. A Pump does not depend on the level difference.
+The largest level reduction factor of the allocation controlled Pump and Outlet nodes that flow
+into this Basin, which is the fraction of their capacity they can use in this allocation timestep.
 """
 function allocated_inflow_reduction_factor(
         basin_id::NodeID,
-        basin_level::Float64,
         p::Parameters,
         t::Float64,
     )::Float64
-    (; basin, graph, pump, outlet, level_difference_threshold) = p.p_independent
+    (; basin, pump, outlet) = p.p_independent
     f_reduction = 0.0
     for other_id in basin.inflow_ids[basin_id.idx]
         if other_id.type == NodeType.Pump && pump.allocation_controlled[other_id.idx]
-            f_reduction = 1.0
+            f_reduction = max(f_reduction, level_reduction_factor(pump, other_id, p, t))
         elseif other_id.type == NodeType.Outlet && outlet.allocation_controlled[other_id.idx]
-            upstream_level = get_level(0.0, p, inflow_id(graph, other_id), t)
-            f_reduction = max(
-                f_reduction,
-                reduction_factor(upstream_level - basin_level, level_difference_threshold),
-            )
+            f_reduction = max(f_reduction, level_reduction_factor(outlet, other_id, p, t))
         end
     end
     return f_reduction
@@ -1648,7 +1643,7 @@ function update_user_demand_flow_bounds!(
                 # min_level would never get a supply, since nothing would ask for the water.
                 f_reduction = max(
                     reduction_factor(source_level - min_level, level_difference_threshold),
-                    allocated_inflow_reduction_factor(source_id, source_level, p, t),
+                    allocated_inflow_reduction_factor(source_id, p, t),
                 )
             end
             JuMP.set_lower_bound(flow[link_metadata.link], 0.0)
