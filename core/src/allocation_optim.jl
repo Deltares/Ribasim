@@ -1626,7 +1626,6 @@ function update_user_demand_flow_bounds!(
     (; user_demand_ids_subnetwork) = node_ids_in_subnetwork
     (; p_independent) = p
     (; user_demand, level_difference_threshold) = p_independent
-    (; current_storage) = p.current_basin_properties
     flow = problem[:flow]
     user_demand_allocated = problem[:user_demand_allocated]
 
@@ -1637,17 +1636,18 @@ function update_user_demand_flow_bounds!(
         )
         min_level = user_demand.min_level[node_id.idx]
         for link_metadata in user_demand.inflow_links[node_id.idx]
-            # Like in the physical layer, the abstraction stops when the source reaches the
-            # minimum level. This uses the level at the start of the timestep.
+            # Like in the physical layer, the abstraction from a Basin stops when it reaches
+            # the minimum level. This uses the level at the start of the timestep.
+            # A Junction has no level, and its min_level is not used.
             source_id = link_metadata.link[1]
-            source_storage = source_id.is_basin ? current_storage[source_id.idx] : 0.0
-            source_level = get_level(source_storage, p, source_id, t)
-            f_reduction = reduction_factor(source_level - min_level, level_difference_threshold)
+            f_reduction = 1.0
             if source_id.is_basin
+                # Outside of automatic differentiation get_level ignores the storage argument
+                source_level = get_level(0.0, p, source_id, t)
                 # An allocated inflow can raise the level. Without this a UserDemand at its
                 # min_level would never get a supply, since nothing would ask for the water.
                 f_reduction = max(
-                    f_reduction,
+                    reduction_factor(source_level - min_level, level_difference_threshold),
                     allocated_inflow_reduction_factor(source_id, source_level, p, t),
                 )
             end
