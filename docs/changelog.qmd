@@ -6,10 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Add `[logging] progress` TOML option and `RIBASIM_PROGRESS` environment variable, which takes precedence, to disable the progress bar, which avoids repeated progress lines in logs and documentation. [#3111](https://github.com/Deltares/Ribasim/issues/3111)
 - ContinuousControl can listen to flows set by other ContinuousControl or PidControl nodes, also via Junctions. Before, such a flow was read as 0 without an error. A circular dependency in the control of flows is now an error. [#3408](https://github.com/Deltares/Ribasim/issues/3408)
 
 ### Changed
-- PidControl: the derivative term now includes the flows set by ContinuousControl and other PidControl nodes into the listened Basin, also via Junctions. Before, these were left out or depended on the order of the nodes. [#3408](https://github.com/Deltares/Ribasim/issues/3408)
+- Docs: explain the hydrological meaning, units and tuning of the PidControl parameters. [#1544](https://github.com/Deltares/Ribasim/issues/1544)
+- Docs: check the rendered documentation for dead links with lychee in CI. [#1844](https://github.com/Deltares/Ribasim/issues/1844)
+- Allocation: solve every problem from scratch, so that HiGHS uses presolve, which is much faster for large subnetworks. Start values made HiGHS construct a basis and then skip presolve. [#3387](https://github.com/Deltares/Ribasim/pull/3387)
+- Allocation: flow no longer switches between equally good routes from one timestep to the next. A last objective keeps the flows of allocation controlled nodes close to those of the previous timestep. [#3399](https://github.com/Deltares/Ribasim/issues/3399)
+- Allocation: the flow capacity of an allocation controlled Pump or Outlet is reduced by its `min_upstream_level`, `max_downstream_level` and, for an Outlet, level difference reduction factors, so allocation no longer plans flow that the physical layer does not realise. In the physical layer these factors now reduce the capacity of an allocation controlled Pump or Outlet, where they reduced the allocated flow rate itself. [#2723](https://github.com/Deltares/Ribasim/issues/2723)
+
+### Fixed
+- Long simulations of large rivers no longer stop with `Unstable` after some years. The cumulative flows are now reset before their floating point rounding approaches `solver.abstol`, without restarting the solver. [#3442](https://github.com/Deltares/Ribasim/pull/3442)
+
+### Fixed
+- Stricter input validation: an unknown `node_id` in `Basin / subgrid` or `Basin / subgrid_time` now stops the model with a clear error, where the first only logged an error and dropped the subgrid element, and the second crashed. A ContinuousControl function with a single data point and a missing value in a required column now also give a clear error. [#3449](https://github.com/Deltares/Ribasim/pull/3449)
+- Allow repeated `subgrid_level` values in `Basin / subgrid` and `Basin / subgrid_time`, which give a flat segment in the relation from Basin level to subgrid level. Subgrid elements with such values were rejected before. [#3449](https://github.com/Deltares/Ribasim/pull/3449)
+- Allocation: the error for an infeasible allocation problem now lists the incompatible constraints, this list was empty. [#3449](https://github.com/Deltares/Ribasim/pull/3449)
+- Junction: a model with 512 or more separate groups of Junctions with rows in `Junction / static` no longer stops with an error when run with multiple threads. [#3480](https://github.com/Deltares/Ribasim/pull/3480)
 
 ## [v2026.2.0-rc1] - 2026-11-11
 
@@ -303,7 +317,7 @@ We linearize the optimization problem, and Pump and Outlets can now listen to al
 NetCDF output has been added, as well as experimental support for NetCDF input.
 DiscreteControl now supports an upper and lower threshold to model hysteresis.
 Editing models in QGIS is no longer supported; the plugin widget has been reduced one button.
-The [Ribasim Python installation section](https://ribasim.org/install.html#sec-install-python) allows you to pick your favorite package manager.
+The [Ribasim Python installation section](https://ribasim.org/getting-started/install.html#sec-install-python) allows you to pick your favorite package manager.
 Lastly, Ribasim is now multithreaded!
 
 **Breaking changes**: In the `DiscreteControl / condition` table, `greater_than` has been renamed to `threshold_high`, and the optional `threshold_low` column was added.
@@ -394,8 +408,8 @@ We also welcome the Junction node to the family, which will help laying out netw
 - Added [Junction](https://ribasim.org/reference/node/junction.html) node type. [#2175](https://github.com/Deltares/Ribasim/pull/2175)
 - Write results and log bottlenecks also on an interrupt or crash. [#2191](https://github.com/Deltares/Ribasim/pull/2191) [#2200](https://github.com/Deltares/Ribasim/pull/2200)
 - Log computation time and save it to `solver_stats.arrow`. [#2209](https://github.com/Deltares/Ribasim/pull/)
-- Experimental support for writing the model network and results into files used by Delft-FEWS, [`model.to_fews`](`https://ribasim.org/reference/python/Model.html#ribasim.Model.to_fews`). [#2161](https://github.com/Deltares/Ribasim/pull/2161)
-- Document [`results/concentration.arrow`](https://ribasim.org/reference/usage.html#concentration---concentration.arrow). [#2165](https://github.com/Deltares/Ribasim/pull/2165)
+- Experimental support for writing the model network and results into files used by Delft-FEWS, `model.to_fews`. [#2161](https://github.com/Deltares/Ribasim/pull/2161)
+- Document [`results/concentration.arrow`](https://ribasim.org/reference/usage.html#concentration---concentration.nc). [#2165](https://github.com/Deltares/Ribasim/pull/2165)
 
 ### Changed
 - Allow max 1 outflow neighbour for FlowBoundary. [#2192](https://github.com/Deltares/Ribasim/pull/2192)

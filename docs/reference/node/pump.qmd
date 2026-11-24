@@ -73,6 +73,14 @@ For `depth_threshold`, `level_difference_threshold` see [Solver settings](/refer
 
 Since $\phi_\text{level}$ is applied after the clamp, `min_flow_rate` is not a strict minimum: the level criteria can still reduce the flow to zero.
 
+For an [allocation-controlled](#behavior-in-allocation) Pump the level criteria reduce the capacity instead of the flow rate:
+
+$$
+Q = \mathrm{clamp}(\phi_\text{storage} Q_\text{set}, \phi_\text{level} Q_{\min}, \phi_\text{level} Q_{\max})
+$$
+
+Allocation already takes these criteria into account when it sets the flow rate, so reducing the flow rate itself would apply them twice.
+
 # Behavior in allocation
 
 How a Pump behaves in [allocation](/concept/allocation.qmd) depends on `allocation_controlled` in the [Static](#static) table.

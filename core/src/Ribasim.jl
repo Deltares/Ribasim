@@ -182,8 +182,6 @@ using DataStructures: OrderedSet, OrderedDict, counter, inc!
 # NCDatasets and CommonDataModel are used to read and write NetCDF files.
 using NCDatasets: NCDatasets, NCDataset, defDim, defVar, dimnames, CFVariable
 
-using Dates: Second
-
 using Base.Threads: nthreads
 
 include("cvectors.jl")

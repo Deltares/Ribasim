@@ -21,8 +21,8 @@ function initialize_allocation!(
         return nothing
     end
 
-    # Detect connections between the primary network and subnetworks:
-    # (upstream_id: pump or outlet in the primary network, node_id: node in the subnetwork, generally a basin)
+    # Detect connections between the primary network and secondary networks:
+    # (upstream_id: pump or outlet in the primary network, node_id: node in the secondary network, generally a basin)
     collect_primary_network_connections!(allocation, graph, pump, outlet)
 
     non_positive_subnetwork_id(graph) && error("Allocation network initialization failed.")
@@ -644,7 +644,7 @@ function TabulatedRatingCurve(db::DB, config::Config, graph::MetaGraph)
                     itp_first = rating_curve.interpolations[first(lookup_index)]
                     itp_last = rating_curve.interpolations[last(lookup_index)]
                     if !((itp_first.t == itp_last.t) && (itp_first.u == itp_last.u))
-                        @error "For $node_id with cyclic_time the first and last rating curves are not equal."
+                        @error "For $id with cyclic_time the first and last rating curves are not equal."
                         errors = true
                     end
                     lookup_index[end] = first(lookup_index)
@@ -1037,7 +1037,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
 
     profiles = load_structvector(db, config, Schema.Basin.Profile)
 
-    errors |= validate_consistent_basin_initialization(profiles)
+    errors |= !validate_consistent_basin_initialization(profiles)
     errors && error("Errors encountered when parsing Basin data.")
 
     areas, levels, storage, node_ids = interpolate_basin_profile!(basin, profiles)
@@ -1272,6 +1272,8 @@ function continuous_control_functions(db, config, ids)
         if length(function_rows) < 2
             @error "There must be at least 2 data points in a ContinuousControl function."
             errors = true
+            # No interpolation can be constructed, the errors are thrown by the caller
+            continue
         elseif length(unique_controlled_variable) !== 1
             @error "There must be a unique 'controlled_variable' in a ContinuousControl function."
             errors = true
@@ -1923,7 +1925,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)
         basin_level = getproperty.(group, :basin_level)
         subgrid_level = getproperty.(group, :subgrid_level)
 
-        if valid_subgrid(subgrid_id, node_id, node_to_basin, basin_level, subgrid_level)
+        if valid_subgrid(subgrid_id, node_id, node_to_basin)
             hh_itp = LinearInterpolation(
                 subgrid_level,
                 basin_level;
@@ -1942,14 +1944,17 @@ function Subgrid(db::DB, config::Config, basin::Basin)
         end
     end
 
-    errors && @error("Errors encountered when parsing Basin Subgrid data.")
-
     interpolation_index = 0
 
     for group in IterTools.groupby(row -> row.subgrid_id, time)
         first_row = first(group)
         subgrid_id = first_row.subgrid_id
         node_id = first_row.node_id
+        if !haskey(node_to_basin, node_id)
+            @error "The node_id of the Basin / subgrid_time does not exist." node_id subgrid_id
+            errors = true
+            continue
+        end
         cyclic_time = cyclic_times[node_to_basin[node_id].idx]
 
         # Push the new subgrid_id and basin ID and extend level
@@ -1967,21 +1972,16 @@ function Subgrid(db::DB, config::Config, basin::Basin)
             basin_level = getproperty.(group_time, :basin_level)
             subgrid_level = getproperty.(group_time, :subgrid_level)
 
-            if valid_subgrid(subgrid_id, node_id, node_to_basin, basin_level, subgrid_level)
-                hh_itp = LinearInterpolation(
-                    subgrid_level,
-                    basin_level;
-                    extrapolation_left = ConstantExtrapolation,
-                    extrapolation_right = Linear,
-                    cache_parameters = true,
-                )
-                push!(lookup_index, interpolation_index)
-                push!(lookup_time, seconds_since(t, config.starttime))
-                push!(subgrid.interpolations_time, hh_itp)
-            else
-                @error "Invalid Basin time subgrid table for $node_id, time = $t."
-                errors = true
-            end
+            hh_itp = LinearInterpolation(
+                subgrid_level,
+                basin_level;
+                extrapolation_left = ConstantExtrapolation,
+                extrapolation_right = Linear,
+                cache_parameters = true,
+            )
+            push!(lookup_index, interpolation_index)
+            push!(lookup_time, seconds_since(t, config.starttime))
+            push!(subgrid.interpolations_time, hh_itp)
         end
 
         if cyclic_time
@@ -2017,7 +2017,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)
         findsorted.(Ref(subgrid_ids), subgrid.subgrid_id_time),
     )
 
-    errors && @error("Errors encountered when parsing Basin Subgrid time data.")
+    errors && error("Errors encountered when parsing Basin subgrid data.")
 
     return subgrid
 end
@@ -2516,6 +2516,9 @@ function typed_columntable(table, ::Type{T})::NamedTuple where {T <: Table}
         end
         col = table[name]
         if eltype(col) !== target_type
+            if !(Missing <: target_type) && any(ismissing, col)
+                throw(ArgumentError("Missing values in required column $(name) for table $(T)."))
+            end
             target = Vector{target_type}(undef, length(col))
             target .= col
             table[name] = target

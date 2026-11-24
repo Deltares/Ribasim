@@ -48,6 +48,70 @@ function water_balance!(
     return nothing
 end
 
+"""
+Formulate the flows that ContinuousControl can listen to: the Basin forcings, the flows that are
+not continuously controlled and the flows controlled by PidControl, as well as the PID integral rates.
+The arguments are those of `formulate_flows!`.
+"""
+function formulate_flows_before_continuous_control!(
+        du::RibasimStateCVector,
+        storage_uplink::FlowCVector,
+        storage_downlink::FlowCVector,
+        continuous_control_compound_variables::AbstractVector,
+        pid_integral::AbstractVector,
+        p::Parameters,
+        t::Number,
+    )::Nothing
+    formulate_flows_args = (
+        du,
+        storage_uplink,
+        storage_downlink,
+        continuous_control_compound_variables,
+        pid_integral,
+        p,
+        t,
+    )
+
+    # Basin forcings (precipitation, evaporation, infiltration, drainage, surface_runoff)
+    formulate_vertical_flux!(du.flow, storage_uplink, p, t)
+
+    # Formulate intermediate flows (non continuously controlled)
+    formulate_flows!(formulate_flows_args...)
+
+    # Provisional Junction flows, so that the derivative term of PID control sees the
+    # flow into the listened Basin via Junction nodes
+    formulate_provisional_junction_flow!(du.flow, p, t, ContinuousControlType.PID)
+
+    # Formulate the PID control integral term rate
+    formulate_PID_control!(du.pid_integral, storage_uplink, storage_downlink, p, t)
+
+    # Formulate intermediate flow (controlled by PID control)
+    formulate_flows!(
+        formulate_flows_args...;
+        control_type = ContinuousControlType.PID
+    )
+    return nothing
+end
+
+"""
+Compute the ContinuousControl compound variables from the Basin `storage` and the flows `flow_in`
+before the Junction subgraphs. Provisional Junction flows are computed into `flow` first, so that
+ContinuousControl sees the flows in the Junction subgraphs, see `formulate_provisional_junction_flow!`.
+`flow` and `flow_in` are the same vector, except in the Jacobian closure where the flows are input.
+"""
+function formulate_continuous_control_compound_variables!(
+        compound_variables::AbstractVector,
+        storage::AbstractVector,
+        flow::FlowCVector,
+        p::Parameters,
+        t::Number;
+        flow_in::FlowCVector = flow,
+    )::Nothing
+    formulate_provisional_junction_flow!(flow, p, t, ContinuousControlType.Continuous; flow_in)
+    compute_continuous_control_compound_variables!(compound_variables, storage, flow, p, t)
+    return nothing
+end
+
 function formulate_cumulative_boundary_flow!(
         flow_boundary::FlowBoundary,
         p::Parameters,
@@ -902,6 +966,37 @@ function pump_or_outlet_flow(
             end
         end
     end
+    min_upstream_level_ = eval_time_interpolation(
+        min_upstream_level,
+        current_min_upstream_level,
+        node_idx,
+        p,
+        t,
+    )
+    max_downstream_level_ = eval_time_interpolation(
+        max_downstream_level,
+        current_max_downstream_level,
+        node_idx,
+        p,
+        t,
+    )
+
+    if is_active(allocation) && node.allocation_controlled[node_idx]
+        # Allocation already limits its flow rate to the capacity that is left by the level
+        # based reduction factors, see `connector_flow_capacity_bounds`. So here these
+        # factors reduce the capacity too, not the flow rate itself: that would apply them twice.
+        level_factor =
+            reduction_factor(src_level - min_upstream_level_, level_difference_threshold)
+        level_factor *=
+            reduction_factor(max_downstream_level_ - dst_level, level_difference_threshold)
+        if reduce_Δlevel
+            level_factor *= reduction_factor(src_level - dst_level, level_difference_threshold)
+        end
+        return clamp(q, level_factor * lower_bound, level_factor * upper_bound)
+    end
+
+    # The factors are applied to the flow rate one by one, in this order, so that the results
+    # without allocation control are the same to the last digit as before
     q = clamp(q, lower_bound, upper_bound)
 
     # Special case for outlet: check level difference
@@ -910,22 +1005,7 @@ function pump_or_outlet_flow(
         q *= reduction_factor(Δlevel, level_difference_threshold)
     end
 
-    min_upstream_level_ = eval_time_interpolation(
-        min_upstream_level,
-        current_min_upstream_level,
-        node_idx,
-        p,
-        t,
-    )
     q *= reduction_factor(src_level - min_upstream_level_, level_difference_threshold)
-
-    max_downstream_level_ = eval_time_interpolation(
-        max_downstream_level,
-        current_max_downstream_level,
-        node_idx,
-        p,
-        t,
-    )
     q *= reduction_factor(max_downstream_level_ - dst_level, level_difference_threshold)
 
     return q
@@ -1123,9 +1203,10 @@ function formulate_junction_flow!(
     end
 
     # Different Junction subgraphs are independent from eachother, and the nodes in a subgraph
-    # are in topological order, so the flows of the UserDemand nodes upstream are known
-    @threaded for subgraph in routed_subgraphs
-        for id in subgraph
+    # are in topological order, so the flows of the UserDemand nodes upstream are known.
+    # @threaded needs a range of indices.
+    @threaded for subgraph_idx in eachindex(routed_subgraphs)
+        for id in routed_subgraphs[subgraph_idx]
             id.type == NodeType.UserDemand || continue
             formulate_junction_user_demand_flow!(flow, p, t, id.idx, boundary_flow)
         end

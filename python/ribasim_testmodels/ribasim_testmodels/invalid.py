@@ -391,7 +391,7 @@ def invalid_user_demand_missing_min_level_model() -> Model:
 
 
 def _invalid_subnetwork_model() -> Model:
-    """Create an empty model with allocation, to connect the primary network and subnetworks in."""
+    """Create an empty model with allocation, to connect the primary network and secondary networks in."""
     return Model(
         starttime=datetime(2020, 1, 1),
         endtime=datetime(2021, 1, 1),
@@ -409,7 +409,7 @@ def _invalid_subnetwork_basin_tables() -> list:
 
 
 def invalid_junction_subnetwork_boundary_model() -> Model:
-    """Put a Junction that stays in the simulation at the boundary between the primary network and a subnetwork."""
+    """Put a Junction that stays in the simulation at the boundary between the primary network and a secondary network."""
     model = _invalid_subnetwork_model()
     bsn1 = model.basin.add(Node(1, Point(0, 0)), _invalid_subnetwork_basin_tables())
     pmp = model.pump.add(
@@ -430,7 +430,7 @@ def invalid_junction_subnetwork_boundary_model() -> Model:
 
 
 def invalid_subnetwork_to_primary_model() -> Model:
-    """Flow from a subnetwork into the primary network."""
+    """Flow from a secondary network into the primary network."""
     model = _invalid_subnetwork_model()
     bsn1 = model.basin.add(
         Node(1, Point(0, 0), subnetwork_id=2), _invalid_subnetwork_basin_tables()

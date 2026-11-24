@@ -9,11 +9,11 @@ updates:
       all-actions:
         patterns:
           - "*"
-  - package-ecosystem: "julia"
-    directory: "/"
+  - package-ecosystem: "cargo"
+    directory: "/build/cli"
     schedule:
       interval: "monthly"
-    groups: # group all julia package updates into a single PR
-      all-julia-packages:
+    groups:
+      all-cargo-packages:
         patterns:
           - "*"

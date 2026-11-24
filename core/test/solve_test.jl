@@ -1,3 +1,51 @@
+@testitem "Cumulative flows are reset before their rounding approaches abstol" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    (; integrator) = Ribasim.Model(toml_path)
+    threshold = Ribasim.cumulative_flow_reset_threshold(integrator.opts.abstol)
+    @test eps(threshold) <= 1.0e-3 * integrator.opts.abstol
+    u = copy(integrator.u)
+    u.flow[1] = prevfloat(threshold)
+    @test !Ribasim.cumulative_flow_reset_condition(u, 0.0, integrator)
+    u.flow[1] = threshold
+    @test Ribasim.cumulative_flow_reset_condition(u, 0.0, integrator)
+end
+
+@testitem "Resetting the cumulative flows doesn't restart the solver" begin
+    using Ribasim: BMI
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    model = Ribasim.Model(toml_path)
+    model_reset = Ribasim.Model(toml_path)
+    BMI.update_until(model, 86400.0)
+    BMI.update_until(model_reset, 86400.0)
+    Ribasim.reset_cumulative_flows!(model_reset.integrator)
+    BMI.update_until(model, 10 * 86400.0)
+    BMI.update_until(model_reset, 10 * 86400.0)
+    # A restart changes the trajectory within the solver tolerance, here by about 3e-6
+    @test BMI.get_value_ptr(model_reset, "basin.storage") ≈ BMI.get_value_ptr(model, "basin.storage") rtol = 1.0e-8
+end
+
+@testitem "Results after resetting the cumulative flows in the last time step" begin
+    using Ribasim: BMI, write_results
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    day = 86400.0
+    config = Ribasim.Config(toml_path; results_dir = mktempdir())
+    model = Ribasim.Model(config)
+    # Stop in between saveats, so the results are saved up to the last time step
+    BMI.update_until(model, 2.5day)
+    (; current_storage, current_level) = model.integrator.p.current_basin_properties
+    storage_end = copy(current_storage)
+    level_end = copy(current_level)
+    # As if the reset callback fired in the last time step
+    Ribasim.reset_cumulative_flows!(model.integrator)
+    write_results(model)
+
+    @test Ribasim.basin_state_data(model).level ≈ level_end
+    (; storage, storage_rate) = Ribasim.basin_data(model; table = false)
+    @test storage[:, end] .+ 0.5day .* storage_rate[:, end] ≈ storage_end
+end
+
 @testitem "Inner linear solve with changing zeros in the Jacobian" begin
     using SparseArrays: nonzeros, rowvals
     using LinearAlgebra: I, norm

@@ -12,7 +12,6 @@ from typing import Any, cast
 from qgis.core import (
     Qgis,
     QgsAbstractVectorLayerLabeling,
-    QgsCoordinateReferenceSystem,
     QgsLayerTreeGroup,
     QgsMapLayer,
     QgsProject,
@@ -74,15 +73,6 @@ class RibasimWidget(QWidget):
     def plot_widget(self):
         """The PlotWidget for timeseries visualization."""
         return self.__dataset_widget.plot_widget
-
-    @property
-    def crs(self) -> QgsCoordinateReferenceSystem:
-        """Returns coordinate reference system of current mapview."""
-        map_canvas = self.iface.mapCanvas()
-        assert map_canvas is not None
-        map_settings = map_canvas.mapSettings()
-        assert map_settings is not None
-        return map_settings.destinationCrs()
 
     def open_model(self, path=None) -> None:
         self.__dataset_widget.open_model(path)
@@ -230,7 +220,3 @@ class RibasimWidget(QWidget):
             self.add_to_group(maplayer, destination, on_top)
 
         return maplayer
-
-    def add_relationship(self, new_layer, name: str) -> None:
-        assert self.node_layer is not None
-        self.__dataset_widget.add_relationship(new_layer, self.node_layer.id(), name)

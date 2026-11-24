@@ -626,27 +626,20 @@ end
 
 """
 Validate the entries for a single subgrid element.
+
+The subgrid levels can repeat, since the h(h) relation can have flat segments, for instance
+for an element with a bed level above the lowest Basin level. The Basin levels, at which
+the relation is interpolated, must be unique, which is checked as part of the table row
+uniqueness validation.
 """
 function valid_subgrid(
         subgrid_id::Int32,
         node_id::Int32,
         node_to_basin::Dict{Int32, NodeID},
-        basin_level::Vector{Float64},
-        subgrid_level::Vector{Float64},
     )::Bool
-    errors = false
-
-    if !(node_id in keys(node_to_basin))
-        errors = true
-        @error "The node_id of the Basin / subgrid does not exist." node_id subgrid_id
-    end
-
-    if !allunique(subgrid_level)
-        errors = true
-        @error "Basin / subgrid subgrid_id $(subgrid_id) has repeated element levels, this cannot be interpolated."
-    end
-
-    return !errors
+    valid = node_id in keys(node_to_basin)
+    valid || @error "The node_id of the Basin / subgrid does not exist." node_id subgrid_id
+    return valid
 end
 
 function valid_demand(
@@ -1083,6 +1076,7 @@ end
 Validates the initialisation of basins. Each basin at least need a level-area or level-storage relationship.
 We recommend to initialise all basins in the same way, which can be level-area, level-storage or both.
 If basins diverge from this recommendation we log info about it for the modeler.
+Returns whether the profiles are valid.
 """
 function validate_consistent_basin_initialization(
         profiles::StructVector{Schema.Basin.Profile},
@@ -1157,7 +1151,7 @@ function validate_consistent_basin_initialization(
         end
     end
 
-    return errors
+    return !errors
 end
 
 function invalid_nested_interpolation_times(
