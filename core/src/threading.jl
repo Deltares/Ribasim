@@ -80,9 +80,13 @@ end
 Call `f(k)` for each chunk `k` in `1:n_chunks`, in parallel tasks, at most one per thread. Each
 task takes the next chunk when it finishes the previous one, which balances the work over the
 threads. A function can process the `k`-th `chunk_range` of several loops, so that they share
-one set of tasks.
+one set of tasks. With one chunk it calls `f(1)` directly, which doesn't allocate.
 """
 function parallel_chunks(f::F, n_chunks::Int)::Nothing where {F}
+    if n_chunks == 1
+        f(1)
+        return nothing
+    end
     next_chunk = Threads.Atomic{Int}(1)
     function take_chunks()
         while true
