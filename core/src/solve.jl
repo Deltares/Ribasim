@@ -40,6 +40,30 @@ Data related to the Jacobian of a some function `f` which is part of `water_bala
 end
 
 """
+Prepare the Jacobian of `f!(output, input, t)` with respect to `input`, either sparse or dense.
+If `with_value`, `jac_func!(t)` also computes `output`.
+"""
+function SubJacobian(
+        f!::F,
+        output::AbstractVector,
+        input::AbstractVector,
+        backend_jac,
+        p::Parameters,
+        sparse::Bool;
+        with_value::Bool = false,
+    ) where {F}
+    t = 0.0
+    prep = @ad_active p prepare_jacobian(f!, output, backend_jac, input, Constant(t))
+    jac = sparse ? prep.sparsity * 1.0 : zeros(length(output), length(input))
+    jac_func! = if with_value
+        t -> @ad_active p value_and_jacobian!(f!, output, jac, prep, backend_jac, input, Constant(t))
+    else
+        t -> @ad_active p jacobian!(f!, output, jac, prep, backend_jac, input, Constant(t))
+    end
+    return SubJacobian(; input, jac, jac_func!)
+end
+
+"""
 Cache for evaluating the lazy Ribasim Jacobian. For more details
 see the RibasmimJacobian docstring.
 """
@@ -69,7 +93,7 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
             sparsity_detector = TracerSparsityDetector(),
             coloring_algorithm = GreedyColoringAlgorithm(),
         ) : backend
-    t = 0.0
+    sub_jacobian_args = (backend_jac, p, solver.sparse)
 
     ###
     #### jac_flow
@@ -85,6 +109,8 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
     )
     flow_input = cvector_from_axes(flow_input_axes)
 
+    # The flow formulation of water_balance!, where the inputs are not computed from the state
+    # but are the input of the Jacobian, and without the Junction flows (see jac_junction)
     function formulate_flows_closure!(du, flow_input, t)
         check_new_t!(p, t)
         set_current_boundary_flow_rate!(p_independent.flow_boundary, p, t)
@@ -99,43 +125,13 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
             p, t,
         )
 
-        formulate_vertical_flux!(du.flow, flow_input.storage_uplink, p, t)
-        formulate_flows!(formulate_flows_args...)
-        formulate_provisional_junction_flow!(du.flow, p, t, ContinuousControlType.PID)
-        formulate_PID_control!(du.pid_integral, flow_input.storage_uplink, flow_input.storage_downlink, p, t)
-        formulate_flows!(formulate_flows_args...; control_type = ContinuousControlType.PID)
+        formulate_flows_before_continuous_control!(formulate_flows_args...)
         formulate_flows!(formulate_flows_args...; control_type = ContinuousControlType.Continuous)
         return nothing
     end
 
-
-    ∂flow_∂flow_input_prep = @ad_active p prepare_jacobian(
-        formulate_flows_closure!,
-        du,
-        backend_jac,
-        flow_input,
-        Constant(t),
-    )
-    ∂flow_∂flow_input = solver.sparse ?
-        ∂flow_∂flow_input_prep.sparsity * 1.0 :
-        zeros(length(du), length(flow_input))
-
-    # Also compute value to cache flows for continuous control input
-    eval_∂flow_∂flow_input!(t) = @ad_active p value_and_jacobian!(
-        formulate_flows_closure!,
-        du,
-        ∂flow_∂flow_input,
-        ∂flow_∂flow_input_prep,
-        backend_jac,
-        flow_input,
-        Constant(t),
-    )
-
-    jac_flow = SubJacobian(;
-        input = flow_input,
-        jac = ∂flow_∂flow_input,
-        jac_func! = eval_∂flow_∂flow_input!
-    )
+    # Also compute the value to cache the flows for the ContinuousControl input
+    jac_flow = SubJacobian(formulate_flows_closure!, du, flow_input, sub_jacobian_args...; with_value = true)
 
     ###
     #### jac_continuous_control
@@ -144,12 +140,13 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
     continuous_control_input_axes = concatenate_axes((; storage = 1:length(basin), flow = flow_ranges))
     continuous_control_input = cvector_from_axes(continuous_control_input_axes)
     # The compound variables can depend on the flows in the Junction subgraphs, which are computed
-    # from the input flows first. These flows are part of the output, before the compound variables,
-    # so that they have the element type of the input. Without routed Junction nodes this part is empty.
-    has_routed_junctions = !isempty(p_independent.junction.routed_ids)
+    # provisionally from the input flows first. These flows are part of the output, before the compound
+    # variables, so that they have the element type of the input. Without provisional Junction flows
+    # this part is empty.
+    has_flow_output = has_provisional_junction_flow(p_independent, ContinuousControlType.Continuous)
     continuous_control_output_axes = concatenate_axes(
         (;
-            flow = has_routed_junctions ? flow_ranges : CVectors.empty_axes(typeof(flow_ranges)),
+            flow = has_flow_output ? flow_ranges : CVectors.empty_axes(typeof(flow_ranges)),
             compound = 1:length(continuous_control),
         )
     )
@@ -157,51 +154,19 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
     continuous_control_output = zero(cvector_from_axes(continuous_control_output_axes))
 
     function continuous_control_closure!(continuous_control_output, continuous_control_input, t)
-        flow = if has_routed_junctions
-            formulate_junction_flow!(
-                continuous_control_output.flow, p, t;
-                flow_in = continuous_control_input.flow
-            )
-            continuous_control_output.flow
-        else
-            continuous_control_input.flow
-        end
-        compute_continuous_control_compound_variables!(
+        formulate_continuous_control_compound_variables!(
             continuous_control_output.compound,
             continuous_control_input.storage,
-            flow,
+            has_flow_output ? continuous_control_output.flow : continuous_control_input.flow,
             p,
-            t
+            t;
+            flow_in = continuous_control_input.flow,
         )
         return nothing
     end
 
-    ∂continuous_control_compound_∂continuous_control_input_prep = @ad_active p prepare_jacobian(
-        continuous_control_closure!,
-        continuous_control_output,
-        backend_jac,
-        continuous_control_input,
-        Constant(t),
-    )
-
-    ∂continuous_control_compound_∂continuous_control_input = solver.sparse ?
-        ∂continuous_control_compound_∂continuous_control_input_prep.sparsity * 1.0 :
-        zeros(length(continuous_control_output), length(continuous_control_input))
-
-    eval_∂continuous_control_compound_∂continuous_control_input!(t) = @ad_active p jacobian!(
-        continuous_control_closure!,
-        continuous_control_output,
-        ∂continuous_control_compound_∂continuous_control_input,
-        ∂continuous_control_compound_∂continuous_control_input_prep,
-        backend_jac,
-        continuous_control_input,
-        Constant(t),
-    )
-
-    jac_continuous_control = SubJacobian(;
-        input = continuous_control_input,
-        jac = ∂continuous_control_compound_∂continuous_control_input,
-        jac_func! = eval_∂continuous_control_compound_∂continuous_control_input!
+    jac_continuous_control = SubJacobian(
+        continuous_control_closure!, continuous_control_output, continuous_control_input, sub_jacobian_args...
     )
 
     ###
@@ -224,32 +189,7 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
             jac_func! = Returns(nothing),
         )
     else
-        ∂junction_flow_∂flow_prep = @ad_active p prepare_jacobian(
-            junction_closure!,
-            junction_flow,
-            backend_jac,
-            non_junction_flow,
-            Constant(t)
-        )
-
-        ∂junction_flow_∂flow = solver.sparse ? ∂junction_flow_∂flow_prep.sparsity * 1.0 :
-            zeros(length(junction_flow), length(non_junction_flow))
-
-        eval_∂junction_flow_∂flow!(t) = @ad_active p jacobian!(
-            junction_closure!,
-            junction_flow,
-            ∂junction_flow_∂flow,
-            ∂junction_flow_∂flow_prep,
-            backend_jac,
-            non_junction_flow,
-            Constant(t)
-        )
-
-        SubJacobian(;
-            input = non_junction_flow,
-            jac = ∂junction_flow_∂flow,
-            jac_func! = eval_∂junction_flow_∂flow!
-        )
+        SubJacobian(junction_closure!, junction_flow, non_junction_flow, sub_jacobian_args...)
     end
 
     return RibasimJacobianEvaluationCache(;
