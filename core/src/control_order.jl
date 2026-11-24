@@ -10,8 +10,12 @@ const ControlUnit = Tuple{ControlUnitType.T, Int}
 controlled_flow_idx(flow_ranges::FlowTuple, node_id::NodeID)::Int =
     flow_ranges.horizontal[node_type_map[node_id.type]][node_id.idx]
 
-"Whether the derivative term of PidControl node `pid_idx` can be nonzero, also in other control states."
-function has_derivative_term(pid_control::PidControl, pid_idx::Int)::Bool
+"""
+Whether the derivative term of PidControl node `pid_idx` can be nonzero, also in other control states.
+Used for `pid_control.has_derivative_term`, so that the Jacobian sparsity pattern, which is traced once,
+does not depend on the derivative gain of the control state at initialization.
+"""
+function compute_has_derivative_term(pid_control::PidControl, pid_idx::Int)::Bool
     any(!iszero, pid_control.derivative[pid_idx].u) && return true
     node_id = pid_control.node_id[pid_idx]
     for ((control_node_id, _), update) in pid_control.control_mapping
@@ -95,7 +99,7 @@ it depends on. A circular dependency is an error, since then there is no order t
 """
 function set_control_order!(p::Parameters)::Nothing
     (; p_independent) = p
-    (; pid_control, continuous_control, user_demand, junction, incidence_matrix_transpose, flow_ranges, control_order) =
+    (; pid_control, continuous_control, user_demand, junction, incidence_matrix, flow_ranges, control_order) =
         p_independent
     empty!(control_order)
     isempty(pid_control.node_id) && isempty(continuous_control.node_id) && return nothing
@@ -111,11 +115,9 @@ function set_control_order!(p::Parameters)::Nothing
         elseif type == ControlUnitType.Compound
             findall(compound_dependencies[idx, :])
         elseif type == ControlUnitType.PID
-            if has_derivative_term(pid_control, idx)
+            if pid_control.has_derivative_term[idx]
                 own_flow_idx = controlled_flow_idx(flow_ranges, pid_control.controlled_node_id[idx])
-                # The flows of the listened Basin, a column of the transposed incidence matrix
-                basin_idx = pid_control.listen_node_id[idx].idx
-                basin_flows = rowvals(incidence_matrix_transpose)[nzrange(incidence_matrix_transpose, basin_idx)]
+                basin_flows = findnz(incidence_matrix[pid_control.listen_node_id[idx].idx, :])[1]
                 filter(!=(own_flow_idx), basin_flows)
             else
                 Int[]

@@ -224,9 +224,13 @@ class Logging(ChildModel):
     ----------
     verbosity : Verbosity
         The verbosity of the logging: debug/info/warn/error (Optional, defaults to info)
+    progress : bool | None
+        Whether to show a progress bar in the terminal (Optional, defaults to True).
+        The RIBASIM_PROGRESS environment variable takes precedence over this setting.
     """
 
     verbosity: Verbosity = Verbosity.info
+    progress: bool | None = None
 
 
 class Experimental(ChildModel):

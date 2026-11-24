@@ -138,7 +138,7 @@ end
 function NodeID(node_type, value::Integer, node_ids::Vector{NodeID})::NodeID
     node_type = NodeType.T(node_type)
     index = searchsortedfirst(node_ids, value; by = Int32)
-    if index == lastindex(node_ids) + 1
+    if index == lastindex(node_ids) + 1 || node_ids[index].value != value
         @error "Node ID $node_type #$value is not in the Node table."
         error("Node ID not found")
     end
@@ -152,7 +152,7 @@ end
 
 function NodeID(value::Integer, node_ids::Vector{NodeID})::NodeID
     index = searchsortedfirst(node_ids, value; by = Int32)
-    if index == lastindex(node_ids) + 1
+    if index == lastindex(node_ids) + 1 || node_ids[index].value != value
         @error "Node ID #$value is not in the Node table."
         error("Node ID not found")
     end
@@ -248,7 +248,7 @@ const IndexLookup = ConstantInterpolation{
     SearchProperties{Float64},
 }
 
-@enumx AllocationObjectiveType demand_flow demand_storage low_storage_factor route_priorities none
+@enumx AllocationObjectiveType demand_flow demand_storage low_storage_factor route_priorities flow_change none
 
 """
 The data associated with a single objective. Only demand objectives have demand priorities.
@@ -342,6 +342,7 @@ level_demand_area_sum: The sum of current Basin areas per active LevelDemand pri
 level_demand_count: The number of Basins per active LevelDemand priority
 level_demand_area_scale: The mean current Basin area per active LevelDemand priority
 temporary_constraints: Goal programming constraints; one is added after each optimization to retain their results
+allocation_controlled_flows: The flow variable through each allocation controlled node, set in `add_flow_change!`
 allocation_controlled: The allocation_controlled flags of the Pumps, Outlets and TabulatedRatingCurves in the
     subnetwork that the control constraints were built for, see update_control_states!
 """
@@ -363,6 +364,7 @@ allocation_controlled: The allocation_controlled flags of the Pumps, Outlets and
     level_demand_count::OrderedDict{Int32, Int} = OrderedDict()
     level_demand_area_scale::OrderedDict{Int32, Float64} = OrderedDict()
     temporary_constraints::Vector{JuMP.ConstraintRef} = JuMP.ConstraintRef[]
+    allocation_controlled_flows::OrderedDict{NodeID, JuMP.VariableRef} = OrderedDict()
     allocation_controlled::Vector{Bool} = Bool[]
 end
 
@@ -424,9 +426,9 @@ end
 """
 Object for all information about allocation
 subnetwork_ids: The unique sorted allocation network IDs
-allocation_models: The allocation models for the primary network and subnetworks corresponding to
+allocation_models: The allocation models for the primary network and secondary networks corresponding to
     subnetwork_ids
-primary_network_connections: (from_id: pump or outlet in the primary network, to_id: node in the subnetwork, generally a basin)
+primary_network_connections: (from_id: pump or outlet in the primary network, to_id: node in the secondary network, generally a basin)
     per subnetwork
 demand_priorities_all: All used demand priority values from all subnetworks
 config: The Ribasim Model config
@@ -786,7 +788,7 @@ allocation_controlled: whether this TabulatedRatingCurve is controlled by alloca
     flow_demand_id::Vector{NodeID} =
         fill(NodeID(NodeType.FlowDemand, 0, 0), length(node_id))
     allocation_controlled::Vector{Bool} = fill(false, length(node_id))
-    flow_rate::Vector{Float64} = Vector{Float64}(undef, length(node_id))
+    flow_rate::Vector{Float64} = zeros(length(node_id))
 end
 
 """
@@ -1021,8 +1023,6 @@ node_id: node ID of the Terminal node
     node_id::Vector{NodeID}
 end
 
-@enumx CacheType flow_rate_pump flow_rate_outlet basin_level basin_storage
-
 """
 A cache for intermediate results in `water_balance!` which depend only on the time `t`. A second version of this
 this cache is required for automatic differentiation (for Rosenbrock methods), where e.g. ForwardDiff requires these vectors
@@ -1054,26 +1054,6 @@ const TimeDependentCache{T} = @NamedTuple{
     user_demand::@NamedTuple{current_demand::Vector{T}, current_return_factor::Vector{T}},
     t_prev_call::Vector{T},
 } where {T}
-
-"""
-Get one of the vectors of the CurrentBasinProperties based on the passed type.
-"""
-function get_cache_vector(
-        current_basin_properties::CurrentBasinProperties,
-        type::CacheType.T,
-    )
-    return if type == CacheType.flow_rate_pump
-        current_basin_properties.current_flow_rate_pump
-    elseif type == CacheType.flow_rate_outlet
-        current_basin_properties.current_flow_rate_outlet
-    elseif type == CacheType.basin_level
-        current_basin_properties.current_level
-    elseif type == CacheType.basin_storage
-        current_basin_properties.current_storage
-    else
-        error("Invalid cache type $type passed.")
-    end
-end
 
 @kwdef struct SubVariable
     listen_node_id::NodeID
@@ -1192,6 +1172,8 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
     derivative::Vector{ScalarConstantInterpolation} =
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
+    # Whether the derivative gain is nonzero in any control state, set after parsing
+    has_derivative_term::Vector{Bool} = fill(false, length(node_id))
     control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
         OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
 end
@@ -1423,7 +1405,6 @@ const ModelGraph = MetaGraph{
         external_flow_links::Vector{LinkMetadata},
         flow_link_map::SparseMatrixCSC{Int8, Int},
         junction_flows::Vector{Vector{Tuple{Tuple{NodeID, NodeID}, Int8}}},
-        flow_link_lookup::Dict{Tuple{NodeID, NodeID}, Int},
     },
     Returns{Float64},
     Float64,

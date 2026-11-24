@@ -239,12 +239,61 @@ end
     model = Ribasim.run(config)
 
     basin_results = DataFrame(Ribasim.basin_data(model))
-    level_polder_4 = filter(:node_id => ==(4), basin_results).level
-    level_polder_6 = filter(:node_id => ==(6), basin_results).level
+    level(node_id) = filter(:node_id => ==(node_id), basin_results).level
     # Test level at polder 6 approx 0.9 meter
-    @test all(isapprox.(level_polder_6, 0.9; atol = 0.1e-3))
+    @test all(isapprox.(level(6), 0.9; atol = 0.1e-3))
     # Test all level except first approx 1.0 meter at polder 4
-    @test all(isapprox.(level_polder_4[2:end], 1.0; atol = 1.0e-3))
+    @test all(isapprox.(level(4)[2:end], 1.0; atol = 1.0e-3))
+    # The boezem stays within the band of its level demand
+    @test all(1.15 - 1.0e-3 .≤ level(3) .≤ 1.25 + 1.0e-3)
+    @test all(1.15 - 1.0e-3 .≤ level(9) .≤ 1.25 + 1.0e-3)
+
+    flow_results = DataFrame(Ribasim.flow_data(model))
+    # Daily flow rates of a link, with the first and last days of the intervals left out
+    # since the flows adjust to the new season there
+    function flow(from_node_id, to_node_id, days)
+        link = filter(
+            r -> r.from_node_id == from_node_id && r.to_node_id == to_node_id,
+            flow_results,
+        )
+        return link.flow_rate[days .+ 1]
+    end
+    wet = vcat(2:88, 182:268)
+    dry_flushing = 92:178
+    dry = 272:364
+
+    # Wet: polder > boezem > river
+    @test all(≈(0; atol = 1.0e-6), flow(3, 5, wet))  # no water from the boezem to the polder
+    @test all(≈(2.0; atol = 1.0e-3), flow(6, 7, wet))  # the rain on the polders is pumped out
+
+    # Dry, flushing: river > boezem > polder, and 1.5 m³/s through the polder to the boezem
+    @test all(≈(1.5; atol = 1.0e-3), flow(6, 7, dry_flushing))
+    @test all(≈(3.5; atol = 0.02), flow(3, 5, dry_flushing))
+
+    # Dry, no flushing: river > boezem > polder, nothing back from the polder
+    @test all(≈(0; atol = 1.0e-6), flow(6, 7, dry))
+    @test all(≈(2.0; atol = 0.02), flow(3, 5, dry))
+end
+
+@testitem "Allocation polder level management with short supply" begin
+    using DataFrames: DataFrame
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/polder_management_short_supply/ribasim.toml",
+    )
+    model = Ribasim.run(toml_path)
+
+    basin_results = DataFrame(Ribasim.basin_data(model))
+    boezem_level = filter(:node_id => ==(3), basin_results).level
+    # The boezem is not drained for the polders below the minimum upstream level
+    # of the inlet, 0.5 m below its target
+    @test minimum(boezem_level) > 0.7 - 1.0e-3
+
+    # The polders are below their target level, so they do not refill the boezem
+    flow_results = DataFrame(Ribasim.flow_data(model))
+    pump_flow = filter(r -> r.from_node_id == 6 && r.to_node_id == 7, flow_results)
+    @test all(≈(0; atol = 1.0e-6), pump_flow.flow_rate[273:365])
 end
 
 @testitem "Allocation controlled rating curve" begin

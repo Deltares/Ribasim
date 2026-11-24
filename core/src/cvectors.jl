@@ -64,9 +64,16 @@ Base.length(x::CVector) = getfield(x, :len)
 Base.size(x::CVector) = (length(x),)
 
 Base.getindex(x::CVector, i::Int) = getdata(x)[getfield(x, :offset) + i]
-Base.getindex(x::CVector, I...) = getdata(x)[I...]
+Base.getindex(x::CVector, I...) = own_data(x)[I...]
 Base.setindex!(x::CVector, value, i::Int) = (getdata(x)[getfield(x, :offset) + i] = value)
-Base.setindex!(x::CVector, value, I...) = (getdata(x)[I...] = value)
+Base.setindex!(x::CVector, value, I...) = (own_data(x)[I...] = value)
+
+# The part of the data that belongs to this CVector, which for a nested component is not
+# the whole data vector
+function own_data(x::CVector)
+    offset = getfield(x, :offset)
+    return view(getdata(x), (offset + 1):(offset + length(x)))
+end
 
 Base.IndexStyle(::Type{<:CVector}) = IndexLinear()
 Base.elsize(x::CVector) = Base.elsize(getdata(x))
@@ -181,7 +188,6 @@ _first_index(loc::Int) = loc
 _last_index(loc::AbstractUnitRange{<:Integer}) = last(loc)
 _last_index(loc::NamedTuple) = _last_index(last(values(loc)))
 
-_total_length(loc::AbstractUnitRange{<:Integer}) = length(loc)
 _total_length(loc::NamedTuple) = _last_index(loc) - _first_index(loc) + 1
 
 Base.@constprop :aggressive @inline function Base.getproperty(x::CVector, name::Symbol)

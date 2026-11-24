@@ -569,6 +569,12 @@ In the Netherlands, polders are low-lying areas protected by dikes, typically wi
 - **Wet periods** (days 1-90 and 180-270): Precipitation exceeds evaporation, requiring water removal from polders
 - **Dry periods** (days 90-180 and 270-366): Evaporation exceeds precipitation, requiring water supply to maintain target levels
 
+The same schematization has to give the right flow direction in both: in wet periods water flows from the polder to the boezem and on to the river, never from the boezem to the polder. In dry periods water flows from the river to the boezem and on to the polder, and the polder does not refill the boezem. Three things make this work, and they are marked in the code below:
+
+1. The polders have a higher demand priority than the boezem. The boezem then does not drain into a polder that is above its target level, and a polder does not refill the boezem when it is itself below its target level.
+2. The boezem has one `LevelDemand` for its connected basins, with a small band between its minimum and maximum level. Otherwise allocation moves water between the two boezem basins through the polder, instead of through the narrow channel between them.
+3. The polder inlet and the drainage pumping station have level limits (`min_upstream_level` and `max_downstream_level`). Allocation takes these limits into account, so it does not plan flow through a structure that is closed.
+
 Setup the model with allocation enabled:
 
 ```{python}
@@ -640,10 +646,11 @@ level6 = model.level_demand.add(
     [level_demand.Static(min_level=[0.9], max_level=[0.9], demand_priority=[1])],
 )
 
-# Level demand on boezem 3: maintain 1.2 m
+# Level demand on boezem 3: stay between 1.15 and 1.25 m, after the polders (priority 1)
+# and the flushing (priority 2). The band is the second ingredient, the priority the first.
 level3 = model.level_demand.add(
     Node(102, Point(2.0, -1), name="boezem#3 level demand"),
-    [level_demand.Static(min_level=[1.2], max_level=[1.2], demand_priority=[1])],
+    [level_demand.Static(min_level=[1.15], max_level=[1.25], demand_priority=[3])],
 )
 
 # Set initial boezem levels to 1.2m
@@ -669,7 +676,8 @@ level_boundary17 = model.level_boundary.add(
 Setup outlets with allocation control. Note `allocation_controlled=True` which tells the allocation algorithm to control these nodes:
 
 ```{python}
-# Inlet from boezem to polder 4
+# Inlet from boezem to polder 4. It closes when the boezem is more than 0.5 m below its
+# target, or when the polder is above its target (the third ingredient).
 outlet5 = model.outlet.add(
     Node(5, Point(2, 1), name="inlaat"),
     [
@@ -677,6 +685,8 @@ outlet5 = model.outlet.add(
             allocation_controlled=True,
             flow_rate=[0.0],
             max_flow_rate=5.0,
+            min_upstream_level=[0.7],
+            max_downstream_level=[1.05],
         )
     ],
 )
@@ -712,7 +722,7 @@ outlet12 = model.outlet.add(
 )
 ```
 
-Setup a pump controlled by allocation for removing excess water:
+Setup a pump controlled by allocation for removing excess water. It stops when the boezem is more than 0.5 m above its target, or when the polder is below its target:
 
 ```{python}
 pump7 = model.pump.add(
@@ -722,6 +732,8 @@ pump7 = model.pump.add(
             allocation_controlled=True,
             flow_rate=[0.0],
             max_flow_rate=20.0,
+            min_upstream_level=[0.85],
+            max_downstream_level=[1.7],
         )
     ],
 )
@@ -832,11 +844,13 @@ plt.show()
 
 The allocation algorithm automatically:
 
-- Supplies water during dry periods (positive flow through inlet)
-- Removes excess water during wet periods (positive flow through pump)
+- Supplies water during dry periods (positive flow through inlet), and none during wet periods
+- Removes excess water during wet periods (positive flow through pump), and only the flushing flow during dry periods
 - Transfers water between polders as needed
 - Respects maximum flow rate constraints
 - Prioritizes demands by priority level
+
+The level limits matter most when a structure cannot deliver what is demanded. If the river inlet is too small to supply the dry period (see the `polder_management_short_supply` test model), the boezem is drained only down to the minimum upstream level of the polder inlet, and the polders take the shortage. Without the limits allocation drains the boezem for the polders, and the polders for the boezem.
 
 # Model with continuous control
 

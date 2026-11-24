@@ -132,9 +132,6 @@ function create_graph(db::DB, config::Config)::MetaGraph
         external_flow_links,
         flow_link_map,
         junction_flows,
-        flow_link_lookup = Dict{Tuple{NodeID, NodeID}, Int}(
-            link_meta.link => i for (i, link_meta) in enumerate(internal_flow_links)
-        ),
     )
     @reset graph.graph_data = graph_data
 
@@ -480,23 +477,6 @@ function outneighbor_labels_type(
 end
 
 """
-Get the in- and outneighbor node IDs of the given node ID (label)
-over the given link type in the graph.
-"""
-function all_neighbor_labels_type(
-        graph::MetaGraph,
-        label::NodeID,
-        link_type::LinkType.T,
-    )::Iterators.Flatten
-    return Iterators.flatten(
-        (
-            outneighbor_labels_type(graph, label, link_type),
-            inneighbor_labels_type(graph, label, link_type),
-        )
-    )
-end
-
-"""
 Get the outneighbors over flow links.
 """
 function outflow_ids(graph::MetaGraph, id::NodeID)::OutNeighbors
@@ -508,13 +488,6 @@ Get the inneighbors over flow links.
 """
 function inflow_ids(graph::MetaGraph, id::NodeID)::InNeighbors
     return inneighbor_labels_type(graph, id, LinkType.flow)
-end
-
-"""
-Get the in- and outneighbors over flow links.
-"""
-function inoutflow_ids(graph::MetaGraph, id::NodeID)::Iterators.Flatten
-    return all_neighbor_labels_type(graph, id, LinkType.flow)
 end
 
 """
@@ -631,24 +604,6 @@ function get_junction_flow(flow::AbstractVector, junction_id::NodeID, p::Paramet
         value += sign * get_flow(flow, link, p.p_independent; t)
     end
     return value
-end
-
-"""
-Like `get_flow` and `get_state_index`, but for convergence, so without the boundary flow.
-"""
-function get_convergence(
-        convergence::CVector,
-        link::Tuple{NodeID, NodeID},
-    )::Union{Missing, Float64}
-    a = get_state_index(getaxes(convergence), link[1]; inflow = false)
-    b = get_state_index(getaxes(convergence), link[2])
-    return if isnothing(a) && isnothing(b)
-        missing
-    elseif isnothing(a)
-        convergence[b]
-    elseif isnothing(b)
-        convergence[a]
-    end
 end
 
 function get_inflow_links(graph::MetaGraph, id::NodeID)::Vector{LinkMetadata}

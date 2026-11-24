@@ -302,22 +302,21 @@ function get_pid_value(
     K_i = eval_time_interpolation(pid_control.integral[idx], current_integral, idx, p, t)
     K_d = eval_time_interpolation(pid_control.derivative[idx], current_derivative, idx, p, t)
 
-    D = if !iszero(K_d)
+    # The sparsity pattern of the Jacobian is traced once, so the terms below must not depend on the
+    # gains of the current control state: they are added whenever they can be nonzero in any state.
+    with_derivative = pid_control.has_derivative_term[idx]
+
+    D = if with_derivative
         # dlevel/dstorage = 1/area
         1.0 - K_d / current_area
     else
         1.0
     end
 
-    if !iszero(K_p)
-        value += K_p * current_error / D
-    end
+    value += K_p * current_error / D
+    value += K_i * pid_integral[idx] / D
 
-    if !iszero(K_i)
-        value += K_i * pid_integral[idx] / D
-    end
-
-    if !iszero(K_d)
+    if with_derivative
         # derivative() of ScalarConstantInterpolation returns a NaN at discontinuities
         dtarget = (target[idx] isa ScalarConstantInterpolation) ? 0.0 : derivative(target[idx], t)
         dstorage_listened_basin_old = formulate_dstorage_single_basin(du.flow, p_independent, listened_node_id; t)
@@ -915,6 +914,37 @@ function pump_or_outlet_flow(
             end
         end
     end
+    min_upstream_level_ = eval_time_interpolation(
+        min_upstream_level,
+        current_min_upstream_level,
+        node_idx,
+        p,
+        t,
+    )
+    max_downstream_level_ = eval_time_interpolation(
+        max_downstream_level,
+        current_max_downstream_level,
+        node_idx,
+        p,
+        t,
+    )
+
+    if is_active(allocation) && node.allocation_controlled[node_idx]
+        # Allocation already limits its flow rate to the capacity that is left by the level
+        # based reduction factors, see `connector_flow_capacity_bounds`. So here these
+        # factors reduce the capacity too, not the flow rate itself: that would apply them twice.
+        level_factor =
+            reduction_factor(src_level - min_upstream_level_, level_difference_threshold)
+        level_factor *=
+            reduction_factor(max_downstream_level_ - dst_level, level_difference_threshold)
+        if reduce_Δlevel
+            level_factor *= reduction_factor(src_level - dst_level, level_difference_threshold)
+        end
+        return clamp(q, level_factor * lower_bound, level_factor * upper_bound)
+    end
+
+    # The factors are applied to the flow rate one by one, in this order, so that the results
+    # without allocation control are the same to the last digit as before
     q = clamp(q, lower_bound, upper_bound)
 
     # Special case for outlet: check level difference
@@ -923,22 +953,7 @@ function pump_or_outlet_flow(
         q *= reduction_factor(Δlevel, level_difference_threshold)
     end
 
-    min_upstream_level_ = eval_time_interpolation(
-        min_upstream_level,
-        current_min_upstream_level,
-        node_idx,
-        p,
-        t,
-    )
     q *= reduction_factor(src_level - min_upstream_level_, level_difference_threshold)
-
-    max_downstream_level_ = eval_time_interpolation(
-        max_downstream_level,
-        current_max_downstream_level,
-        node_idx,
-        p,
-        t,
-    )
     q *= reduction_factor(max_downstream_level_ - dst_level, level_difference_threshold)
 
     return q
@@ -1179,9 +1194,10 @@ function formulate_junction_flow!(
     end
 
     # Different Junction subgraphs are independent from eachother, and the nodes in a subgraph
-    # are in topological order, so the flows of the UserDemand nodes upstream are known
-    @threaded for subgraph in routed_subgraphs
-        for id in subgraph
+    # are in topological order, so the flows of the UserDemand nodes upstream are known.
+    # @threaded needs a range of indices.
+    @threaded for subgraph_idx in eachindex(routed_subgraphs)
+        for id in routed_subgraphs[subgraph_idx]
             id.type == NodeType.UserDemand || continue
             formulate_junction_user_demand_flow!(flow, p, t, id.idx, boundary_flow)
         end

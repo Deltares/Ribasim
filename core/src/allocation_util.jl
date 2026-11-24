@@ -69,15 +69,15 @@ function collect_primary_network_connections!(
                             outlet.allocation_controlled[upstream_id.idx]
                         end
                         if !allocation_controlled
-                            @error "This node connects the primary network to a subnetwork and therefore must have allocation_controlled set to true." upstream_id subnetwork_id
+                            @error "This node connects the primary network to a secondary network without allocation_controlled set to true, which is not allowed." upstream_id subnetwork_id
                             errors = true
                         end
                     else
-                        @error "This node connects the primary network to a subnetwork but is not an outlet or pump." upstream_id subnetwork_id
+                        @error "This node connects the primary network to a secondary network but is not an outlet or pump, which is not allowed." upstream_id subnetwork_id
                         errors = true
                     end
                 elseif upstream_node_subnetwork_id != subnetwork_id
-                    @error "This node connects two subnetworks that are not the primary network." upstream_id subnetwork_id upstream_node_subnetwork_id
+                    @error "This node connects two secondary networks, which is not allowed." upstream_id subnetwork_id upstream_node_subnetwork_id
                     errors = true
                 end
             end
@@ -87,7 +87,7 @@ function collect_primary_network_connections!(
             primary_network_connections_subnetwork
     end
 
-    # Flow from a subnetwork into the primary network is not supported, which includes Junction nodes
+    # Flow from a secondary network into the primary network is not supported, which includes Junction nodes
     # at this boundary
     for node_id in get(graph[].node_ids, Int32(1), ())
         for upstream_id in inflow_ids(graph, node_id)
@@ -95,7 +95,7 @@ function collect_primary_network_connections!(
                 if upstream_id.is_routed || node_id.is_routed
                     @error "Junction nodes at the boundary between subnetworks are not supported." upstream_id node_id
                 else
-                    @error "This node flows from a subnetwork into the primary network, which is not supported." upstream_id node_id
+                    @error "This node flows from a secondary network into the primary network, which is not allowed." upstream_id node_id
                 end
                 errors = true
             end
@@ -103,7 +103,7 @@ function collect_primary_network_connections!(
     end
 
     errors &&
-        error("Errors detected in connections between primary network and subnetworks.")
+        error("Errors detected in connections between primary network and secondary networks.")
 
     return nothing
 end
@@ -150,7 +150,7 @@ function analyze_infeasibility(
     @debug "Running allocation infeasibility analysis for $subnetwork_id at t = $t, for full summary see $log_path."
 
     # Perform infeasibility analysis
-    JuMP.optimize!(problem)
+    optimize_cold!(problem)
     status = JuMP.termination_status(problem)
     data_infeasibility = MathOptAnalyzer.analyze(
         MathOptAnalyzer.Infeasibility.Analyzer(),
@@ -185,7 +185,7 @@ function analyze_infeasibility(
             violated_constraint in violated_constraints
     )
     constraint_to_slack = JuMP.relax_with_penalty!(problem, constraint_to_penalty)
-    JuMP.optimize!(problem)
+    optimize_cold!(problem)
 
     for irreducible_infeasible_subset in data_infeasibility.iis
         # Pre-render into a single plain string, embedded directly in the log message:
@@ -264,7 +264,36 @@ function get_optimizer()
         "time_limit" => 60.0,
         "random_seed" => 0,
         "small_matrix_value" => 1.0e-12,
+        # A solution can violate the feasibility tolerance after unscaling, which ends in status
+        # Unknown, also when the presolved problem was solved to optimality. For large problems
+        # this happens much less often with max value scaling than with the default equilibration.
+        "simplex_scale_strategy" => 4,
     )
+end
+
+"The primal and dual feasibility tolerance of an optimization, which is the default of HiGHS"
+const FEASIBILITY_TOLERANCE = 1.0e-7
+
+"""
+Solve the problem from scratch, without the basis of a previous solve or start values.
+HiGHS only uses presolve without a basis. Presolve removes nearly all rows of the allocation
+problem of a large subnetwork, since most flows follow from linearized flow-level relations.
+Solves that do reuse a basis need fewer iterations, but on large subnetworks they can take
+much longer and more often end in status Unknown.
+
+The tolerances are set for every solve instead of being reset after a solve with other
+tolerances, because changing an attribute after a solve makes JuMP reject its solution.
+"""
+function optimize_cold!(
+        problem::JuMP.Model;
+        feasibility_tolerance::Float64 = FEASIBILITY_TOLERANCE,
+    )::Nothing
+    JuMP.set_attribute(problem, "primal_feasibility_tolerance", feasibility_tolerance)
+    JuMP.set_attribute(problem, "dual_feasibility_tolerance", feasibility_tolerance)
+    status = HiGHS.Highs_clearSolver(JuMP.unsafe_backend(problem))
+    @assert status == HiGHS.kHighsStatusOk
+    JuMP.optimize!(problem)
+    return nothing
 end
 
 function ScalingFactors(
@@ -342,10 +371,11 @@ function update_scaling!(p::Parameters, t::Float64, Δt::Float64, t_known::Float
     return
 end
 
+# MathOptAnalyzer reports the indices of the JuMP model, not those of the optimizer
 function constraint_ref_from_index(problem::JuMP.Model, constraint_index)
     for other_constraint in
         JuMP.all_constraints(problem; include_variable_in_set_constraints = true)
-        if JuMP.optimizer_index(other_constraint) == constraint_index
+        if JuMP.index(other_constraint) == constraint_index
             return other_constraint
         end
     end
@@ -354,7 +384,7 @@ end
 
 function variable_ref_from_index(problem::JuMP.Model, variable_index)
     for other_variable in JuMP.all_variables(problem)
-        if JuMP.optimizer_index(other_variable) == variable_index
+        if JuMP.index(other_variable) == variable_index
             return other_variable
         end
     end
@@ -561,13 +591,6 @@ function get_primary_network(allocation_models::Vector{AllocationModel})::Alloca
         end
     end
     error("Queries primary network while no primary network found in allocation models.")
-end
-
-function delete_flow!(
-        allocation_model::AllocationModel
-    )::Nothing
-    (; problem) = allocation_model
-    return JuMP.delete(problem, problem[:flow])
 end
 
 """

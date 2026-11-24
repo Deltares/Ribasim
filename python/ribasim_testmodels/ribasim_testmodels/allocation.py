@@ -152,9 +152,11 @@ def two_basin_user_demand_model() -> Model:
     model.terminal.add(Node(6, Point(2, 0), subnetwork_id=1))
 
     # Allocation-controlled drains so the basins do not overflow when the UD pulls
-    # less than their upstream FlowBoundary supplies.
+    # less than their upstream FlowBoundary supplies. The route priority of Outlet 7
+    # makes draining Basin 3 instead of supplying the UserDemand from it more costly,
+    # otherwise which Basin supplies the UserDemand is a tie.
     model.outlet.add(
-        Node(7, Point(1, 1), subnetwork_id=1),
+        Node(7, Point(1, 1), subnetwork_id=1, route_priority=50),
         [
             outlet.Static(
                 flow_rate=[0.0], max_flow_rate=[1.0], allocation_controlled=True
@@ -434,16 +436,19 @@ def medium_primary_secondary_network_model() -> Model:
     # first basin
     model.basin.add(Node(2, Point(1, 0), subnetwork_id=1, route_priority=0), basin_data)
 
-    # outlet towards first subnetwork
+    # outlet towards first subnetwork, with a route priority so the Pump next to it is preferred
     model.outlet.add(
-        Node(3, Point(1, 1), subnetwork_id=1),
+        Node(3, Point(1, 1), subnetwork_id=1, route_priority=1),
         [outlet_data_2],
     )
 
-    # outlet towards second basin
-    model.outlet.add(
+    # The primary network has Pumps between its Basins: an Outlet only flows when the upstream
+    # level is higher than the downstream level, and allocation takes that into account
+    # per allocation timestep, which makes the result depend on how the network is split.
+    # pump towards second basin
+    model.pump.add(
         Node(4, Point(1.5, 0), subnetwork_id=1, route_priority=0),
-        [outlet_data],
+        [pump_data],
     )
 
     # second basin
@@ -455,10 +460,10 @@ def medium_primary_secondary_network_model() -> Model:
         [pump_data],
     )
 
-    # outlet towards fourth basin
-    model.outlet.add(
+    # pump towards third basin
+    model.pump.add(
         Node(16, Point(2.5, 0), subnetwork_id=1, route_priority=0),
-        [outlet_data],
+        [pump_data],
     )
 
     # third basin
@@ -466,14 +471,14 @@ def medium_primary_secondary_network_model() -> Model:
 
     # outlet towards second subnetwork
     model.outlet.add(
-        Node(8, Point(3, 1), subnetwork_id=1),
+        Node(8, Point(3, 1), subnetwork_id=1, route_priority=1),
         [outlet_data_2],
     )
 
-    # outlet towards fourth basin
-    model.outlet.add(
+    # pump towards fourth basin
+    model.pump.add(
         Node(9, Point(3.5, 0), subnetwork_id=1, route_priority=0),
-        [outlet_data],
+        [pump_data],
     )
 
     # fourth basin
@@ -531,14 +536,14 @@ def medium_primary_secondary_network_model() -> Model:
 
     model.link.add(model.flow_boundary[1], model.basin[2])
     model.link.add(model.basin[2], model.outlet[3])
-    model.link.add(model.basin[2], model.outlet[4])
-    model.link.add(model.outlet[4], model.basin[5])
+    model.link.add(model.basin[2], model.pump[4])
+    model.link.add(model.pump[4], model.basin[5])
     model.link.add(model.basin[5], model.pump[6])
-    model.link.add(model.basin[5], model.outlet[16])
-    model.link.add(model.outlet[16], model.basin[7])
+    model.link.add(model.basin[5], model.pump[16])
+    model.link.add(model.pump[16], model.basin[7])
     model.link.add(model.basin[7], model.outlet[8])
-    model.link.add(model.basin[7], model.outlet[9])
-    model.link.add(model.outlet[9], model.basin[10])
+    model.link.add(model.basin[7], model.pump[9])
+    model.link.add(model.pump[9], model.basin[10])
     model.link.add(model.basin[10], model.pump[11])
     model.link.add(model.basin[10], model.user_demand[12])
     model.link.add(model.user_demand[12], model.basin[10])
@@ -1550,11 +1555,88 @@ def multiple_route_priorities_model() -> Model:
     return model
 
 
-def polder_management_model() -> Model:
-    """Set up a model where the water level in the boezem is be higher than in the polder system.
+def tied_routes_model() -> Model:
+    """Set up a model where two reservoirs supply a UserDemand over Pumps with the same route priority.
 
-    To maintain the target water levels in dry periods in the polder system, a water supply of 2 m³/s is required during two periods of the year: day 90 to 180 and day 270 to 366.
-    Flushing is included as well: 1.5 m³/s during day 90 to 180.
+    How the supply is divided over the Pumps makes no difference for the objectives,
+    so allocation should stay close to the division of the previous timestep.
+    """
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 3, 1),
+        crs="EPSG:28992",
+        experimental=Experimental(allocation=True),
+    )
+    time = pd.date_range(model.starttime, model.endtime)
+    day = np.arange(len(time))
+
+    bsn = model.basin.add(
+        Node(1, Point(2, 0), subnetwork_id=1),
+        [basin.Profile(area=1e5, level=[0, 100]), basin.State(level=[0.5])],
+    )
+    ud = model.user_demand.add(
+        Node(2, Point(3, 0), subnetwork_id=1),
+        [
+            user_demand.Time(
+                demand_priority=1,
+                time=time,
+                demand=1 + 0.1 * np.sin(day / 5),
+                return_factor=0,
+                min_level=-5,
+            )
+        ],
+    )
+    model.link.add(bsn, ud)
+    model.link.add(ud, bsn)
+
+    for i in range(2):
+        # The inflow varies, so what a reservoir can supply differs per allocation timestep
+        fb = model.flow_boundary.add(
+            Node(3 + i, Point(-1, i), subnetwork_id=1),
+            [
+                flow_boundary.Time(
+                    time=time, flow_rate=0.6 + 0.3 * np.sin(day * (1 + i))
+                )
+            ],
+        )
+        reservoir = model.basin.add(
+            Node(5 + i, Point(0, i), subnetwork_id=1),
+            [basin.Profile(area=2e4, level=[0, 100]), basin.State(level=[2.0])],
+        )
+        pmp = model.pump.add(
+            Node(7 + i, Point(1, i), subnetwork_id=1),
+            [
+                pump.Static(
+                    flow_rate=[0.0], max_flow_rate=[2.0], allocation_controlled=True
+                )
+            ],
+        )
+        model.link.add(fb, reservoir)
+        model.link.add(reservoir, pmp)
+        model.link.add(pmp, bsn)
+
+    return model
+
+
+def polder_management_model(river_inlet_max_flow_rate: float = 10.0) -> Model:
+    """Set up a polder-boezem system that keeps its levels and its flow directions.
+
+    In wet periods (day 0 to 90 and 180 to 270) water must flow polder > boezem > river,
+    in dry periods (day 90 to 180 and 270 to 366) river > boezem > polder.
+    Flushing of the polder is included as well: 1.5 m³/s during day 90 to 180.
+
+    This takes three things:
+
+    - The polders have a higher demand priority than the boezem, with the flushing in between.
+      Then the boezem does not drain into a polder that is above its target level,
+      and a polder does not refill a boezem that is below its target level.
+    - Only one LevelDemand per boezem, with a small band between its minimum and maximum level.
+      Otherwise allocation moves water between the boezem Basins through the polder,
+      instead of through the narrow channel between them.
+    - Level limits on the structures: the inlet to the polder closes when the boezem is
+      more than 0.5 m below its target or the polder is above its target, and the drainage pumping
+      station stops when the boezem is more than 0.5 m above its target or the polder is below its target.
+      Allocation takes these limits into account.
     """
     model = Model(
         starttime=datetime(2020, 1, 1),
@@ -1607,10 +1689,10 @@ def polder_management_model() -> Model:
         [level_demand.Static(min_level=[0.9], max_level=[0.9], demand_priority=[1])],
     )
 
-    # Level demand on boezem 3 maintain 1.2 m
+    # Level demand on boezem 3 maintain 1.2 m, after the polders and the flushing
     level3 = model.level_demand.add(
         Node(102, Point(2.0, -1), name="boezem#3 level demand"),
-        [level_demand.Static(min_level=[1.2], max_level=[1.2], demand_priority=[1])],
+        [level_demand.Static(min_level=[1.15], max_level=[1.25], demand_priority=[3])],
     )
 
     # increase initial level of the boezem
@@ -1633,12 +1715,15 @@ def polder_management_model() -> Model:
         Node(12, Point(1.0, 0)),
         [
             outlet.Static(
-                allocation_controlled=True, flow_rate=[0.0], max_flow_rate=10.0
+                allocation_controlled=True,
+                flow_rate=[0.0],
+                max_flow_rate=river_inlet_max_flow_rate,
             )
         ],
     )
 
     # --- Outlet 5 Controlled by Allocation ---
+    # Closes when the boezem is more than 0.5 m below its target, or the polder is above its target
     outlet5 = model.outlet.add(
         Node(5, Point(2, 1), name="inlaat"),
         [
@@ -1646,6 +1731,8 @@ def polder_management_model() -> Model:
                 allocation_controlled=True,
                 flow_rate=[0.0],
                 max_flow_rate=5.0,
+                min_upstream_level=[0.7],
+                max_downstream_level=[1.05],
             )
         ],
     )
@@ -1674,6 +1761,8 @@ def polder_management_model() -> Model:
                 allocation_controlled=True,
                 flow_rate=[0.0],
                 max_flow_rate=20.0,
+                min_upstream_level=[0.85],
+                max_downstream_level=[1.7],
             )
         ],
     )
@@ -1728,6 +1817,16 @@ def polder_management_model() -> Model:
     model.link.add(outlet10, level_boundary17)
 
     return model
+
+
+def polder_management_short_supply_model() -> Model:
+    """Set up the polder management model with a river inlet that cannot supply the dry period.
+
+    The river inlet delivers at most 2 m³/s, against 4 m³/s evaporation and 1.5 m³/s flushing.
+    The boezem is not drained below the minimum upstream level of the polder inlet,
+    0.5 m below its target. The shortage is taken by the polders and the flushing.
+    """
+    return polder_management_model(river_inlet_max_flow_rate=2.0)
 
 
 def switch_allocation_control_model() -> Model:

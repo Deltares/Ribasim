@@ -785,29 +785,30 @@ class DatasetWidget:
             self.basin_layer = self._duplicate_layer(
                 node_layer, "Basin", "node_id", "node_type", "Basin"
             )
-            assert self.basin_layer is not None
-            self._edit_result_layer(result, self.basin_layer)
-            self.add_relationship(
-                self.basin_layer, node_layer.id(), "BasinResult", fk="node_id"
-            )
-            self._sync_selection_to_result(node_layer, self.basin_layer, "node_id")
+            # None if duplicating failed, which already showed a message
+            if self.basin_layer is not None:
+                self._edit_result_layer(result, self.basin_layer)
+                self.add_relationship(
+                    self.basin_layer, node_layer.id(), "BasinResult", fk="node_id"
+                )
+                self._sync_selection_to_result(node_layer, self.basin_layer, "node_id")
 
         result = self.results.get("concentration")
         if result is not None:
             self.concentration_layer = self._duplicate_layer(
                 node_layer, "Concentration", "node_id", "node_type", "Basin"
             )
-            assert self.concentration_layer is not None
-            self._edit_result_layer(result, self.concentration_layer)
-            self.add_relationship(
-                self.concentration_layer,
-                node_layer.id(),
-                "ConcentrationResult",
-                fk="node_id",
-            )
-            self._sync_selection_to_result(
-                node_layer, self.concentration_layer, "node_id"
-            )
+            if self.concentration_layer is not None:
+                self._edit_result_layer(result, self.concentration_layer)
+                self.add_relationship(
+                    self.concentration_layer,
+                    node_layer.id(),
+                    "ConcentrationResult",
+                    fk="node_id",
+                )
+                self._sync_selection_to_result(
+                    node_layer, self.concentration_layer, "node_id"
+                )
 
     def _set_link_results(self) -> None:
         link_layer = self.ribasim_widget.link_layer
@@ -818,13 +819,14 @@ class DatasetWidget:
             self.flow_layer = self._duplicate_layer(
                 link_layer, "Flow", "link_id", "link_type", "flow"
             )
-            assert self.flow_layer is not None
-            self.set_layer_visible(self.flow_layer, True)
-            self._edit_result_layer(result, self.flow_layer)
-            self.add_relationship(
-                self.flow_layer, link_layer.id(), "FlowResult", fk="link_id"
-            )
-            self._sync_selection_to_result(link_layer, self.flow_layer, "link_id")
+            # None if duplicating failed, which already showed a message
+            if self.flow_layer is not None:
+                self.set_layer_visible(self.flow_layer, True)
+                self._edit_result_layer(result, self.flow_layer)
+                self.add_relationship(
+                    self.flow_layer, link_layer.id(), "FlowResult", fk="link_id"
+                )
+                self._sync_selection_to_result(link_layer, self.flow_layer, "link_id")
 
     @staticmethod
     def _sync_selection_to_result(

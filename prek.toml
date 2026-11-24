@@ -111,3 +111,21 @@ args = [
 ]
 language = "system"
 types = ["julia"]
+
+[[repos.hooks]]
+id = "cargo-fmt"
+name = "cargo fmt"
+description = "Format Rust code"
+entry = "pixi run cargo fmt --manifest-path build/cli/Cargo.toml"
+pass_filenames = false
+language = "system"
+types = ["rust"]
+
+[[repos.hooks]]
+id = "cargo-clippy"
+name = "cargo clippy"
+description = "Lint Rust code, and check that Cargo.lock is up to date"
+entry = "pixi run cargo clippy --manifest-path build/cli/Cargo.toml --all-targets --locked -- --deny warnings"
+pass_filenames = false
+language = "system"
+files = "^build/cli/(src/|Cargo\\.(toml|lock)$)"

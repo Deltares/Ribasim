@@ -29,9 +29,11 @@ from ribasim_testmodels.allocation import (
     multiple_route_priorities_model,
     outlet_allocation_discrete_control_model,
     polder_management_model,
+    polder_management_short_supply_model,
     small_primary_secondary_network_model,
     small_primary_secondary_network_verification_model,
     switch_allocation_control_model,
+    tied_routes_model,
     two_basin_user_demand_model,
     user_demand_model,
 )
@@ -55,6 +57,7 @@ from ribasim_testmodels.continuous_control import (
     junction_chained_continuous_control_model,
     outlet_continuous_control_model,
     pid_continuous_control_model,
+    pid_derivative_switch_model,
     pid_listened_by_continuous_control_model,
 )
 from ribasim_testmodels.discrete_control import (
@@ -234,8 +237,10 @@ __all__ = [
     "pid_continuous_control_model",
     "pid_control_equation_model",
     "pid_control_model",
+    "pid_derivative_switch_model",
     "pid_listened_by_continuous_control_model",
     "polder_management_model",
+    "polder_management_short_supply_model",
     "precompile_workload_allocation_model",
     "precompile_workload_model",
     "pump_discrete_control_model",
@@ -248,6 +253,7 @@ __all__ = [
     "switch_allocation_control_model",
     "tabulated_rating_curve_control_model",
     "tabulated_rating_curve_model",
+    "tied_routes_model",
     "tracer_boundary_pulse_model",
     "tracer_chain_model",
     "tracer_evaporation_model",

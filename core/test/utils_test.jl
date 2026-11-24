@@ -13,6 +13,37 @@
     @test convert(Int32, id) === Int32(2)
     @test hash(id) === hash(id.value)
     @test id in Set(Int32[2, 3])
+    # A NodeID indexes by its ID, not by its index within the node type
+    @test [10, 20, 30][id] == 20
+
+    node_ids = [NodeID(:Basin, 2, 1), NodeID(:Pump, 5, 1)]
+    @test NodeID(5, node_ids) === node_ids[2]
+    # An unknown ID is not found, also if it is not larger than all known IDs
+    for value in (1, 3, 6)
+        @test_logs (:error, "Node ID #$value is not in the Node table.") @test_throws "Node ID not found" NodeID(
+            value, node_ids,
+        )
+        @test_logs (:error, "Node ID Pump #$value is not in the Node table.") @test_throws "Node ID not found" NodeID(
+            :Pump, value, node_ids,
+        )
+    end
+    @test NodeID(:Pump, 5, node_ids) === node_ids[2]
+end
+
+@testitem "NodeType conversion" begin
+    using Ribasim: NodeType
+
+    @test convert(NodeType.T, "Basin") === NodeType.Basin
+    @test convert(NodeType.T, :Pump) === NodeType.Pump
+    @test NodeType.T(NodeType.Outlet) === NodeType.Outlet
+end
+
+@testitem "findsorted" begin
+    using Ribasim: findsorted
+
+    @test findsorted([1, 3, 5], 3) == 2
+    @test findsorted([1, 3, 5], 4) === nothing
+    @test_throws "Multiple occurrences of 3 found." findsorted([1, 3, 3], 3)
 end
 
 @testitem "bottom" begin
@@ -180,6 +211,11 @@ end
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
         "The initial level (-1.0) of Basin #1 is below the bottom (0.0)."
+
+    # There must be one level per Basin
+    @test_logs (:error, "Unexpected 'Basin / state' length.") @test_throws "Encountered errors while parsing the initial levels of basins." Ribasim.get_storages_from_levels(
+        basin, Float64[],
+    )
 
     # Converting from storages to levels and back should return the same storages
     storages = range(0.0, 2 * storage_to_level.t[end], 50)
@@ -589,6 +625,14 @@ end
     @test find_index(:a, s) === 1
     @test find_index(:c, s) === 3
     @test_throws "not found" find_index(:d, s)
+end
+
+@testitem "log_negative_mass" begin
+    using Ribasim: NodeID, log_negative_mass
+    using DataStructures: OrderedSet
+    substances = OrderedSet([:a, :b])
+    message = "Basin #1 has negative mass -2.0 for substance b"
+    @test_logs (:error, message) log_negative_mass(NodeID(:Basin, 1, 1), [1.0, -2.0], substances)
 end
 
 @testitem "@threaded" begin
