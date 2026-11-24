@@ -465,7 +465,7 @@ Note
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>Having <code>ContinuousControl</code> nodes depend on eachother or <code>PidControl</code> nodes does <em>not</em> work. For instance, if one <code>ContinuousControl</code> node sets the flow rate of a pump, this flow rate cannot be used as the input of another <code>ContinuousControl</code> node. This will not throw an error but will produce incorrect results.</p>
+<p>A <code>ContinuousControl</code> node can listen to a flow that is set by another <code>ContinuousControl</code> or <code>PidControl</code> node, also via a <a href="../../reference/node/junction.html">Junction</a>: the listened flow is computed first. A circular dependency, for instance two <code>ContinuousControl</code> nodes that listen to the flow the other one sets, is an error.</p>
 </div>
 </div>
 <section id="tables" class="level1" data-number="1">
