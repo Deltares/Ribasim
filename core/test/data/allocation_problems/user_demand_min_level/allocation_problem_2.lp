@@ -1,13 +1,18 @@
 minimize
-obj: 40 flow_(Outlet_#2,_Basin_#3)_ + 50 flow_(Pump_#6,_Basin_#7)_
+obj: 1 flow_change_Pump_#6_ + 1.01 flow_change_Outlet_#2_
 subject to
 c1: -1 low_storage_factor_Basin_#1_ - 1 low_storage_factor_Basin_#3_ - 1 low_storage_factor_Basin_#7_ <= -3
 c2: 0.5 user_demand_error_UserDemand_#4,1,first_ + 0.5 user_demand_error_UserDemand_#8,1,first_ <= 0
 c3: 1 user_demand_error_UserDemand_#4,1,second_ + 1 user_demand_error_UserDemand_#8,1,second_ <= 0
+c4: 40 flow_(Outlet_#2,_Basin_#3)_ + 50 flow_(Pump_#6,_Basin_#7)_ <= 0.49574974498469915
 user_demand_relative_error_constraint_UserDemand_#4,1_: 1 user_demand_allocated_UserDemand_#4,1_ + 0.00550833049982999 user_demand_error_UserDemand_#4,1,first_ >= 0.00550833049982999
 user_demand_relative_error_constraint_UserDemand_#8,1_: 1 user_demand_allocated_UserDemand_#8,1_ + 0.00550833049982999 user_demand_error_UserDemand_#8,1,first_ >= 0.00550833049982999
 user_demand_fairness_error_constraint_UserDemand_#4,1_: -1 user_demand_error_UserDemand_#4,1,first_ + 1 user_demand_error_UserDemand_#4,1,second_ + 1 average_flow_unit_error_1_ >= 0
 user_demand_fairness_error_constraint_UserDemand_#8,1_: -1 user_demand_error_UserDemand_#8,1,first_ + 1 user_demand_error_UserDemand_#8,1,second_ + 1 average_flow_unit_error_1_ >= 0
+flow_change_constraint_Pump_#6,_1_: 1 flow_(Basin_#1,_Pump_#6)_ + 1 flow_change_Pump_#6_ >= 0.0007650459027541654
+flow_change_constraint_Outlet_#2,_1_: 1 flow_(Basin_#1,_Outlet_#2)_ + 1 flow_change_Outlet_#2_ >= 0.0007650459027541654
+flow_change_constraint_Pump_#6,1_: -1 flow_(Basin_#1,_Pump_#6)_ + 1 flow_change_Pump_#6_ >= -0.0007650459027541654
+flow_change_constraint_Outlet_#2,1_: -1 flow_(Basin_#1,_Outlet_#2)_ + 1 flow_change_Outlet_#2_ >= -0.0007650459027541654
 flow_conservation_pump_Pump_#6_: 1 flow_(Basin_#1,_Pump_#6)_ - 1 flow_(Pump_#6,_Basin_#7)_ = 0
 flow_conservation_outlet_Outlet_#2_: 1 flow_(Basin_#1,_Outlet_#2)_ - 1 flow_(Outlet_#2,_Basin_#3)_ = 0
 volume_conservation_Basin_#1_: 1 basin_storage_change_Basin_#1_ + 1 flow_(Basin_#1,_Outlet_#2)_ + 1 flow_(Basin_#1,_Pump_#6)_ = 0
@@ -40,4 +45,6 @@ basin_storage_change_Basin_#7_ >= 0
 0 <= user_demand_error_UserDemand_#8,1,first_ <= 1
 0 <= user_demand_error_UserDemand_#8,1,second_ <= 1
 0 <= average_flow_unit_error_1_ <= 1
+flow_change_Pump_#6_ >= 0
+flow_change_Outlet_#2_ >= 0
 End
