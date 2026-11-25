@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- ContinuousControl can listen to flows set by other ContinuousControl or PidControl nodes, also via Junctions. Before, such a flow was read as 0 without an error. A circular dependency in the control of flows is now an error. [#3408](https://github.com/Deltares/Ribasim/issues/3408)
+- The reduced linear solve is now exact for chained control, so the Newton iterations of models where ContinuousControl listens to a flow set by ContinuousControl or PidControl converge as fast as those without.
 - Add `[logging] progress` TOML option and `RIBASIM_PROGRESS` environment variable, which takes precedence, to disable the progress bar, which avoids repeated progress lines in logs and documentation. [#3111](https://github.com/Deltares/Ribasim/issues/3111)
 
 ### Changed
@@ -15,6 +17,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Allocation: flow no longer switches between equally good routes from one timestep to the next. A last objective keeps the flows of allocation controlled nodes close to those of the previous timestep. [#3399](https://github.com/Deltares/Ribasim/issues/3399)
 - Allocation: the flow capacity of an allocation controlled Pump or Outlet is reduced by its `min_upstream_level`, `max_downstream_level` and, for an Outlet, level difference reduction factors, so allocation no longer plans flow that the physical layer does not realise. In the physical layer these factors now reduce the capacity of an allocation controlled Pump or Outlet, where they reduced the allocated flow rate itself. [#2723](https://github.com/Deltares/Ribasim/issues/2723)
 - When a simulation stops before the end time, because of an error, `Ctrl-C` or a coupled simulation that stops there, all results now end at the last `saveat`, `basin_state.nc` included, instead of at the last timestep. A new simulation can then start where the results end. [#3454](https://github.com/Deltares/Ribasim/pull/3454)
+- Large models are faster with multiple threads: the threads divide the work as they go, which helps on processors with performance and efficiency cores, the flows of all node types share one set of tasks, and the Jacobian and the linear solve update their sparse matrices in place. A day of the Dutch national model takes about 20% less time with 8 threads and 30% less with 4.
+- Large models with tracers are faster: the transport of the tracers between Basins now runs on multiple threads and takes less time per Basin and substance, which about halves its cost on the coupled LHM. The concentrations are identical.
+- PidControl: the derivative term now includes the flows set by ContinuousControl and other PidControl nodes into the listened Basin, also via Junctions. Before, these were left out or depended on the order of the nodes. [#3408](https://github.com/Deltares/Ribasim/issues/3408)
 
 ### Fixed
 - Long simulations of large rivers no longer stop with `Unstable` after some years. The cumulative flows are now reset before their floating point rounding approaches `solver.abstol`, without restarting the solver. [#3442](https://github.com/Deltares/Ribasim/pull/3442)
@@ -23,6 +28,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Stricter input validation: an unknown `node_id` in `Basin / subgrid` or `Basin / subgrid_time` now stops the model with a clear error, where the first only logged an error and dropped the subgrid element, and the second crashed. A ContinuousControl function with a single data point and a missing value in a required column now also give a clear error. [#3449](https://github.com/Deltares/Ribasim/pull/3449)
 - Allow repeated `subgrid_level` values in `Basin / subgrid` and `Basin / subgrid_time`, which give a flat segment in the relation from Basin level to subgrid level. Subgrid elements with such values were rejected before. [#3449](https://github.com/Deltares/Ribasim/pull/3449)
 - Allocation: the error for an infeasible allocation problem now lists the incompatible constraints, this list was empty. [#3449](https://github.com/Deltares/Ribasim/pull/3449)
+- Junction: a model with 512 or more separate groups of Junctions with rows in `Junction / static` no longer stops with an error when run with multiple threads. [#3480](https://github.com/Deltares/Ribasim/pull/3480)
+- Long simulations of large models initialize quickly again. In v2026.2.0-rc1 the initialization time grew quadratically with the number of Basins. A 3-year run with 20 000 Basins took 7 minutes to start instead of 20 seconds. [#3484](https://github.com/Deltares/Ribasim/pull/3484)
 
 ## [v2026.2.0-rc1] - 2026-11-11
 

@@ -32,7 +32,8 @@ function create_callbacks(
     tstops = Vector{Float64}[]
     t_end = seconds_since(config.endtime, config.starttime)
     get_timeseries_tstops!(tstops, t_end, basin.forcing.precipitation)
-    tstops = sort(unique(reduce(vcat, tstops; init = Float64[])))
+    # Not `init = Float64[]`: reduce then concatenates pairwise, quadratic in the number of Basins
+    tstops = sort(unique(isempty(tstops) ? Float64[] : reduce(vcat, tstops)))
     basin_cb = PresetTimeCallback(tstops, update_basin!; save_positions = (false, false))
     push!(callbacks, basin_cb)
 
@@ -254,10 +255,11 @@ function update_concentrations!(u, t, integrator)::Nothing
 
     transport_tracers!(p_independent, current_storage, tprev, dt)
 
-    errors = false
+    negative_mass = Threads.Atomic{Bool}(false)
 
-    for node_id in basin.node_id
-        mass_node = view(mass, :, node_id.idx)
+    @threaded TRACER_MIN_CHUNK_SIZE for basin_idx in eachindex(basin.node_id)
+        node_idx = basin.node_id[basin_idx].idx
+        mass_node = view(mass, :, node_idx)
 
         # Take care of too small masses, possibly becoming negative due to truncation.
         for I in eachindex(mass_node)
@@ -266,22 +268,27 @@ function update_concentrations!(u, t, integrator)::Nothing
             end
         end
 
-        # Check for negative masses
-        if any(<(0), mass_node)
-            errors = true
-            log_negative_mass(node_id, mass_node, concentration_data.substances)
-        end
+        # Check for negative masses, which are logged below
+        any(<(0), mass_node) && (negative_mass[] = true)
 
-        s = current_storage[node_id.idx]
+        s = current_storage[node_idx]
         if iszero(s)
-            concentration_state[:, node_id.idx] .= 0
+            concentration_state[:, node_idx] .= 0
         else
-            concentration_state[:, node_id.idx] .= mass_node ./ s
+            concentration_state[:, node_idx] .= mass_node ./ s
+        end
+    end
+
+    if negative_mass[]
+        for node_id in basin.node_id
+            mass_node = view(mass, :, node_id.idx)
+            any(<(0), mass_node) &&
+                log_negative_mass(node_id, mass_node, concentration_data.substances)
         end
     end
 
     storage_prev_dt .= current_storage
-    errors && error("Negative mass(es) detected at t = $t s")
+    negative_mass[] && error("Negative mass(es) detected at t = $t s")
     return nothing
 end
 
