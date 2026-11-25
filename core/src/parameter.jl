@@ -1543,8 +1543,6 @@ an immutable struct.
     const cumulative_flow_dt::FlowCVector{Float64} = zero(storage_uplink)
     # State at previous saveat
     const u_prev_saveat::RibasimStateCVector{Float64} = cvector_from_axes(state_ranges)
-    # State at the last accepted time step, the state in the integrator can be in between
-    const u_accepted::RibasimStateCVector{Float64} = zero(u_prev_saveat)
     # Cumulative flow over last allocation times
     const cumulative_flow_prev_allocation_dt::FlowCVector{Float64} = zero(storage_uplink)
     # How much of the solver error is attributed to each state, see [`accumulate_residual!`](@ref).

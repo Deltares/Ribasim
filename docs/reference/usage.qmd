@@ -39,6 +39,7 @@ The calculation and result stepsize need not be the same.
 If you wish to save every calculation step, set `saveat = 0`.
 With the default adaptive timestepping that will result in irregular time series.
 If you wish to not save any intermediate steps, set `saveat = inf`.
+The end time is always saved, so if it doesn't fall on a `saveat`, the last interval is shorter.
 For output frequencies that are not of fixed length, like months or years, we suggest to resample from daily results during post-processing.
 
 The water balance error is a measure of the error in the consistency with which the core keeps track of the water resources per Basin, for more details see [here](/concept/equations.qmd#the-water-balance-error).
@@ -125,7 +126,7 @@ This is well below the solver tolerance, and makes the files about 4 times small
 For lossless compression set `significant_bits = 0`, for instance to compute small differences between large values.
 The `basin_state.nc` file is always lossless.
 
-Results are written during the simulation. If it stops early because of an error or Ctrl-C, they go up to the last accepted timestep.
+Results are written during the simulation. If it stops before the end time, because of an error, Ctrl-C or a coupled simulation that stops there, all results end at the last `saveat`, `basin_state.nc` included. A new simulation can then start from there.
 If another application has a result file open when Ribasim writes it, the simulation stops with an error. To avoid this, start that application with the environment variable `HDF5_USE_FILE_LOCKING=FALSE`. It can then read wrong values at the moment Ribasim writes.
 
 ## Logging settings
@@ -448,7 +449,7 @@ Flows from the "from" to the "to" node have a positive sign, and if the flow is 
 
 ## State - `basin_state.nc` {#sec-state}
 
-The Basin state file contains the water levels in each Basin at the end of the simulation.
+The Basin state file contains the water levels in each Basin at the end of the simulation, or at the last `saveat` if it stopped before the end time.
 
 **NetCDF structure:**
 

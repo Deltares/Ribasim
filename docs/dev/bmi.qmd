@@ -9,7 +9,7 @@ The following functions are available to interact with the Ribasim model"
 signature                 | description
 ------------------------- | -------------
 `initialize(config_path)` | Initialize a model from the path to the TOML configuration file
-`finalize()`              | Write all results to the configured files
+`finalize()`              | Write all results to the configured files, up to the last `saveat`
 `get_current_time()`      | Get the current time of the Ribasim simulation
 `get_end_time()`          | Get the final time of the Ribasim simulation in seconds
 `get_start_time()`        | Get the start time of the Ribasim simulation (`0.0`)
