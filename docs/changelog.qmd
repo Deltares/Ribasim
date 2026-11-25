@@ -7,6 +7,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - Add `[logging] progress` TOML option and `RIBASIM_PROGRESS` environment variable, which takes precedence, to disable the progress bar, which avoids repeated progress lines in logs and documentation. [#3111](https://github.com/Deltares/Ribasim/issues/3111)
+- Python: `Model.plot` draws the Basin and FlowBoundary areas, toggled with `indicate_areas`, and the legend can be left out with `legend=False`.
+
+### Fixed
+- Python: `Model.plot` lists the node types in the legend again, draws one direction marker per link instead of one per segment, and keeps node icons the same size at any DPI.
+- QGIS: FlowBoundary areas are orange, like the FlowBoundary node, instead of the old purple.
 
 ### Changed
 - Docs: explain the hydrological meaning, units and tuning of the PidControl parameters. [#1544](https://github.com/Deltares/Ribasim/issues/1544)
