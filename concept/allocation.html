@@ -437,7 +437,7 @@ Figure&nbsp;1: The primary network (subnetwork 1, blue) with connected secondary
 <li>If the optimization fails at <span class="math inline">\(\Delta t_{\min}\)</span>, the infeasibility is analyzed and the simulation stops with an error.</li>
 </ul>
 <p>The simulation starts with <span class="math inline">\(\Delta t = \Delta t_{\min}\)</span>, the configured <code>dtmin</code>, and <span class="math inline">\(\Delta t_{\max}\)</span> is the configured <code>dtmax</code>, both limited to <code>intervention_interval</code>. Allocation timesteps are shortened to end at the next intervention time.</p>
-<p>The allocation output contains the time-averaged results per intervention interval. If <code>solver.saveat</code> is 0, the results of every allocation timestep are written instead.</p>
+<p>The allocation output contains the time-averaged results per intervention interval. If <code>solver.saveat</code> is 0, the results of every allocation timestep are written instead. If the simulation stops before the end time, the allocation output ends with the last intervention interval that finished at the last <code>saveat</code>.</p>
 </section>
 <section id="sec-high-level-algorithm" class="level2" data-number="1.6">
 <h2 data-number="1.6" class="anchored" data-anchor-id="sec-high-level-algorithm"><span class="header-section-number">1.6</span> The high level algorithm</h2>
