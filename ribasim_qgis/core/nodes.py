@@ -92,6 +92,7 @@ tables = {
     "FlowBoundary / area",
     "FlowDemand / static",
     "FlowDemand / time",
+    "Junction / static",
     "LevelBoundary / concentration",
     "LevelBoundary / static",
     "LevelBoundary / time",
@@ -108,7 +109,6 @@ tables = {
     "Pump / time",
     "TabulatedRatingCurve / static",
     "TabulatedRatingCurve / time",
-    "UserDemand / concentration",
     "UserDemand / static",
     "UserDemand / time",
 }

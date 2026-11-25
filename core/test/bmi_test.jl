@@ -43,9 +43,9 @@ end
     step_stats = stepped.integrator.p.p_independent.step_stats
     @test step_stats.order_sum > 0
     @test fields(step_stats) == fields(solved.integrator.p.p_independent.step_stats)
-    without_time_ns(model) =
-        [Base.structdiff(s, (; time_ns = 0)) for s in model.saved.solver_stats.saveval]
-    @test without_time_ns(stepped) == without_time_ns(solved)
+    without_computation_time(model) =
+        Base.structdiff(Ribasim.solver_stats_data(model), (; computation_time = 0))
+    @test isequal(without_computation_time(stepped), without_computation_time(solved))
     @test stepped.integrator.u == solved.integrator.u
 end
 
@@ -83,6 +83,19 @@ end
     storage = BMI.get_value_ptr(model, "basin.storage")
     # get_value_ptr does not copy
     @test storage0 == storage != ones(4)
+end
+
+@testitem "update_subgrid_level" begin
+    import BasicModelInterface as BMI
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    model = BMI.initialize(Ribasim.Model, toml_path)
+    subgrid_level = BMI.get_value_ptr(model, "basin.subgrid_level")
+    @test !isempty(subgrid_level)
+    # The subgrid levels are only computed when they are saved or asked for
+    @test all(isnan, subgrid_level)
+    @test Ribasim.update_subgrid_level(model) === model
+    @test all(isfinite, subgrid_level)
 end
 
 @testitem "get_value_ptr_all_values" begin

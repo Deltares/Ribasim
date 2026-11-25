@@ -61,6 +61,7 @@ function add_flow_conservation!(
         allocation_model::AllocationModel,
         node::AbstractParameterNode,
         graph::MetaGraph,
+        junction::Junction,
     )::Nothing
     (; problem, subnetwork_id) = allocation_model
     (; node_id, inflow_link, outflow_link) = node
@@ -72,11 +73,23 @@ function add_flow_conservation!(
 
     # Define constraints: inflow is equal to outflow for conservative nodes
     constraint_name = "flow_conservation_$node_name"
+    node_ids_single_outflow = filter(id -> !outflow_link[id.idx].link[2].is_routed, node_ids)
     problem[Symbol(constraint_name)] = JuMP.@constraint(
         problem,
-        [node_id = node_ids],
+        [node_id = node_ids_single_outflow],
         flow[inflow_link[node_id.idx].link] == flow[outflow_link[node_id.idx].link],
         base_name = "flow_conservation_$node_name"
+    )
+
+    # Define constraints: nodes that flow into a Junction node pass their flow on to that node
+    junction_links = Tuple{NodeID, NodeID}[
+        outflow_link[id.idx].link for id in node_ids if outflow_link[id.idx].link[2].is_routed
+    ]
+    problem[Symbol("flow_conservation_junction_$node_name")] = JuMP.@constraint(
+        problem,
+        [link = junction_links],
+        flow[link] == flow[inflow_link[link[1].idx].link],
+        base_name = "flow_conservation_junction_$node_name"
     )
     return nothing
 end
@@ -105,12 +118,13 @@ function add_conservation!(
         manning_resistance,
         tabulated_rating_curve,
         basin,
+        junction,
     ) = p_independent
-    add_flow_conservation!(allocation_model, pump, graph)
-    add_flow_conservation!(allocation_model, outlet, graph)
-    add_flow_conservation!(allocation_model, linear_resistance, graph)
-    add_flow_conservation!(allocation_model, manning_resistance, graph)
-    add_flow_conservation!(allocation_model, tabulated_rating_curve, graph)
+    add_flow_conservation!(allocation_model, pump, graph, junction)
+    add_flow_conservation!(allocation_model, outlet, graph, junction)
+    add_flow_conservation!(allocation_model, linear_resistance, graph, junction)
+    add_flow_conservation!(allocation_model, manning_resistance, graph, junction)
+    add_flow_conservation!(allocation_model, tabulated_rating_curve, graph, junction)
 
     # Define constraints: Basin water balance (volume conservation)
     # Mathematical formulation: dS/dt = Σ Q_in - Σ Q_out + f_pos - f_neg
@@ -161,7 +175,7 @@ function add_user_demand!(
     )::Nothing
     (; problem, cumulative_supplied_volume, node_ids_in_subnetwork) = allocation_model
     (; user_demand_ids_subnetwork) = node_ids_in_subnetwork
-    (; user_demand) = p_independent
+    (; user_demand, junction) = p_independent
     (; inflow_links, outflow_link) = user_demand
     flow = problem[:flow]
 
@@ -226,12 +240,27 @@ function add_user_demand!(
     # Define constraints: user demand return flow. The outflow equals the return
     # factor times the total inflow summed across all inflow links.
     return_factor = 0.5 # example return factor
+    user_demand_ids_single_outflow =
+        filter(id -> !outflow_link[id.idx].link[2].is_routed, user_demand_ids_subnetwork)
     problem[:user_demand_return_flow] = JuMP.@constraint(
         problem,
-        [node_id = user_demand_ids_subnetwork],
+        [node_id = user_demand_ids_single_outflow],
         flow[outflow_link[node_id.idx].link] ==
             return_factor * sum(flow[lm.link] for lm in inflow_links[node_id.idx]),
         base_name = "user_demand_return_flow"
+    )
+
+    # Define constraints: if the return flow goes into a Junction node it equals the return flow
+    junction_links = Tuple{NodeID, NodeID}[
+        outflow_link[id.idx].link for id in user_demand_ids_subnetwork if
+            outflow_link[id.idx].link[2].is_routed
+    ]
+    problem[:user_demand_return_flow_junction] = JuMP.@constraint(
+        problem,
+        [link = junction_links],
+        flow[link] ==
+            return_factor * sum(flow[lm.link] for lm in inflow_links[link[1].idx]),
+        base_name = "user_demand_return_flow_junction"
     )
 
     # Add the links for which the supplied volume is required for output
@@ -394,24 +423,13 @@ function add_level_demand!(
 end
 
 
-function add_level_boundary!(allocation_model::AllocationModel)::Nothing
-    (; problem, node_ids_in_subnetwork) = allocation_model
-    (; level_boundary_ids_subnetwork) = node_ids_in_subnetwork
-
-    # Add parameters: level boundary levels (m, values to be filled in before optimization)
-    problem[:boundary_level] =
-        JuMP.@variable(problem, boundary_level[level_boundary_ids_subnetwork] == 0)
-
-    return nothing
-end
-
 function add_linearized_connector_node!(
         allocation_model::AllocationModel,
         node::AbstractParameterNode,
         node_ids_subnetwork,
     )::Nothing
     (; problem) = allocation_model
-    (; inflow_link, outflow_link) = node
+    (; inflow_link, downstream_level_id) = node
 
     flow = problem[:flow]
     storage_change = problem[:basin_storage_change]
@@ -444,7 +462,7 @@ function add_linearized_connector_node!(
                 )
             end
 
-            downstream_node = outflow_link[node_id.idx].link[2]
+            downstream_node = downstream_level_id[node_id.idx]
             if downstream_node.is_basin
                 JuMP.add_to_expression!(
                     linearization,
@@ -556,6 +574,48 @@ function add_outlet!(
         allocation_model,
         p_independent.outlet,
         allocation_model.node_ids_in_subnetwork.outlet_ids_subnetwork,
+    )
+    return nothing
+end
+
+"""
+Add the constraints defining the flow out of Junction nodes. The flows into Junction nodes are
+constrained at the nodes they come from: see `add_flow_conservation!`, `add_user_demand!` and the
+FlowBoundary in `set_simulation_data!`.
+
+The flow in a Junction node is passed on, except for the flow that is abstracted by the UserDemand node
+that abstracts from it, if present. That is a decision variable, bounded by the allocated demand, so the
+remaining flow is divided over the outflow links by their fractions from `Junction / static`.
+"""
+function add_junction!(
+        allocation_model::AllocationModel,
+        p_independent::ParametersIndependent,
+    )::Nothing
+    (; problem, node_ids_in_subnetwork) = allocation_model
+    (; junction_ids_subnetwork) = node_ids_in_subnetwork
+    (; junction) = p_independent
+    (; inflow_links, outflow_links, user_demand_id) = junction
+    flow = problem[:flow]
+
+    # The links out of Junction nodes, except for the UserDemand abstraction
+    outflow_links_junction = Tuple{NodeID, NodeID}[
+        link_metadata.link for id in junction_ids_subnetwork for
+            link_metadata in outflow_links[id.idx] if
+            link_metadata.link[2].type != NodeType.UserDemand
+    ]
+
+    problem[:junction_outflow] = JuMP.@constraint(
+        problem,
+        [link = outflow_links_junction],
+        flow[link] ==
+            outflow_link_fraction(junction, link) * (
+            sum(flow[lm.link] for lm in inflow_links[link[1].idx]) -
+                (
+                user_demand_id[link[1].idx].type == NodeType.UserDemand ?
+                    flow[(link[1], user_demand_id[link[1].idx])] : 0.0
+            )
+        ),
+        base_name = "junction_outflow"
     )
     return nothing
 end
@@ -929,6 +989,84 @@ function add_route_priority_objective!(
     return nothing
 end
 
+"""
+Add the objective to stay close to the flows of the previous allocation timestep. It is the
+last objective, so it only chooses between solutions that are equally good for all other
+objectives. Without it the solver can return a different one of those every timestep, which
+makes flow switch between equally good routes. Its expression is set in `add_flow_change!`.
+"""
+function add_flow_change_objective!(allocation_model::AllocationModel)::Nothing
+    push!(
+        allocation_model.objectives,
+        AllocationObjective(;
+            type = AllocationObjectiveType.flow_change,
+            expressions = [JuMP.AffExpr()],
+        ),
+    )
+    return nothing
+end
+
+"Relative difference between the largest and smallest weight in the flow change objective"
+const FLOW_CHANGE_WEIGHT_SPREAD = 1.0e-2
+
+"""
+Add a variable for the absolute change of the flow through each allocation controlled node
+since the previous allocation timestep, and minimize their weighted sum in the last objective.
+The weights increase slightly over the nodes, ordered by node type and node ID. Without them
+this objective would itself often have many optimal solutions, for instance when two tied
+Pumps both need to supply more, since then any division of the increase is equally good. With
+them the flow of the first node changes. The previous flows are the right hand sides of the
+constraints, which are set every allocation timestep in `set_flow_change_rhs!`.
+"""
+function add_flow_change!(
+        allocation_model::AllocationModel,
+        p_independent::ParametersIndependent,
+    )::Nothing
+    (; problem, objectives, node_ids_in_subnetwork, allocation_controlled_flows) =
+        allocation_model
+    (; pump, outlet, tabulated_rating_curve, graph) = p_independent
+    (; pump_ids_subnetwork, outlet_ids_subnetwork, tabulated_rating_curve_ids_subnetwork) =
+        node_ids_in_subnetwork
+    flow = problem[:flow]
+
+    empty!(allocation_controlled_flows)
+    for (node, node_ids) in (
+            (pump, pump_ids_subnetwork),
+            (outlet, outlet_ids_subnetwork),
+            (tabulated_rating_curve, tabulated_rating_curve_ids_subnetwork),
+        )
+        for node_id in node_ids
+            if node.allocation_controlled[node_id.idx]
+                allocation_controlled_flows[node_id] = flow[inflow_link(graph, node_id).link]
+            end
+        end
+    end
+
+    node_ids = collect(keys(allocation_controlled_flows))
+    flow_change =
+        problem[:flow_change] = JuMP.@variable(
+        problem,
+        [node_ids],
+        lower_bound = 0.0,
+        base_name = "flow_change"
+    )
+    problem[:flow_change_constraint] = JuMP.@constraint(
+        problem,
+        [node_id = node_ids, sign = (-1, 1)],
+        flow_change[node_id] ≥ sign * allocation_controlled_flows[node_id],
+        base_name = "flow_change_constraint"
+    )
+
+    expression = JuMP.AffExpr()
+    n = length(node_ids)
+    for (i, node_id) in enumerate(node_ids)
+        weight = 1.0 + FLOW_CHANGE_WEIGHT_SPREAD * (i - 1) / max(n - 1, 1)
+        JuMP.add_to_expression!(expression, weight, flow_change[node_id])
+    end
+    last(objectives).expressions[1] = expression
+    return nothing
+end
+
 function NodeIDsInSubnetwork(
         p_independent::ParametersIndependent,
         subnetwork_id::Int32,
@@ -953,6 +1091,7 @@ function NodeIDsInSubnetwork(
                     NodeType.ManningResistance,
                     NodeType.Pump,
                     NodeType.Outlet,
+                    NodeType.Junction,
                 )
         )...,
         # basin_ids_subnetwork_with_level_demand
@@ -1047,15 +1186,14 @@ function AllocationModel(subnetwork_id::Int32, p_independent::ParametersIndepend
     add_flow!(allocation_model)
     add_conservation!(allocation_model, p_independent)
 
-    # Boundary nodes
-    add_level_boundary!(allocation_model)
-
     # Connector nodes
     add_tabulated_rating_curve!(allocation_model, p_independent)
     add_linear_resistance!(allocation_model, p_independent)
     add_manning_resistance!(allocation_model, p_independent)
     add_pump!(allocation_model, p_independent)
     add_outlet!(allocation_model, p_independent)
+    add_junction!(allocation_model, p_independent)
+    update_allocation_controlled!(allocation_model, p_independent)
 
     # Demand nodes
     add_user_demand!(allocation_model, p_independent)
@@ -1074,9 +1212,14 @@ function AllocationModel(subnetwork_id::Int32, p_independent::ParametersIndepend
     end
 
     # Objectives (goals)
-    add_demand_objectives!(allocation_model, p_independent)
+    # The low storage factors come first, so that the demand objectives cannot lower them
+    # to hold back water: they may only reduce outflows to prevent negative storage
     add_low_storage_factor_objective!(allocation_model)
+    add_demand_objectives!(allocation_model, p_independent)
     add_route_priority_objective!(allocation_model, p_independent)
+    add_flow_change_objective!(allocation_model)
+    # update_control_states! only rebuilds this if the allocation controlled nodes change
+    add_flow_change!(allocation_model, p_independent)
 
     return allocation_model
 end

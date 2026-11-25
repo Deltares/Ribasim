@@ -7,12 +7,14 @@ from ribasim.model import Model
 from ribasim.nodes import (
     basin,
     flow_boundary,
+    junction,
     level_boundary,
     linear_resistance,
     manning_resistance,
     pid_control,
     pump,
     tabulated_rating_curve,
+    user_demand,
 )
 from shapely.geometry import Point
 
@@ -329,5 +331,100 @@ def pid_control_equation_model() -> Model:
         model.pid_control[4],
         model.pump[2],
     )
+
+    return model
+
+
+def junction_equation_model() -> Model:
+    """Set up a minimal model with a Junction that divides the flow for an equation test.
+
+    The inflow of Junction #4 comes from a TabulatedRatingCurve, a FlowBoundary and a
+    PID controlled Pump, so the Junction flows depend on the Basin storages and on the PID
+    integral. UserDemand #5 takes precedence over the division of the remainder over
+    Basin #9 and Terminal #6, so that the Junction flows change the storage of a Basin.
+    """
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
+        crs="EPSG:28992",
+    )
+
+    b1 = model.basin.add(
+        Node(1, Point(0, 0)),
+        [
+            basin.Profile(area=[100000.0, 100000.0], level=[0.0, 3.0]),
+            basin.State(level=[5.0]),
+        ],
+    )
+
+    trc = model.tabulated_rating_curve.add(
+        Node(2, Point(1, 0)),
+        [tabulated_rating_curve.Static(level=[0.0, 3.0], flow_rate=[0.0, 1e-1])],
+    )
+
+    fb = model.flow_boundary.add(
+        Node(3, Point(1, 2)), [flow_boundary.Static(flow_rate=[5e-2])]
+    )
+
+    jct = model.junction.add(
+        Node(4, Point(2, 1)),
+        [junction.Static(to_node_id=[9, 6], fraction=[1 / 3, np.nan])],
+    )
+
+    ud = model.user_demand.add(
+        Node(5, Point(3, 0)),
+        tables=[user_demand.Static(demand=[3e-2], return_factor=[1.0])],
+    )
+
+    t = model.terminal.add(Node(6, Point(4, 1)))
+
+    b2 = model.basin.add(
+        Node(9, Point(4, 2)),
+        [
+            basin.Profile(area=[100000.0, 100000.0], level=[0.0, 100.0]),
+            basin.State(level=[1.0]),
+        ],
+    )
+
+    # PID controlled Pump from a Basin which is not fed by the Junction, into Junction #4
+    b3 = model.basin.add(
+        Node(10, Point(0, 3)),
+        [
+            basin.Profile(area=1000.0, level=[0.0, 10.0]),
+            basin.State(level=[6.0]),
+        ],
+    )
+
+    fb2 = model.flow_boundary.add(
+        Node(11, Point(-1, 3)), [flow_boundary.Static(flow_rate=[1e-3])]
+    )
+
+    # The flow rate is overwritten by the PID controller
+    pmp = model.pump.add(Node(12, Point(1, 3)), [pump.Static(flow_rate=[0.0])])
+
+    pid = model.pid_control.add(
+        Node(13, Point(1, 4)),
+        [
+            pid_control.Static(
+                listen_node_id=[10],
+                target=[5.5],
+                proportional=[-5e-3],
+                integral=[-7e-10],
+                derivative=[-8e3],
+            )
+        ],
+    )
+
+    model.link.add(b1, trc)
+    model.link.add(trc, jct)
+    model.link.add(fb, jct)
+    model.link.add(jct, ud)
+    model.link.add(ud, t)
+    model.link.add(jct, b2)
+    model.link.add(jct, t)
+    model.link.add(fb2, b3)
+    model.link.add(b3, pmp)
+    model.link.add(pmp, jct)
+    model.link.add(pid, pmp)
 
     return model

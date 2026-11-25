@@ -19,8 +19,12 @@
     user_demand_error = problem[:user_demand_error]
     low_storage_factor = problem[:low_storage_factor]
 
+    # Low storage factor objective, which comes first
+    @test objectives[1].type == AllocationObjectiveType.low_storage_factor
+    @test objectives[1].expressions[1] == -sum(low_storage_factor)
+
     # Demand objective
-    objective = objectives[1]
+    objective = objectives[2]
     @test objective.type == AllocationObjectiveType.demand_flow
     first_expression_terms = keys(objective.expressions[1].terms)
     @test length(first_expression_terms) == 2
@@ -31,9 +35,6 @@
     @test objective.expressions[2] ==
         user_demand_error[NodeID(:UserDemand, 5, p_independent), 1, :second] +
         user_demand_error[NodeID(:UserDemand, 6, p_independent), 1, :second]
-
-    # Low storage factor objective
-    @test objectives[2].expressions[1] == -sum(low_storage_factor)
 end
 
 
@@ -193,7 +194,7 @@ end
 
         # Test allocation_control if it exists (may be empty for models without control)
         if isfile(allocation_control_path)
-            NCDDataset(allocation_control_path) do ds
+            NCDataset(allocation_control_path) do ds
                 @test "time" in keys(ds)
                 @test "node_id" in keys(ds)
                 @test "node_type" in keys(ds)
@@ -235,6 +236,33 @@ end
     test_extrapolation(level_demand.max_level[1][3])
     test_extrapolation(flow_demand.demand_interpolation[1][2])
     test_extrapolation.(user_demand.demand_interpolation[1][1:2])
+end
+
+@testitem "Low storage factor only prevents negative storage" begin
+    import BasicModelInterface as BMI
+    import JuMP
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/allocation_training/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.Model(toml_path)
+    # Around day 103 the reservoir is below its LevelDemand min_level, which the demand
+    # objectives could otherwise try to meet by lowering the low storage factors.
+    # Step per day, since each update_until call is an intervention time.
+    for day in 1:103
+        BMI.update_until(model, day * 86400.0)
+    end
+    (; allocation, basin) = model.integrator.p.p_independent
+    (; current_storage) = allocation.current_basin_properties
+
+    # A low storage factor below 1 is only needed when the Basin runs empty
+    for allocation_model in allocation.allocation_models
+        low_storage_factor = allocation_model.problem[:low_storage_factor]
+        for basin_id in only(axes(low_storage_factor))
+            @test JuMP.value(low_storage_factor[basin_id]) ≈ 1 ||
+                current_storage[basin_id.idx] ≤ basin.low_storage_threshold[basin_id.idx]
+        end
+    end
 end
 
 @testitem "infeasibility analysis" begin
@@ -357,6 +385,13 @@ end
     @test JuMP.upper_bound(flow[outlet_link]) * scaling.flow ≈
         outlet.max_flow_rate[outlet_id.idx](0.0)
 
+    # Without allocation control the Outlet flow follows from its linearized flow-level
+    # relation, whose reduction factors can bring it below min_flow_rate
+    outlet.allocation_controlled[outlet_id.idx] = false
+    outlet.min_flow_rate[outlet_id.idx].u .= 1.0e-3
+    @test Ribasim.connector_flow_capacity_bounds(outlet_id, model.integrator.p, 0.0, 86400.0, scaling.flow) ==
+        (-Inf, Inf)
+
     # ManningResistance flows are only constrained by their linearized flow-level relation,
     # and Basin storage changes only by the storage that is available
     toml_path =
@@ -368,7 +403,7 @@ end
     (; p_independent) = model.integrator.p
     (; allocation, manning_resistance) = p_independent
     allocation_model = only(allocation.allocation_models)
-    (; problem) = allocation_model
+    (; problem, scaling) = allocation_model
     flow = problem[:flow]
 
     manning_id = NodeID(:ManningResistance, 2, p_independent)
@@ -380,6 +415,84 @@ end
         @test JuMP.has_lower_bound(storage_change)
         @test !JuMP.has_upper_bound(storage_change)
     end
+
+    # The level based reduction factors of the physical layer also limit the capacity of
+    # allocation controlled Pumps and Outlets
+    (; p) = model.integrator
+    (; outlet, pump) = p_independent
+    outlet_id = NodeID(:Outlet, 5, p_independent)
+    max_flow_rate = outlet.max_flow_rate[outlet_id.idx](0.0)
+    capacity() =
+        Ribasim.connector_flow_capacity_bounds(outlet_id, p, 0.0, 86400.0, scaling.flow)
+    @test capacity() == (0.0, max_flow_rate)
+    outlet.min_upstream_level[outlet_id.idx].u .= 10.0
+    @test capacity() == (0.0, 0.0)
+    outlet.min_upstream_level[outlet_id.idx].u .= -Inf
+    outlet.max_downstream_level[outlet_id.idx].u .= -10.0
+    @test capacity() == (0.0, 0.0)
+    outlet.max_downstream_level[outlet_id.idx].u .= Inf
+    @test capacity() == (0.0, max_flow_rate)
+
+    # What is left of the capacity by the level limits is kept, unless it is negligible
+    # compared to the flow scaling, which would make the problem infeasible
+    upstream_id = outlet.inflow_link[outlet_id.idx].link[1]
+    upstream_level = Ribasim.get_level(0.0, p, upstream_id, 0.0)
+    (; level_difference_threshold) = p_independent
+    factor() = Ribasim.level_reduction_factor(outlet, outlet_id, p, 0.0)
+    outlet.min_upstream_level[outlet_id.idx].u .=
+        upstream_level - 0.05 * level_difference_threshold
+    @test 0 < factor() < 1
+    @test capacity() == (0.0, factor() * max_flow_rate)
+    outlet.min_upstream_level[outlet_id.idx].u .=
+        upstream_level - 1.0e-3 * level_difference_threshold
+    @test 0 < factor() * max_flow_rate < Ribasim.MIN_SCALED_CAPACITY * scaling.flow
+    @test capacity() == (0.0, 0.0)
+    outlet.min_upstream_level[outlet_id.idx].u .= -Inf
+
+    pump_id = NodeID(:Pump, 7, p_independent)
+    pump.min_upstream_level[pump_id.idx].u .= 10.0
+    @test Ribasim.connector_flow_capacity_bounds(pump_id, p, 0.0, 86400.0, scaling.flow) ==
+        (0.0, 0.0)
+end
+
+@testitem "Level reduction factors limit the capacity of allocation controlled nodes" begin
+    import BasicModelInterface as BMI
+    using Ribasim: NodeID
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/polder_management/ribasim.toml")
+    model = Ribasim.Model(toml_path)
+    BMI.update(model)
+
+    (; p, t) = model.integrator
+    (; outlet, level_difference_threshold) = p.p_independent
+    outlet_id = NodeID(:Outlet, 5, p.p_independent)
+    max_flow_rate = outlet.max_flow_rate[outlet_id.idx](t)
+
+    # Halfway the range over which min_upstream_level reduces the flow the factor is 0.5
+    upstream_id = outlet.inflow_link[outlet_id.idx].link[1]
+    upstream_level = Ribasim.get_level(0.0, p, upstream_id, t)
+    outlet.min_upstream_level[outlet_id.idx].u .=
+        upstream_level - level_difference_threshold / 2
+    @test Ribasim.level_reduction_factor(outlet, outlet_id, p, t) ≈ 0.5
+
+    function flow(flow_rate)
+        # Evaluate min_upstream_level again
+        p.p_mutable.new_time_dependent_cache = true
+        return Ribasim.pump_or_outlet_flow(
+            outlet, outlet_id, 0.0, 0.0, p, t, flow_rate, p.time_dependent_cache.outlet, true
+        )
+    end
+
+    # The capacity that allocation uses is realized in the physical layer,
+    # and a flow rate below that capacity is not reduced
+    @test flow(max_flow_rate) ≈ 0.5 * max_flow_rate
+    @test flow(0.1 * max_flow_rate) ≈ 0.1 * max_flow_rate
+
+    # Without allocation control the factor reduces the flow rate itself
+    outlet.allocation_controlled[outlet_id.idx] = false
+    @test flow(max_flow_rate) ≈ 0.5 * max_flow_rate
+    @test flow(0.1 * max_flow_rate) ≈ 0.05 * max_flow_rate
 end
 
 @testitem "Allocation controlled node without capacity" begin
@@ -469,6 +582,19 @@ end
     @test isempty(failure_reasons)
 end
 
+@testitem "Missing demand priority defaults to 1" begin
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/demand_priority_default/ribasim.toml")
+    model = Ribasim.run(toml_path)
+    @test success(model)
+    (; user_demand, level_demand, flow_demand) = model.integrator.p.p_independent
+    # UserDemand (time table) and FlowDemand omit the demand priority, LevelDemand has 2
+    @test user_demand.demand_priorities == [1, 2]
+    @test user_demand.has_demand_priority == [true false]
+    @test flow_demand.has_demand_priority == [true false]
+    @test level_demand.has_demand_priority == [false true]
+end
+
 @testitem "Route priorities" begin
     using DataFrames: DataFrame
 
@@ -534,6 +660,197 @@ end
     # Verify we actually have data in both regimes
     @test !isempty(high_level_flows)
     @test !isempty(low_level_flows)
+end
+
+@testitem "FlowDemand on a node with DiscreteControl" begin
+    using DataFrames: DataFrame
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/flow_demand_discrete_control/ribasim.toml",
+    )
+    @test ispath(toml_path)
+
+    # The Pump has two control inneighbors: a FlowDemand and a DiscreteControl
+    model = Ribasim.run(toml_path)
+    @test success(model)
+    @test isfile(normpath(dirname(toml_path), "results/allocation.nc"))
+    @test isfile(normpath(dirname(toml_path), "results/allocation_flow.nc"))
+
+    control_states = Ribasim.discrete_control_data(model).control_state
+    @test "allocation" in control_states
+    @test "prescribed" in control_states
+
+    allocation_table = DataFrame(Ribasim.allocation_data(model))
+    pump_table = filter(:node_id => ==(2), allocation_table)
+    @test !isempty(pump_table)
+    @test all(≈(2.0e-3), pump_table.demand)
+    # The supplied flow of the last intervention interval is computed separately
+    @test isfinite(last(pump_table.supplied))
+end
+
+@testitem "Tied routes" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/tied_routes/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    # Two Pumps with the same route priority supply one demand. Their flows (node x time)
+    # change little more than their sum, instead of switching between the Pumps
+    (; flow_rate) = Ribasim.allocation_control_data(model; table = false)
+    change = sum(abs, diff(flow_rate; dims = 2))
+    change_of_sum = sum(abs, diff(sum(flow_rate; dims = 1); dims = 2))
+    @test change < 3 * change_of_sum
+end
+
+@testitem "Allocation solves from scratch" begin
+    import BasicModelInterface as BMI
+    import JuMP
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/two_basin_user_demand/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.Model(toml_path)
+    BMI.update(model)
+
+    (; problem) = only(model.integrator.p.p_independent.allocation.allocation_models)
+    # Start values would make HiGHS construct a basis, and then it skips presolve
+    @test all(isnothing, JuMP.start_value.(JuMP.all_variables(problem)))
+
+    objective_value = JuMP.objective_value(problem)
+    Ribasim.optimize_cold!(problem)
+    @test JuMP.termination_status(problem) == JuMP.OPTIMAL
+    @test JuMP.objective_value(problem) ≈ objective_value
+
+    # A problem presolve doesn't solve by itself: from the basis of the previous solve
+    # no iterations are needed, unless the solver is cleared
+    problem = JuMP.Model(Ribasim.get_optimizer())
+    JuMP.@variable(problem, 0 <= x[1:50] <= 1)
+    JuMP.@constraint(problem, [i in 1:49], x[i] + x[i + 1] <= 1.5)
+    JuMP.@objective(problem, Max, sum(x))
+    Ribasim.optimize_cold!(problem)
+    iterations = JuMP.simplex_iterations(problem)
+    @test iterations > 0
+    JuMP.optimize!(problem)
+    @test JuMP.simplex_iterations(problem) == 0
+    Ribasim.optimize_cold!(problem)
+    @test JuMP.simplex_iterations(problem) == iterations
+
+    # The tolerances of a retry only apply to that solve, and its solution can be read
+    Ribasim.optimize_cold!(
+        problem;
+        feasibility_tolerance = Ribasim.RETRY_FEASIBILITY_TOLERANCE,
+    )
+    @test JuMP.get_attribute(problem, "primal_feasibility_tolerance") ==
+        Ribasim.RETRY_FEASIBILITY_TOLERANCE
+    @test JuMP.get_attribute(problem, "dual_feasibility_tolerance") ==
+        Ribasim.RETRY_FEASIBILITY_TOLERANCE
+    @test JuMP.value(first(x)) >= 0
+    Ribasim.optimize_cold!(problem)
+    @test JuMP.get_attribute(problem, "primal_feasibility_tolerance") ==
+        Ribasim.FEASIBILITY_TOLERANCE
+    @test JuMP.get_attribute(problem, "dual_feasibility_tolerance") ==
+        Ribasim.FEASIBILITY_TOLERANCE
+end
+
+@testitem "FlowDemand on a node with negative physical flow" begin
+    using DataFrames: DataFrame
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/linear_resistance_demand_negative_flow/ribasim.toml",
+    )
+    @test ispath(toml_path)
+
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    # The physical flow is from basin 3 to basin 1, against the direction of the LinearResistance
+    flow_table = DataFrame(Ribasim.flow_data(model))
+    @test all(<(0), filter(:link_id => ==(1), flow_table).flow_rate)
+    allocation_table = DataFrame(Ribasim.allocation_data(model))
+    @test !isempty(filter(:node_id => ==(2), allocation_table))
+end
+
+@testitem "Control constraints are only rebuilt when allocation control changes" begin
+    import BasicModelInterface as BMI
+    import JuMP
+    using Ribasim: NodeID
+
+    control_constraint_names = (
+        :pump_constraint,
+        :outlet_constraint,
+        :tabulated_rating_curve_constraint,
+        :tabulated_rating_curve_capacity_constraint,
+    )
+
+    # The nonzero coefficients and the right-hand side of each control constraint, by name
+    function control_constraint_data(problem)
+        data = Dict{String, Tuple{Dict{String, Float64}, Float64}}()
+        for name in control_constraint_names, constraint in problem[name]
+            (; terms) = JuMP.constraint_object(constraint).func
+            data[JuMP.name(constraint)] = (
+                Dict(JuMP.name(var) => coef for (var, coef) in terms if !iszero(coef)),
+                JuMP.normalized_rhs(constraint),
+            )
+        end
+        return data
+    end
+
+    # Skipping the rebuild relies on set_simulation_data! setting all coefficients and
+    # right-hand sides in place. Set the simulation data on the kept control constraints,
+    # and on rebuilt ones.
+    function kept_and_rebuilt(model)
+        (; p, u, t) = model.integrator
+        allocation_model = only(p.p_independent.allocation.allocation_models)
+        du = zero(u)
+        Ribasim.set_simulation_data!(allocation_model, p, t, 86400.0, u, du, t)
+        kept = control_constraint_data(allocation_model.problem)
+        Ribasim.rebuild_control_constraints!(allocation_model, p.p_independent)
+        Ribasim.set_simulation_data!(allocation_model, p, t, 86400.0, u, du, t)
+        return kept, control_constraint_data(allocation_model.problem)
+    end
+
+    # These models have Pump, TabulatedRatingCurve and TabulatedRatingCurve capacity
+    # constraints respectively
+    for model_name in
+        ("minimal_subnetwork", "allocation_training", "level_demand_with_rating_curve")
+        toml_path =
+            normpath(@__DIR__, "../../generated_testmodels/$model_name/ribasim.toml")
+        @test ispath(toml_path)
+        model = Ribasim.Model(toml_path)
+        BMI.update_until(model, 3 * 86400.0)
+        kept, rebuilt = kept_and_rebuilt(model)
+        @test !isempty(kept)
+        @test kept == rebuilt
+    end
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/minimal_subnetwork/ribasim.toml")
+    model = Ribasim.Model(toml_path)
+    BMI.update_until(model, 86400.0)
+    (; p_independent) = model.integrator.p
+    allocation_model = only(p_independent.allocation.allocation_models)
+    (; problem) = allocation_model
+    pump_id = NodeID(:Pump, 3, p_independent)
+    constraints = problem[:pump_constraint]
+    @test pump_id ∈ only(axes(constraints))
+
+    Ribasim.update_control_states!(allocation_model, p_independent)
+    @test problem[:pump_constraint] === constraints
+
+    # Without flow the Pump constraint uses the low storage factor of the downstream Basin
+    # instead of the upstream one, so the old coefficient has to be reset
+    p_independent.pump.flow_rate[pump_id.idx] = 0.0
+    kept, rebuilt = kept_and_rebuilt(model)
+    @test kept == rebuilt
+
+    # With allocation control the Pump has no linearized flow-level constraint
+    p_independent.pump.allocation_controlled[pump_id.idx] = true
+    Ribasim.update_control_states!(allocation_model, p_independent)
+    @test pump_id ∉ only(axes(problem[:pump_constraint]))
 end
 
 @testitem "allocation record averaging" begin
@@ -636,4 +953,59 @@ end
     update_allocation_until!(model.integrator, 86400.0)
     times = unique(datum.time for datum in allocation.record_flow)
     @test times == [0.0, 3600.0, 10800.0, 25200.0, 54000.0]
+end
+
+@testitem "Allocation termination status" setup = [ModelEdit] begin
+    using JuMP
+    using Logging
+    using Ribasim:
+        AllocationFailure, AllocationObjective, AllocationObjectiveType, parse_termination_status
+
+    model = Ribasim.Model(ModelEdit.edited_model("minimal_subnetwork"))
+    allocation_model = only(model.integrator.p.p_independent.allocation.allocation_models)
+    (; problem) = allocation_model
+
+    objective = AllocationObjective(; type = AllocationObjectiveType.demand_flow, demand_priority = 1)
+    @test repr(objective) == "AllocationObjective of type demand_flow with demand priority 1"
+    @test repr(AllocationObjective(; type = AllocationObjectiveType.none)) ==
+        "AllocationObjective of type none"
+
+    parse_status(; kwargs...) = parse_termination_status(
+        allocation_model, objective, JuMP.AffExpr(), nothing, model.config, 0.0; kwargs...
+    )
+    error_logs(logger) = [log for log in logger.logs if log.level == Logging.Error]
+
+    Ribasim.optimize_cold!(problem)
+    @test parse_status() === nothing
+
+    x = JuMP.variable_by_name(problem, "flow[(FlowBoundary #1, Basin #2)]")
+    y = JuMP.variable_by_name(problem, "flow[(Basin #2, Pump #3)]")
+
+    # A status that can't be resolved is retried with a smaller timestep if possible
+    extra_constraint = JuMP.@constraint(problem, test_extra, x + y <= 1.0e10)
+    @test JuMP.termination_status(problem) == JuMP.OPTIMIZE_NOT_CALLED
+    @test_throws AllocationFailure parse_status(; can_retry = true)
+    @test_throws "failed with termination status OPTIMIZE_NOT_CALLED" parse_status()
+    JuMP.delete(problem, extra_constraint)
+    JuMP.unregister(problem, :test_extra)
+
+    # An infeasible problem is reported with the constraints that contradict each other
+    JuMP.@constraint(problem, test_lower, x - y >= 1.0e-3)
+    JuMP.@constraint(problem, test_upper, x - y <= -1.0e-3)
+    Ribasim.optimize_cold!(problem)
+    @test JuMP.termination_status(problem) == JuMP.INFEASIBLE
+    logger = TestLogger()
+    with_logger(logger) do
+        @test_throws "Allocation optimization for subnetwork 2 at t = 0.0 s is infeasible" parse_status()
+    end
+    message = only(error_logs(logger)).message
+    @test startswith(message, "Set of incompatible constraints found:\n")
+    violations = split(message, '\n')[2:end]
+    @test length(violations) == 2
+    @test any(startswith("test_lower : "), violations)
+    @test any(startswith("test_upper : "), violations)
+
+    # The indices reported by the analysis are those of the JuMP model
+    @test Ribasim.constraint_ref_from_index(problem, JuMP.index(test_lower)) == test_lower
+    @test Ribasim.variable_ref_from_index(problem, JuMP.index(x)) == x
 end

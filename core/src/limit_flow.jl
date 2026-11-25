@@ -40,9 +40,11 @@ function limit_flow!(integrator, flow, flow_prev, t, node::Union{Pump, Outlet})
     end
 
     @threaded for idx in eachindex(node_id)
-        max_flow = max_flow_rate[idx]
+        itp = max_flow_rate[idx]
+        # Most of these are constant in time, which is much cheaper than evaluating them
+        max_flow = all(==(first(itp.u)), itp.u) ? first(itp.u) : itp(t)
         # Reduction factors can lower the flow below min_flow_rate, including to zero.
-        limit_flow!(flow_node, flow_node_prev, 0.0, max_flow(t), dt, idx)
+        limit_flow!(flow_node, flow_node_prev, 0.0, max_flow, dt, idx)
     end
     return nothing
 end
@@ -101,6 +103,9 @@ function limit_flow!(integrator, flow, flow_prev, t, user_demand::UserDemand)
             src_id = link_meta.link[1]
             min_flow_rate, max_flow_rate = if demand_from_timeseries
                 0.0, Inf
+            elseif src_id.is_routed
+                # A Junction source has no storage or level that guarantees a minimum abstraction
+                0.0, q_k_max
             else
                 factor_basin_min = min_low_storage_factor(
                     current_storage,

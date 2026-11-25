@@ -87,7 +87,7 @@ end
     starting_precipitation =
         basin.vertical_flux.precipitation[1]
     BMI.update_until(model, saveat)
-    mean_precipitation = only(model.saved.flow.saveval).exact_vertical_forcing.precipitation[1]
+    mean_precipitation = model.saved.basin.variables.precipitation[1]
 
     # Given that precipitation stops after 15 of the 20 days
     @test mean_precipitation ≈ 3 / 4 * starting_precipitation
@@ -100,13 +100,13 @@ end
     model = Ribasim.Model(config)
     Ribasim.solve!(model)
     (; step_stats) = model.integrator.p.p_independent
-    saved = model.saved.solver_stats.saveval
+    (; solver_stats_prev) = model.saved
 
     # The statistics are saved from within the upstream _loopfooter!, so the order of the
     # step that was just accepted must already be included when they are sampled,
     # including the final step.
-    @test last(saved).accepted_timesteps == model.integrator.sol.stats.naccept
-    @test last(saved).order_sum == step_stats.order_sum
+    @test solver_stats_prev.accepted_timesteps == model.integrator.sol.stats.naccept
+    @test solver_stats_prev.order_sum == step_stats.order_sum
 
     (; accepted_timesteps, mean_order) = Ribasim.solver_stats_data(model)
     @test all(==(1), accepted_timesteps)

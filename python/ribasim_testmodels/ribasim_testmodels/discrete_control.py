@@ -338,6 +338,63 @@ def tabulated_rating_curve_control_model() -> Model:
     return model
 
 
+def manning_resistance_control_model() -> Model:
+    """Discrete control on a ManningResistance.
+
+    Basin 1 drains over a ManningResistance into Basin 3. The Control node
+    makes the ManningResistance (almost) closed by increasing the roughness
+    once the level of Basin 1 drops below a threshold.
+    """
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
+        crs="EPSG:28992",
+        input_dir=Path("input"),
+        experimental=Experimental(concentration=True),
+    )
+
+    basin_profile = basin.Profile(area=[0.01, 100.0, 100.0], level=[0.0, 1.0, 10.0])
+
+    model.basin.add(Node(1, Point(0, 0)), [basin_profile, basin.State(level=[9.5])])
+    model.manning_resistance.add(
+        Node(2, Point(1, 0)),
+        [
+            manning_resistance.Static(
+                control_state=["open", "closed"],
+                manning_n=[0.04, 1e12],
+                profile_width=50.0,
+                profile_slope=0.0,
+                length=2000.0,
+            )
+        ],
+    )
+    model.basin.add(Node(3, Point(2, 0)), [basin_profile, basin.State(level=[4.5])])
+    model.discrete_control.add(
+        Node(4, Point(1, 1)),
+        [
+            discrete_control.Variable(
+                listen_node_id=[1],
+                variable="level",
+                compound_variable_id=1,
+            ),
+            discrete_control.Condition(
+                threshold_high=[8.0],
+                compound_variable_id=1,
+                condition_id=1,
+            ),
+            discrete_control.Logic(
+                truth_state=["T", "F"], control_state=["open", "closed"]
+            ),
+        ],
+    )
+
+    model.link.add(model.basin[1], model.manning_resistance[2])
+    model.link.add(model.manning_resistance[2], model.basin[3])
+    model.link.add(model.discrete_control[4], model.manning_resistance[2])
+
+    return model
+
+
 def compound_variable_condition_model() -> Model:
     """Model with a condition on a compound variable for DiscreteControl."""
     model = Model(

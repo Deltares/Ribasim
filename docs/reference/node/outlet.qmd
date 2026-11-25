@@ -8,6 +8,25 @@ It is similar to the Pump, except that water only flows down, by gravity.
 
 When PID controlled, the Outlet must point towards the controlled Basin in terms of links.
 
+# Schematic
+
+```{julia}
+# | code-fold: true
+include("../../../utils/plot_connector_schematic.jl")
+plot_connector_schematic(:Outlet)
+```
+
+# Allowed connectivity
+
+The diagram below shows which node types are allowed directly upstream (left) and downstream (right) of this node.
+This is a connectivity illustration, not a valid simulation model.
+
+```{julia}
+# | code-fold: true
+include("../../../utils/plot_node_connectivity.jl")
+plot_node_connectivity("Outlet")
+```
+
 # Tables
 
 ## Static
@@ -43,10 +62,38 @@ $$
 - $Q$ is the actual Outlet flow rate.
 - $Q_\text{set}$ is the Outlet's target `flow_rate`.
 - $Q_{\min}$ and $Q_{\max}$ are the Outlet `min_flow_rate` and `max_flow_rate`.
-- $\phi_\text{storage}$ is the reduction factor that smoothly reduces flow when the upstream volume is below the equivalent of a water depth of $10 \;\text{cm}$ (change with solver setting `depth_threshold`).
-- $\phi_\text{level}$ is the product of the reduction factors that smoothly reduce flow based on these criteria (change the $0.02 \;\text{m}$ with solver setting `level_difference_threshold`):
-  - The upstream level is less than $0.02 \;\text{m}$ above the downstream level.
-  - The upstream level is below `min_upstream_level` + $0.02 \;\text{m}$
-  - The downstream level is above `max_downstream_level` - $0.02 \;\text{m}$
+- $\phi_\text{storage}$ is the reduction factor that smoothly reduces flow when the upstream volume is below the equivalent of a water depth of `depth_threshold`.
+- $\phi_\text{level}$ is the product of the reduction factors that smoothly reduce flow based on these criteria:
+  - The upstream level goes from `downstream_level` + `level_difference_threshold` to `downstream_level`.
+  - The upstream level goes from `min_upstream_level` + `level_difference_threshold` to `min_upstream_level`.
+  - The downstream level goes from `max_downstream_level` - `level_difference_threshold` to `max_downstream_level`.
+
+For `depth_threshold`, `level_difference_threshold` see [Solver settings](/reference/usage.qmd#sec-solver-settings).
 
 Since $\phi_\text{level}$ is applied after the clamp, `min_flow_rate` is not a strict minimum: the level criteria can still reduce the flow to zero.
+
+For an [allocation-controlled](#behavior-in-allocation) Outlet the level criteria reduce the capacity instead of the flow rate:
+
+$$
+Q = \mathrm{clamp}(\phi_\text{storage} Q_\text{set}, \phi_\text{level} Q_{\min}, \phi_\text{level} Q_{\max})
+$$
+
+Allocation already takes these criteria into account when it sets the flow rate, so reducing the flow rate itself would apply them twice.
+
+# Behavior in allocation
+
+How an Outlet behaves in [allocation](/concept/allocation.qmd) depends on `allocation_controlled` in the [Static](#static) table.
+
+An Outlet that is not allocation-controlled (the default) keeps the flow rate given in its tables or by its control node.
+Allocation takes this flow into account, but does not change it.
+
+For an allocation-controlled Outlet, allocation sets the flow rate between `min_flow_rate` and `max_flow_rate`, to bring water to where it is needed.
+This flow rate is used until the next intervention time, set by `intervention_interval` in the [allocation settings](/reference/usage.qmd#sec-allocation-settings), and is in [`allocation_control.nc`](/reference/usage.qmd#sec-results).
+The simulated flow in `flow.nc` can be lower than this flow rate, for instance when the upstream Basin is almost empty, when the upstream level is not higher than the downstream level, or when `min_upstream_level` or `max_downstream_level` is reached.
+An allocation-controlled Outlet needs a finite `max_flow_rate`.
+An Outlet that connects the primary network to a secondary network must be allocation-controlled, and a [DiscreteControl](/reference/node/discrete-control.qmd) node can switch allocation control on and off.
+
+A [FlowDemand](/reference/node/flow-demand.qmd) on an Outlet is a minimum flow rate when allocation is not used.
+With allocation it is a demand like the others: it is met in the order of its demand priority, so it can get less water than demanded when water is scarce.
+
+With a route priority for Outlet nodes, see [allocation settings](/reference/usage.qmd#sec-allocation-settings), allocation can be made to prefer or avoid routing water through them.

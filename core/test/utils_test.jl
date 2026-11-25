@@ -13,6 +13,37 @@
     @test convert(Int32, id) === Int32(2)
     @test hash(id) === hash(id.value)
     @test id in Set(Int32[2, 3])
+    # A NodeID indexes by its ID, not by its index within the node type
+    @test [10, 20, 30][id] == 20
+
+    node_ids = [NodeID(:Basin, 2, 1), NodeID(:Pump, 5, 1)]
+    @test NodeID(5, node_ids) === node_ids[2]
+    # An unknown ID is not found, also if it is not larger than all known IDs
+    for value in (1, 3, 6)
+        @test_logs (:error, "Node ID #$value is not in the Node table.") @test_throws "Node ID not found" NodeID(
+            value, node_ids,
+        )
+        @test_logs (:error, "Node ID Pump #$value is not in the Node table.") @test_throws "Node ID not found" NodeID(
+            :Pump, value, node_ids,
+        )
+    end
+    @test NodeID(:Pump, 5, node_ids) === node_ids[2]
+end
+
+@testitem "NodeType conversion" begin
+    using Ribasim: NodeType
+
+    @test convert(NodeType.T, "Basin") === NodeType.Basin
+    @test convert(NodeType.T, :Pump) === NodeType.Pump
+    @test NodeType.T(NodeType.Outlet) === NodeType.Outlet
+end
+
+@testitem "findsorted" begin
+    using Ribasim: findsorted
+
+    @test findsorted([1, 3, 5], 3) == 2
+    @test findsorted([1, 3, 5], 4) === nothing
+    @test_throws "Multiple occurrences of 3 found." findsorted([1, 3, 3], 3)
 end
 
 @testitem "bottom" begin
@@ -181,6 +212,11 @@ end
     @test logger.logs[1].message ==
         "The initial level (-1.0) of Basin #1 is below the bottom (0.0)."
 
+    # There must be one level per Basin
+    @test_logs (:error, "Unexpected 'Basin / state' length.") @test_throws "Encountered errors while parsing the initial levels of basins." Ribasim.get_storages_from_levels(
+        basin, Float64[],
+    )
+
     # Converting from storages to levels and back should return the same storages
     storages = range(0.0, 2 * storage_to_level.t[end], 50)
     levels = [Ribasim.get_level_from_storage(basin, 1, s) for s in storages]
@@ -299,7 +335,9 @@ end
     )
     model = Ribasim.Model(toml_path)
     (; flow_ranges) = model.integrator.p.p_independent
-    (; flow_input_ranges, ∂flow_∂flow_input) = model.integrator.cache.nlsolver.cache.W.J.cache
+    (; jac_flow) = model.integrator.cache.nlsolver.cache.W.J.cache
+    flow_input_ranges = jac_flow.ranges
+    ∂flow_∂flow_input = jac_flow.jac
     rows = rowvals(∂flow_∂flow_input)
 
     inflow_flow_idxs = flow_ranges.horizontal.user_demand_inflow
@@ -439,22 +477,6 @@ end
     @test atmp ≈ expected
 end
 
-@testitem "FlatVector" begin
-    vv = [[2.2, 3.2], [4.3, 5.3], [6.4, 7.4]]
-    fv = Ribasim.FlatVector(vv)
-    @test length(fv) == 6
-    @test size(fv) == (6,)
-    @test collect(fv) == [2.2, 3.2, 4.3, 5.3, 6.4, 7.4]
-    @test fv[begin] == 2.2
-    @test fv[5] == 6.4
-    @test fv[end] == 7.4
-
-    vv = Vector{Float64}[]
-    fv = Ribasim.FlatVector(vv)
-    @test isempty(fv)
-    @test length(fv) == 0
-end
-
 @testitem "reduction_factor" begin
     using Ribasim: reduction_factor
     @test reduction_factor(-2.0, 2.0) === 0.0
@@ -568,8 +590,8 @@ end
         :Terminal,
         :UserDemand,
     ]
-    # Junction, Terminal have no tables
-    no_tables = (:Terminal, :Junction)
+    # Terminal has no tables
+    no_tables = (:Terminal,)
     @test unique(node_type.(table_types)) == filter(!in(no_tables), node_types)
     @test collect(keys(node_kinds)) == node_types
     for node_type in node_types
@@ -605,8 +627,16 @@ end
     @test_throws "not found" find_index(:d, s)
 end
 
+@testitem "log_negative_mass" begin
+    using Ribasim: NodeID, log_negative_mass
+    using DataStructures: OrderedSet
+    substances = OrderedSet([:a, :b])
+    message = "Basin #1 has negative mass -2.0 for substance b"
+    @test_logs (:error, message) log_negative_mass(NodeID(:Basin, 1, 1), [1.0, -2.0], substances)
+end
+
 @testitem "@threaded" begin
-    using Ribasim: @threaded, parallel_foreach
+    using Ribasim: @threaded, parallel_foreach, parallel_chunks, chunk_range
 
     # Each index is visited exactly once, also with more chunks than threads
     for indices in (1:1, 1:7, 5:104, 1:1000), n_chunks in (1, 3, 16)
@@ -614,6 +644,23 @@ end
         parallel_foreach(i -> visits[i] += 1, indices, n_chunks)
         @test visits == [i in indices ? 1 : 0 for i in 1:1000]
     end
+
+    # The chunks of several loops cover each of them once, also an empty one, and each chunk
+    # is taken once
+    chunk_visits = zeros(Int, 16)
+    a_visits = zeros(Int, 100)
+    b_visits = zeros(Int, 5)
+    empty_chunks = zeros(Bool, 16)
+    parallel_chunks(16) do k
+        chunk_visits[k] += 1
+        foreach(i -> a_visits[i] += 1, chunk_range(1:100, k, 16))
+        foreach(i -> b_visits[i] += 1, chunk_range(1:5, k, 16))
+        empty_chunks[k] = isempty(chunk_range(1:0, k, 16))
+    end
+    @test all(==(1), chunk_visits)
+    @test all(==(1), a_visits)
+    @test all(==(1), b_visits)
+    @test all(empty_chunks)
 
     # `continue` skips to the next index, both in a plain loop and in parallel tasks
     for min_chunk_size in (1, 1000)
@@ -629,15 +676,17 @@ end
         @test visits == [isodd(i) ? 1 : 0 for i in 1:100]
     end
 
-    # An error in the first chunk, which runs on the calling task, is only thrown once the
-    # other chunks have finished
+    # An error in a chunk is only thrown once no task writes anymore, since the other chunks
+    # may still be writing
     finished = zeros(Bool, 100)
     @test_throws "error in first chunk" parallel_foreach(1:100, 4) do i
         i == 1 && error("error in first chunk")
         sleep(0.001)
         finished[i] = true
     end
-    @test all(finished[26:100])
+    finished_at_throw = copy(finished)
+    sleep(0.1)
+    @test finished == finished_at_throw
 
     # An error in another chunk is thrown as well
     @test_throws "error in last chunk" parallel_foreach(1:100, 4) do i

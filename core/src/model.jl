@@ -1,8 +1,53 @@
-struct SavedResults
-    flow::SavedValues{Float64, SavedFlow}
-    basin_state::SavedValues{Float64, SavedBasinState}
-    subgrid_level::SavedValues{Float64, Vector{Float64}}
-    solver_stats::SavedValues{Float64, SolverStats}
+"""
+The results of a NetCDF file with a time dimension that are in memory, in the shape of the file.
+
+- `time`: The time per time step, in seconds since the start of the simulation
+- `coordinates`: The variables that don't depend on time
+- `variables`: For each variable all values in one vector, where time is the last dimension
+- `size`: The size of the variables without the time dimension
+- `ntime_written`: The number of time steps in the file that are no longer in memory
+"""
+@kwdef mutable struct SavedFile{C <: NamedTuple, V <: NamedTuple, N}
+    const time::Vector{Float64} = Float64[]
+    const coordinates::C
+    const variables::V
+    size::NTuple{N, Int}
+    ntime_written::Int = 0
+end
+
+"""
+All results that are in memory, which are added to at each saveat by `SaveResults`. Each time
+`chunk_time` time steps are complete they are written to file and removed from memory, so
+functions like `basin_data` and `flow_data` only return all results if they fit in one chunk.
+
+- `mean_flows`: Buffers for the mean flows of the saveat interval that is being saved
+- `t_prev`: The time of the previous save, the start of the next saveat interval
+- `level_prev`: The Basin levels at `t_prev`
+- `t_allocation_unfinished`: The start of the intervention interval that is not finished at
+  `t_prev`, from where the allocation results are not complete yet
+- `solver_stats_prev`: The cumulative solver stats at `t_prev`
+- `chunk_time`: The number of time steps per write, also the chunk size along the time dimension
+
+The `control` results share their vectors with `discrete_control.record`, which is added to when
+a control state changes. Allocation results are moved here from `allocation.record_demand` and
+the like at each saveat, because those are averaged over an intervention interval first.
+"""
+@kwdef mutable struct SavedResults{B, F, C, S, T, D, A, AF, AC}
+    const basin::B
+    const flow::F
+    const concentration::C
+    const subgrid_level::S
+    const solver_stats::T
+    const control::D
+    const allocation::A
+    const allocation_flow::AF
+    const allocation_control::AC
+    const mean_flows::MeanFlows
+    const level_prev::Vector{Float64}
+    t_prev::Float64 = NaN
+    t_allocation_unfinished::Float64 = 0.0
+    solver_stats_prev::SolverStats = zero_solver_stats()
+    chunk_time::Int
 end
 
 """
@@ -21,7 +66,7 @@ struct Model
     integrator::SciMLBase.AbstractODEIntegrator
     "The TOML configuration that this Model was built from."
     config::Config
-    "Results collected by the saving callbacks over the course of the simulation."
+    "The results that are not yet removed from memory, see [`SavedResults`](@ref)."
     saved::SavedResults
     "Logger that all Ribasim log messages of this Model are sent to."
     logger::AbstractLogger
@@ -84,6 +129,9 @@ function Model(
             error("Invalid PidControl connectivity.")
         end
 
+        # Errors for a circular dependency in the control of flows
+        set_control_order!(parameters)
+
         if !valid_min_upstream_level!(graph, outlet, basin)
             error("Invalid minimum upstream level of Outlet.")
         end
@@ -112,7 +160,7 @@ function Model(
 
     u0 = build_state_vector(p_independent)
     if isempty(u0)
-        @error "Models without states are unsupported, please add a Basin node."
+        @error "Models without states are unsupported. All flows in this model are FlowBoundary flows, which are integrated exactly without a state. Add a Basin, a connector node (e.g. a Pump or Outlet) or a UserDemand."
         error("Model has no state.")
     end
     # u_prev_saveat starts undefined; it must match u0 so save_flow computes correct
@@ -152,12 +200,10 @@ function Model(
 
     # Initialize the integrator, providing all solver options as described in
     # https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/
-    # Not all keyword arguments (e.g. `dtmax`) support `nothing`, in which case we follow
-    # https://github.com/SciML/OrdinaryDiffEq.jl/blob/v6.57.0/src/solve.jl#L10
     integrator = init(
         prob,
         alg;
-        progress = true,
+        progress = show_progress(config.logging),
         progress_name = "Simulating",
         progress_steps = 100,
         save_everystep = false,
@@ -168,7 +214,7 @@ function Model(
         internalnorm = InternalNorm(; parameters.p_independent),
         config.solver.dt,
         config.solver.dtmin,
-        dtmax = something(config.solver.dtmax, t_end),
+        config.solver.dtmax,
         config.solver.force_dtmin,
         config.solver.abstol,
         config.solver.reltol,
@@ -180,9 +226,8 @@ function Model(
     return model
 end
 
-"Get all saved times in seconds since start"
-tsaves(model::Model)::Vector{Float64} =
-    [0.0, (cvec.t for cvec in model.saved.flow.saveval)...]
+"Get all saved times that are in memory in seconds since start"
+tsaves(model::Model)::Vector{Float64} = [model.saved.basin.time; model.saved.t_prev]
 
 "Get all saved times as a Vector{DateTime}"
 function datetimes(model::Model)::Vector{DateTime}
@@ -192,7 +237,7 @@ end
 function Base.show(io::IO, model::Model)
     (; config, integrator) = model
     t = datetime_since(integrator.t, config.starttime)
-    nsaved = length(tsaves(model))
+    nsaved = model.saved.basin.ntime_written + length(tsaves(model))
     return println(io, "Model(ts: $nsaved, t: $t)")
 end
 
@@ -272,7 +317,8 @@ function update_allocation_until!(integrator, t_intervention_end::Float64)::Noth
                 τ,
                 τ_next - τ,
                 u,
-                du;
+                du,
+                t;
                 Δt_supplied = (τ == t) ? t - time.t_intervention : nothing,
                 can_retry,
             )
@@ -320,12 +366,20 @@ end
 """
     solve!(model::Model)::Model
 
-Solve a Model until the configured `endtime`.
+Solve a Model until the configured `endtime`. If it is interrupted with Ctrl-C this happens in
+between time steps.
 """
 function solve!(model::Model)::Model
     (; integrator) = model
+    (; p_mutable) = integrator.p
 
-    comptime_s = @elapsed SciMLBase.solve!(integrator)
+    # Handle Ctrl-C in between time steps, such that the results are consistent, see `_loopfooter!`
+    p_mutable.defer_interrupt = true
+    comptime_s = try
+        @elapsed disable_sigint(() -> SciMLBase.solve!(integrator))
+    finally
+        p_mutable.defer_interrupt = false
+    end
     check_error!(integrator)
     comptime = canonicalize(Millisecond(round(Int, comptime_s * 1000)))
     @info "Computation time: $comptime"

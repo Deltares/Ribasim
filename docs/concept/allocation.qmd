@@ -25,19 +25,21 @@ Allocation is the process of assigning an optimized allocated flow rate to deman
 
 The allocation problem is solved per subnetwork of the Ribasim model. A subnetwork is defined by all nodes that have the same subnetwork ID in the [Node table](/reference/usage.qmd#node). By default, all nodes get a subnetwork ID of 1. Each subnetwork is used to formulate a linear optimization problem with the [JuMP](https://jump.dev/JuMP.jl/stable/) package, which is solved using the [HiGHS solver](https://highs.dev/). For more in-depth information see also the example of solving the maximum flow problem with `JuMP.jl` [here](https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem).
 
-When we build a Ribasim model in which we want to utilize allocation, it can be computationally efficient and stable to divide a large allocation network into a primary network which connects to multiple subnetworks. The primary network should be the main water system and treats each connected subnetwork as a single demand node.
+When we build a Ribasim model in which we want to utilize allocation, it can be computationally efficient and stable to divide a large allocation network into a primary network which connects to multiple secondary networks. The primary network should be the main water system and treats each connected secondary network as a single demand node.
 
-We can first solve an allocation optimization for the primary network, that calculates how to optimally divide the available water to each subnetwork. With this allocated amount for a subnetwork, we can optimize how to divide this water within the subnetwork to the demand nodes.
+We can first solve an allocation optimization for the primary network, that calculates how to optimally divide the available water to each secondary network. With this allocated amount for a secondary network, we can optimize how to divide this water within the secondary network to the demand nodes.
 
 Subnetworks are defined by grouping nodes that share the same subnetwork ID in the [Node table](/reference/usage.qmd#node). The primary network is associated with subnetwork ID 1. This will always represent the main water system. This is shown in @fig-subnetwork-example below.
 
-![The primary network (subnetwork 1, blue) with connected secondary subnetworks (subnetwork 2 and 3, grey).](https://s3.deltares.nl/ribasim/doc-image/concept/medium_sized_subnetwork_model.png){#fig-subnetwork-example}
+![The primary network (subnetwork 1, blue) with connected secondary networks (subnetwork 2 and 3, grey).](https://s3.deltares.nl/ribasim/doc-image/concept/medium_sized_subnetwork_model.png){#fig-subnetwork-example}
 
 Secondary networks:
 
 - Can only connect to the primary network via Pump or Outlet nodes, which must be allocation controlled
 - Cannot connect directly to other secondary networks
-- The demand of a subnetwork to the primary network is the sum of all unmet demands within the subnetwork
+- Cannot flow into the primary network
+- Cannot have a [Junction](/reference/node/junction.qmd) with fractions at the connection with the primary network
+- The demand of a secondary network to the primary network is the sum of all unmet demands within the secondary network. Unmet demands are those demands that cannot be fulfilled by the water that is locally available, i.e. the water in the secondary network itself.
 - Must have a subnetwork greater than 1.
 
 
@@ -111,7 +113,7 @@ The allocation LP linearizes the Basin profiles and the flow-level relationships
 
 The simulation starts with $\Delta t = \Delta t_{\min}$, the configured `dtmin`, and $\Delta t_{\max}$ is the configured `dtmax`, both limited to `intervention_interval`. Allocation timesteps are shortened to end at the next intervention time.
 
-The allocation output contains the time-averaged results per intervention interval. If `solver.saveat` is 0, the results of every allocation timestep are written instead.
+The allocation output contains the time-averaged results per intervention interval. If `solver.saveat` is 0, the results of every allocation timestep are written instead. If the simulation stops before the end time, the allocation output ends with the last intervention interval that finished at the last `saveat`.
 
 ## The high level algorithm {#sec-high-level-algorithm}
 The allocation algorithm contains 2 types of optimization:
@@ -161,10 +163,10 @@ We have the following boundary nodes in Ribasim:
 
 - The Terminal, where water simply leaves the model
 - The LevelBoundary, which yields fixed water levels; $h^{n+1}_{lb}$ is read from the interpolated timeseries $h_{lb}$ of the node or is a constant value
-- The FlowBoundary, which specifies a flow rate. Here the average outflow of the FlowBoundary in the physical layer over the previous $\Delta t$ is used as a prediction of the flow rate in the next $\Delta t$ over which the optimization takes place.
+- The FlowBoundary, which specifies a flow rate. Here the flow rate at the intervention time $t$ is held constant over the intervention interval (persistence), so allocation does not use future values of the timeseries.
 
 :::{.callout-note}
-The flow rate of a FlowBoundary is given as a timeseries so we could use the interpolation of that timeseries to compute the average flow in the coming $\Delta t_\text{allocation}$. However, that would not always be accurate, since FlowBoundary nodes can be deactivated by Discrete Control which can not (easily) be anticipated.
+The flow rate of a FlowBoundary is given as a timeseries, but allocation does not use the interpolation of that timeseries over the coming $\Delta t_\text{allocation}$: that would be foresight, which allocation does not have at the intervention time. It is also not always accurate, since FlowBoundary nodes can be deactivated by Discrete Control which can not (easily) be anticipated.
 :::
 
 
@@ -172,6 +174,8 @@ The flow rate of a FlowBoundary is given as a timeseries so we could use the int
 # Objectives (goals)
 
 The allocation algorithm optimizes for a sequence of objectives in succession. Before optimizing the next goal, it adds an inequality constraint that retains the preceding result in the direction of improvement. For a minimization objective with optimal value $z^*$, this is $z \le z^*$. This approach is known as [goal programming](https://en.wikipedia.org/wiki/Goal_programming).
+
+The first objective maximizes the sum of the low storage factors of the Basins, which reduce the outflows of a Basin to prevent negative storage, like the low storage factor in the physical layer. Because this objective comes first, these factors are only lowered when a Basin would otherwise run empty, and the demand objectives cannot lower them to hold back water. Then come the demand objectives below, then the route priority objective, and finally the objective to stay close to the previous timestep.
 
 
 ### Demand objectives
@@ -370,13 +374,13 @@ $$
 
 ### Control by allocation
 
-When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, they must have `allocation_controlled` set to `true` in the static table for [Pump](/reference/node/pump.qmd#static) or [Outlet](/reference/node/outlet.qmd#static). When a Pump or Outlet is allocation controlled, the flow through the node is only bounded by its capacity and Pump or Outlet specific constraints based on the difference between upstream and downstream level (see [Pump equations](/reference/node/pump.qmd#equations) or [Outlet equations](/reference/node/outlet.qmd#equations)).
+When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, they must have `allocation_controlled` set to `true` in the static table for [Pump](/reference/node/pump.qmd#static) or [Outlet](/reference/node/outlet.qmd#static). When a Pump or Outlet is allocation controlled, the flow through the node in the allocation problem is bounded by its `min_flow_rate` and `max_flow_rate`, reduced by its level based reduction factors at the start of the allocation timestep (see @sec-flow-capacities). In the physical layer, the allocated flow rate is still subject to the Pump or Outlet specific reduction factor for low storage, and the level based reduction factors keep limiting its capacity when the levels change between two intervention times (see [Pump equations](/reference/node/pump.qmd#equations) or [Outlet equations](/reference/node/outlet.qmd#equations)).
 
 :::{.callout-important}
 Because the allocation problem must be bounded, an allocation controlled Pump or Outlet is required to have a finite `max_flow_rate`. This is validated at the start of the simulation, for the initial parameters as well as for all DiscreteControl states of the node. Note that Pumps and Outlets that connect the primary network to a secondary network are required to be allocation controlled; an error is thrown if `allocation_controlled` is not set to `true` for these nodes. Hence they also require a finite `max_flow_rate`.
 :::
 
-For a TabulatedRatingCurve, the allocation-determined flow is bounded by the maximum flow the rating curve can physically deliver at the highest upstream level reachable within the allocation time step, i.e. $Q(h)$ evaluated at that level. In the physical layer, the allocated flow rate replaces the usual $Q(h)$ lookup while still applying the same reduction factors for low storage, level difference, and maximum downstream level (see [TabulatedRatingCurve equations](/reference/node/tabulated-rating-curve.qmd#equations)). After all goals have been optimized for, the flow rate through the allocation controllable node is communicated to the physical layer.
+For a TabulatedRatingCurve, the allocation-determined flow is bounded by the rating curve linearized around the current upstream level, $Q \le Q(h_a^n) + \frac{\partial Q}{\partial h_a}\Delta h_a$, where $\Delta h_a = \Delta S_a / A_a^n$ is the level change of the upstream Basin over the allocation timestep. In the physical layer, the allocated flow rate replaces the usual $Q(h)$ lookup while still applying the same reduction factors for low storage, level difference, and maximum downstream level (see [TabulatedRatingCurve equations](/reference/node/tabulated-rating-curve.qmd#equations)). After all goals have been optimized for, the flow rate through the allocation controllable node is communicated to the physical layer.
 
 
 ### Interaction of allocation with other control systems
@@ -400,13 +404,13 @@ The allocation problem is solved per subnetwork, which is given by a subset $S \
 
 ### Boundary flows
 
-Links pointing out of a FlowBoundary node carry a known flow rate rather than a decision variable: the corresponding flow variable is fixed to the average flow over the last allocation interval $\Delta t_{\text{alloc}}$ in the physical layer,
+Links pointing out of a FlowBoundary node carry a known flow rate rather than a decision variable: the corresponding flow variable is fixed to the flow rate at the intervention time $t$, held constant over the intervention interval,
 
 $$
-    \frac{1}{\Delta t_{\text{alloc}}}\int_{t - \Delta t_{\text{alloc}}}^tQ_{ij}(t') dt'.
+    Q_{ij}(t).
 $$
 
-For the definition of $Q_{ij}$ see [the formal model description](/concept/equations.qmd#formal-model-description). LevelBoundary nodes instead enter the problem through their level, which is a fixed parameter of the optimization (see [Boundary nodes](#boundary-nodes)).
+For the definition of $Q_{ij}$ see [the formal model description](/concept/equations.qmd#formal-model-description). If the FlowBoundary flows into a Junction in `Junction / static`, the boundary flow goes to that node. LevelBoundary nodes instead enter the problem through their level, which is evaluated at the end of the allocation timestep and enters the constant terms of the linearized connector nodes (see [Boundary nodes](#boundary-nodes)).
 
 ### User demands
 
@@ -436,24 +440,32 @@ for all $i \in FD_S$. Here $d^{p_{\text{df}}}$ is given by the original flow dem
 ### UserDemand return flows
 UserDemand nodes dictate proportional relationships between flows over links in the subnetwork. The return factor is given by $0 \le r_i(t) \le 1, i \in U_S$: the outflow of a UserDemand node is $r_i$ times the sum of the flows over all its inflow links.
 
+### Junction nodes {#sec-allocation-junction}
+A [Junction](/reference/node/junction.qmd) in `Junction / static` does not store water, so all flow into such a Junction $i \in P_S$ is passed on, except for the flow abstracted by the UserDemand node $u$ that abstracts from it, if there is one. All these relations are linear equalities with constant coefficients, so the problem remains a linear optimization problem:
+
+- A node $j$ that flows into such a Junction (a Pump, Outlet, TabulatedRatingCurve, FlowBoundary or UserDemand) passes its full outflow $Q_j$ on to that Junction $i$: $Q_{ji} = Q_j$. For a UserDemand $Q_j$ is the return flow, see above, and for a FlowBoundary it is the boundary flow.
+- The flow from a Junction $i$ over a link to a node $k$ is $Q_{ik} = f_{ik} \left(\sum_j Q_{ji} - Q_{iu}\right)$, where $f_{ik}$ is the fraction of the link, $f_{ik} = 1$ for a single outflow link, and $Q_{iu} = 0$ if there is no UserDemand abstracting from $i$.
+
+The Junction nodes that are not in `Junction / static` are removed from the network before the allocation problem is set up, like in the simulation.
+
+The abstraction $Q_{iu}$ is a decision variable, like the inflow of a UserDemand from a Basin. It is bounded by the allocated demand of the UserDemand, and the allocation algorithm can allocate less than is available to leave more for demands further downstream.
+
 ## Flow capacities {#sec-flow-capacities}
 
-Every flow variable in the optimization problem needs bounds, both because unbounded variables make the problem numerically poorly behaved and because an unbounded problem cannot be solved at all. These bounds are recomputed before every optimization, because they depend on the current state of the physical layer and on the allocation timestep $\Delta t$.
+Every flow variable in the optimization problem needs to be bounded, either by bounds on the variable itself or through the constraints, both because unbounded variables make the problem numerically poorly behaved and because an unbounded problem cannot be solved at all. These bounds are recomputed before every optimization, because they depend on the current state of the physical layer and on the allocation timestep $\Delta t$.
 
 For each flow link, the bounds are the intersection of the bounds imposed by the node at either end of the link. Per node type:
 
 - **FlowBoundary**: the flow variable is fixed to the prescribed boundary flow, so no bounds are needed.
-- **Pump and Outlet**: bounded by `min_flow_rate` and `max_flow_rate`. Since allocation assigns a single flow rate for the whole timestep, the tightest bounds over $[t, t + \Delta t]$ are used, i.e. the largest minimum and the smallest maximum of the two interpolated endpoints.
-- **UserDemand**: both the inflow links and the return flow link are bounded between $0$ and the total demand of the node summed over all its demand priorities. For the upper bound the return factor is conservatively assumed to be $1$.
-- **LinearResistance, ManningResistance and non-allocation-controlled TabulatedRatingCurve**: the flow of these nodes is given by the linearized relation
+- **Allocation controlled Pump and Outlet**: bounded by `min_flow_rate` and `max_flow_rate`, where `max_flow_rate` is [required to be finite](#control-by-allocation). Since allocation assigns a single flow rate for the whole timestep, the tightest bounds over $[t, t + \Delta t]$ are used, i.e. the largest minimum and the smallest maximum of the two interpolated endpoints. Both bounds are multiplied by the level based reduction factors $\phi_\text{level}$ of the [Pump](/reference/node/pump.qmd#equations) or [Outlet](/reference/node/outlet.qmd#equations): those for `min_upstream_level` and `max_downstream_level`, and for an Outlet the one for the level difference. These factors are evaluated at the levels at the start of the allocation timestep and held constant over it, which keeps the problem linear. So allocation does not plan flow through a Pump or Outlet that the physical layer keeps closed, but it sees a level limit that is reached within the allocation timestep one timestep late.
+- **Allocation controlled TabulatedRatingCurve**: bounded below by $0$. The upper bound is a constraint rather than a bound on the variable: the flow is at most $Q(h_a)$, linearized around the current upstream level. Because $Q(h)$ is validated to be non-decreasing and all reduction factors applied in the physical layer are in $[0, 1]$, this is a valid upper bound.
+- **UserDemand**: both the inflow links and the return flow links are bounded between $0$ and the total demand of the node summed over all its demand priorities. For the upper bound the return factor is conservatively assumed to be $1$.
+- **Junction**: the flows over the links from and to Junction nodes in `Junction / static` are non-negative, otherwise they follow from the [constraints](#sec-allocation-junction) and the bounds of the nodes upstream. So a UserDemand abstracting from such a Junction gets at most its inflow.
+- **LinearResistance, ManningResistance, and Pump, Outlet and TabulatedRatingCurve that are not allocation controlled**: the flow of these nodes is given by the linearized relation
 
-  $$Q \approx Q^n + \frac{\partial Q}{\partial h_a}\Delta h_a + \frac{\partial Q}{\partial h_b}\Delta h_b.$$
+  $$Q \approx Q^n + \frac{\partial Q}{\partial h_a}\Delta h_a + \frac{\partial Q}{\partial h_b}\Delta h_b,$$
 
-  Evaluating this expression over the interval of level changes $\Delta h$ that the Basins at either end can reach within the timestep gives the tightest bounds consistent with the flow constraint itself. The reachable level change of a Basin follows from the bounds on its storage change decision variable $\Delta S$ using the same linearized profile the constraints use, $\Delta h = \Delta S / A^n$. Levels of LevelBoundary and Terminal nodes are fixed within one optimization, so they contribute no level change.
-- **Allocation controlled TabulatedRatingCurve**: bounded between $0$ and $Q(h_{a,\max})$, where $h_{a,\max}$ is the highest upstream level reachable within the timestep. Because $Q(h)$ is validated to be non-decreasing and all reduction factors applied in the physical layer are in $[0, 1]$, this is a valid upper bound.
-- **Allocation controlled Pump and Outlet**: bounded by `max_flow_rate`, which is [required to be finite](#control-by-allocation).
-
-Because a bound derived this way follows directly from the flow constraint of the node, it can never make the problem infeasible: any flow that satisfies the constraints also satisfies the bound.
+  so they get no bounds of their own: these would only follow from the same linearization. In particular, a Pump or Outlet that is not allocation controlled is not bounded by its `min_flow_rate` and `max_flow_rate`. Its physical flow applies the reduction factors for low storage and `min_upstream_level` to `min_flow_rate` as well, so it can be below `min_flow_rate`, and such a bound could make the problem infeasible.
 
 ## Route priority
 
@@ -480,3 +492,13 @@ In @fig-subnetwork-example the water can take multiple routes from the flow boun
 
 
 ![Flow rate results with a preferential routes via the pumps](https://s3.deltares.nl/ribasim/doc-image/concept/route_priority_results.png){#fig-subnetwork-results}
+
+## Staying close to the previous timestep
+
+After the objectives above there can still be many optimal solutions, for instance when two Pumps with the same route priority can supply the same demand. The solver could then return a different one every allocation timestep, which makes the flow switch between routes. Therefore the last objective minimizes the change of the flows through the allocation controlled nodes $i = 1, \ldots, n$ since the previous allocation timestep:
+
+$$
+\min \sum_{i=1}^n w_i \left| Q_i - Q_i^\text{prev} \right|, \quad w_i = 1 + 0.01 \frac{i - 1}{n - 1}
+$$
+
+Here $Q_i^\text{prev}$ is the flow of the previous allocation timestep, or for the first timestep of an intervention interval the average flow over the previous interval. At the start of the simulation it is the `flow_rate` from the input, and 0 for a TabulatedRatingCurve. The nodes are ordered by node type (Pump, Outlet, TabulatedRatingCurve) and node ID. Without the slightly increasing weights $w_i$ this objective itself would often have many optimal solutions, for instance when two tied Pumps both need to supply more, since any division of the increase would then be equally good. With them the flow of the first node changes. This objective is skipped for subnetworks without allocation controlled nodes, and it does not apply to the demands that secondary networks pass to the primary network.

@@ -5,6 +5,8 @@ QMD files using the julia engine can include `utils/gen_docs_table.jl` directly.
 QMD files using the jupyter engine, for instance because they contain a lot of Python code,
 can include this script using `%run path/to/gen_docs_table.py`.
 This will start a Julia session, import Ribasim, and define the `table_from_schema` function.
+Do this in a separate cell with `include: false`, otherwise the output of starting Julia and
+precompiling packages ends up on the page.
 
 We don't use Python code cells in QMD files with the julia engine, since the code of such cells
 is shown as a plain code block, which ignores options like `code-fold`.

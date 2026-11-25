@@ -42,7 +42,7 @@ Intended behavior: The same model is loaded twice, but there is only a connectio
 - Open QGIS and ensure that the Ribasim plugin is installed and enabled.
 - Choose an existing model from the `generated_testmodels` folder in the file explorer.
 - Drag the TOML file onto QGIS: _The model layers appear in the layer panel and on the map_.
-- Select the node layer, and make a subselection of nodes on the map: _Nodes are highlighted in yellow, including their links_.
+- Select the node layer, and make a subselection of nodes on the map: _Nodes are highlighted in yellow_.
 - Open any non-spatial attribute table: _The highlighted rows are those with a node\_id that was selected_.
 
 # Result inspection tests

@@ -167,7 +167,7 @@ end
     @test config.solver.dt === model.integrator.dt
     Ribasim.solve!(model)
     @test success(model)
-    @test any(ismissing, model.saved.flow.saveval[end].flow_convergence)
+    @test any(ismissing, model.saved.mean_flows.flow_convergence)
     @test isnothing(Ribasim.log_bottlenecks(model))
     (; p_independent) = model.integrator.p
     (; flow_boundary, pump) = p_independent
@@ -326,4 +326,34 @@ end
     q_free = flow(mr, h, -1.0)
     @test flow(mr, h, d_c - 1.0e-6) ≈ q_free rtol = 1.0e-4
     @test flow(mr, h, d_c + 1.0e-6) ≈ q_free rtol = 1.0e-4
+end
+
+@testitem "Junction" begin
+    using DataFrames: DataFrame
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/junction_equation/ribasim.toml")
+    model = Ribasim.run(toml_path)
+    flow_data = Ribasim.flow_data(model) |> DataFrame
+
+    flow_rate(from_node_id, to_node_id) = filter(
+        row -> row.from_node_id == from_node_id && row.to_node_id == to_node_id,
+        flow_data,
+    ).flow_rate
+
+    trc_flow_rate = flow_rate(1, 2)
+    fb_flow_rate = flow_rate(3, 4)
+    pump_flow_rate = flow_rate(10, 12)
+    ud_flow_rate = flow_rate(4, 5)
+    basin_flow_rate = flow_rate(4, 9)
+    terminal_flow_rate = flow_rate(4, 6)
+
+    # The PID controlled Pump delivers flow, and the UserDemand has priority over the Junction nodes
+    @test all(>=(0), pump_flow_rate)
+    @test any(>(0), pump_flow_rate)
+    @test ud_flow_rate ≈ fill(3.0e-2, length(ud_flow_rate)) rtol = 1.0e-5
+
+    # The remainder after the UserDemand abstraction is divided over Basin #9 and Terminal #6
+    remainder = trc_flow_rate + fb_flow_rate + pump_flow_rate - ud_flow_rate
+    @test basin_flow_rate ≈ remainder / 3 rtol = 1.0e-5
+    @test terminal_flow_rate ≈ 2 / 3 * remainder rtol = 1.0e-5
 end

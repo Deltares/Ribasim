@@ -14,7 +14,7 @@ For more granular access, see:
 """
 module Ribasim
 
-const RIBASIM_VERSION = "2026.1.2"
+const RIBASIM_VERSION = "2026.2.0-rc1"
 
 using PrecompileTools: @setup_workload, @compile_workload
 
@@ -66,6 +66,8 @@ using SciMLBase:
     get_du,
     get_proposed_dt,
     add_tstop!,
+    has_tstop,
+    first_tstop,
     DEIntegrator,
     FullSpecialize,
     NoSpecialize,
@@ -87,7 +89,8 @@ using SparseArrays: SparseMatrixCSC, sparse, spzeros, nonzeros, nzrange, rowvals
 
 # Linear algebra
 using LinearAlgebra: LinearAlgebra, I, mul!, UniformScaling, dot
-using LinearSolve: OperatorAssumptions, NonstructuralZeros
+using LinearSolve:
+    OperatorAssumptions, NonstructuralZeros, KLUFactorization, LinearAliasSpecifier
 
 # Interpolation functionality, used for e.g.
 # basin profiles and TabulatedRatingCurve. See also the node
@@ -179,8 +182,6 @@ using DataStructures: OrderedSet, OrderedDict, counter, inc!
 # NCDatasets and CommonDataModel are used to read and write NetCDF files.
 using NCDatasets: NCDatasets, NCDataset, defDim, defVar, dimnames, CFVariable
 
-using Dates: Second
-
 using Base.Threads: nthreads
 
 include("cvectors.jl")
@@ -208,6 +209,7 @@ include("allocation_init.jl")
 include("allocation_optim.jl")
 include("util.jl")
 include("graph.jl")
+include("control_order.jl")
 include("model.jl")
 include("timestepping.jl")
 include("read.jl")

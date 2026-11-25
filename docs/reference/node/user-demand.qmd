@@ -9,13 +9,25 @@ When allocation is not used, a `UserDemand` node attempts to extract the full de
 When allocation is used, the amount a `UserDemand` node is allowed to abstract is determined by the [allocation algorithm](../../concept/allocation.qmd).
 This algorithm first tries to allocate from the directly connected basin, and then from other sources whose flow can reach the `UserDemand` node.
 Note that `demand_priority` is used to determine the order in which the UserDemands are allocated water.
-This parameter is only used when allocation is active and is optional when allocation is not active.
+This parameter is only used when allocation is active and is optional, it defaults to 1.
 
 When the connected Basin is almost empty or reaches the minimum level at which the UserDemand can extract water (`min_level`), it will stop extraction.
+The `min_level` must be provided when the UserDemand abstracts from Basin(s); it is not used for abstraction from a [Junction](/reference/node/junction.qmd).
 
 UserDemands need an outgoing flow link along which they can send their return flow, this can also be to the same Basin from which it extracts water.
 The amount of return flow is always a fraction of the inflow into the UserDemand.
 The difference is consumed by the UserDemand.
+
+# Allowed connectivity
+
+The diagram below shows which node types are allowed directly upstream (left) and downstream (right) of this node.
+This is a connectivity illustration, not a valid simulation model.
+
+```{julia}
+# | code-fold: true
+include("../../../utils/plot_node_connectivity.jl")
+plot_node_connectivity("UserDemand")
+```
 
 # Tables
 
@@ -53,31 +65,22 @@ table_from_schema(Ribasim.Schema.UserDemand.Time; restrictions = USER_DEMAND_RES
 Although it may seem that way, this table does *not* describe demands that change `demand_priority` over time. Rather, this table defines a `demand(time)` relationship for every occurring `demand_priority` in the table for a certain `node_id`.
 :::
 
-## Concentration
-This table defines the concentration of substances for the flow from the UserDemand.
-
-```{julia}
-# | code-fold: true
-table_from_schema(
-    Ribasim.Schema.UserDemand.Concentration;
-    restrictions = Dict(:substance => "can correspond to known Delwaq substances"),
-)
-```
-
 # Equations
 
 UserDemand receive an allocated flow rate $F^p$ per demand priority $p=1,2,\ldots, p_{\max}$, which is either determined by [allocation optimization](/concept/allocation.qmd) or simply equal to the demand at time $t$; $F^p = d^p(t)$.
 The actual (supplied) abstraction rate of a UserDemand is given by
 $$
-    Q_\text{in} = \phi(u, S_{wd0.1})\phi(h-l_{\min}, 0.02)\sum_{p=1}^{p_{\max}} \min\left(F^p, d^p(t)\right).
+    Q_\text{in} = \phi_\text{storage}\phi_\text{level}\sum_{p=1}^{p_{\max}} \min\left(F^p, d^p(t)\right).
 $$
 
 From left to right:
 
-- The first reduction factor lets the UserDemand abstraction go smoothly to $0$ as the source Basin dries out below a storage which is the equivalent of a water depth of $10 \;\text{cm}$ (change with solver setting `depth_threshold`);
-- The second reduction factor lets the UserDemand abstraction go smoothly to $0$ as the source Basin level approaches the minimum source Basin level (from above) (change with solver setting `level_difference_threshold`);
+- $\phi_\text{storage}$ smoothly reduces the UserDemand abstraction from a source Basin water depth of `depth_threshold` to the Basin bottom.
+- $\phi_\text{level}$ smoothly reduces the abstraction as the source Basin level goes from `min_level` + `level_difference_threshold` to `min_level`.
 - The last term is the sum of the allocations over the priorities.
   If the current demand happens to be lower than the allocation at some demand priority, the demand is taken instead.
+
+For `depth_threshold`, `level_difference_threshold` see [Solver settings](/reference/usage.qmd#sec-solver-settings).
 
 UserDemands also have a return factor $0 \le r \le 1$, which determines the return flow (outflow) of the UserDemand:
 
@@ -86,3 +89,17 @@ Q_\text{out} = r \cdot Q_\text{in}.
 $$
 
 Note that this means that the UserDemand has a consumption rate of $(1-r)Q_\text{in}$.
+
+# Behavior in allocation
+
+Without allocation, a UserDemand tries to abstract its full demand, summed over all demand priorities.
+
+With [allocation](/concept/allocation.qmd), a UserDemand gets an allocated flow rate for each demand priority, and abstracts at most this allocated flow rate until the next intervention time, set by `intervention_interval` in the [allocation settings](/reference/usage.qmd#sec-allocation-settings).
+Demands with an earlier `demand_priority` are met first.
+When there is not enough water for all demands with the same priority, each demand gets the same share of what it asked for.
+The water can come from the Basins or Junction the UserDemand abstracts from, and from further upstream.
+When a UserDemand abstracts from several Basins, allocation decides how much is taken from each.
+The return flow can be used again by demands downstream.
+
+The demand, allocated and realized flow rates of each UserDemand are in [`allocation.nc`](/reference/usage.qmd#sec-results).
+The realized flow rate can be lower than the allocated flow rate, for instance when the Basin it abstracts from is almost empty or reaches `min_level`, or because less water arrives than allocation predicted.

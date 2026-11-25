@@ -8,6 +8,17 @@ It can be used as a boundary condition like the level of the sea or a lake.
 Since the water level is unaffected by flow, it acts like an infinitely large Basin.
 Connect the LevelBoundary to a node that will look at the level to calculate the flow, like a LinearResistance.
 
+# Allowed connectivity
+
+The diagram below shows which node types are allowed directly upstream (left) and downstream (right) of this node.
+This is a connectivity illustration, not a valid simulation model.
+
+```{julia}
+# | code-fold: true
+include("../../../utils/plot_node_connectivity.jl")
+plot_node_connectivity("LevelBoundary")
+```
+
 # Tables
 
 ## Static
@@ -47,3 +58,11 @@ table_from_schema(
 
 A LevelBoundary can be connected to a Basin via a LinearResistance.
 This boundary node will then exchange water with the Basin based on the difference in water level between the two.
+
+# Behavior in allocation
+
+In [allocation](/concept/allocation.qmd) a LevelBoundary can supply or receive any amount of water.
+How much water is exchanged with the network is limited only by the node between the LevelBoundary and the network, for instance by the capacity of a Pump or the water level difference over a LinearResistance.
+Allocation uses the level of the LevelBoundary as it will be at the end of each allocation timestep.
+
+With a route priority for LevelBoundary nodes, see [allocation settings](/reference/usage.qmd#sec-allocation-settings), allocation can be made to prefer or avoid a LevelBoundary as a source of water.

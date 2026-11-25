@@ -104,7 +104,10 @@ sys.path.append(QDir.current().path())
 
 def __exit_qgis(return_code: int):
     """Exit the QGIS application with the given exit code."""
-    sys.exit(return_code)
+    sys.stdout.flush()
+    sys.stderr.flush()
+    # Skip the QGIS teardown, which can crash on QGIS 4 and mask the test result.
+    os._exit(return_code)
 
 
 def __run_test():

@@ -1,7 +1,6 @@
 from collections.abc import Callable
 from datetime import datetime
 
-import geopandas as gpd
 import pandas as pd
 from ribasim import Model
 from ribasim.config import Experimental, Results
@@ -26,7 +25,11 @@ from ribasim_testmodels.discrete_control import (
     storage_condition_model,
     transient_condition_model,
 )
-from ribasim_testmodels.junction import junction_combined
+from ribasim_testmodels.junction import (
+    junction_allocation_model,
+    junction_combined,
+    junction_fraction_model,
+)
 from ribasim_testmodels.observation import observation_model
 from ribasim_testmodels.pid_control import (
     discrete_control_of_pid_control_model,
@@ -43,6 +46,7 @@ PHYSICAL_COMPONENTS: list[Callable[[], Model]] = [
     two_basin_model,
     junction_combined,
     observation_model,
+    junction_fraction_model,
     pid_control_model,
     discrete_control_of_pid_control_model,
     level_range_model,
@@ -62,15 +66,10 @@ ALLOCATION_COMPONENTS: list[Callable[[], Model]] = [
     level_demand_model,
     flow_demand_model,
     polder_management_model,
+    junction_allocation_model,
 ]
 
 CRS = "EPSG:28992"
-
-
-def _node_df(model: Model) -> gpd.GeoDataFrame:
-    df = model.node.df
-    assert df is not None
-    return df
 
 
 def precompile_workload_model() -> Model:
@@ -84,7 +83,7 @@ def precompile_workload_model() -> Model:
     """
     components = [f() for f in PHYSICAL_COMPONENTS]
     for component in components:
-        _node_df(component)["subnetwork_id"] = pd.NA
+        component.node.df["subnetwork_id"] = pd.NA
     model = Model(
         starttime=datetime(2020, 1, 1),
         endtime=datetime(2020, 1, 20),
@@ -105,7 +104,7 @@ def precompile_workload_allocation_model() -> Model:
     components = [f() for f in ALLOCATION_COMPONENTS]
     for component in components:
         # Nodes without a subnetwork ID are in the primary network, make it a subnetwork
-        node = _node_df(component)
+        node = component.node.df
         node["subnetwork_id"] = node["subnetwork_id"].fillna(1).astype("Int32")
     model = Model(
         starttime=datetime(2020, 1, 1),

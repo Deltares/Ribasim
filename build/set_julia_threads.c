@@ -1,5 +1,8 @@
 #include <julia.h>
 #include <stdint.h>
+#ifndef _WIN32
+#include <signal.h>
+#endif
 
 #ifdef _WIN32
 #define RIBASIM_DLLEXPORT __declspec(dllexport)
@@ -30,5 +33,25 @@ RIBASIM_DLLEXPORT int ribasim_set_julia_threads(int32_t threads)
     // Julia's GC requires signal-based safepoints when multiple threads are active.
     jl_options.handle_signals =
         threads > 1 ? JL_OPTIONS_HANDLE_SIGNALS_ON : JL_OPTIONS_HANDLE_SIGNALS_OFF;
+    return 0;
+}
+
+RIBASIM_DLLEXPORT int ribasim_enable_julia_signal_handlers(void)
+{
+    // Julia reads jl_options once, while initializing the runtime.
+    if (jl_is_initialized())
+    {
+        return 1;
+    }
+    jl_options.handle_signals = JL_OPTIONS_HANDLE_SIGNALS_ON;
+#ifndef _WIN32
+    // The Rust runtime gives the main thread a signal stack of a few KiB. Remove it so Julia
+    // creates its own, otherwise it uses that one and crashes on the backtrace of Ctrl-C.
+    stack_t signal_stack = {.ss_flags = SS_DISABLE};
+    if (sigaltstack(&signal_stack, NULL) != 0)
+    {
+        return 2;
+    }
+#endif
     return 0;
 }

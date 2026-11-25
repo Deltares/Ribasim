@@ -15,6 +15,10 @@
     @test itp(3.0) ≈ 0.25
     @test itp isa ScalarPCHIPInterpolation
 
+    @test_logs (:error, "At least two datapoints are needed.") @test_throws "Errors occurred when parsing TabulatedRatingCurve #1." qh_interpolation(
+        node_id, [1.0], [0.0],
+    )
+
     toml_path = normpath(@__DIR__, "../../generated_testmodels/invalid_qh/ribasim.toml")
     @test ispath(toml_path)
 
@@ -94,6 +98,74 @@ end
     @test_throws "'n_neighbor_bounds_listen' not defined for Val{:baz}()." Ribasim.n_neighbor_bounds_listen(
         :baz,
     )
+end
+
+@testitem "Junction group validation" begin
+    import SQLite
+    using Logging
+    using MetaGraphsNext: edge_labels
+
+    config = Ribasim.Config(
+        normpath(@__DIR__, "../../generated_testmodels/junction_bidirectional/ribasim.toml"),
+    )
+    node_types = Dict(
+        1 => :Basin, 2 => :Junction, 3 => :Junction, 4 => :Pump, 5 => :Outlet,
+        6 => :UserDemand, 7 => :Basin, 8 => :Terminal, 9 => :UserDemand,
+    )
+
+    # Create the graph of the given links, with the error messages
+    function create_graph(links)
+        db = SQLite.DB()
+        SQLite.execute(db, "CREATE TABLE Node (node_id, node_type, subnetwork_id, route_priority)")
+        SQLite.execute(db, "CREATE TABLE Link (link_id, from_node_id, to_node_id, link_type)")
+        for id in unique(Iterators.flatten(links))
+            SQLite.execute(db, "INSERT INTO Node VALUES (?, ?, NULL, NULL)", (id, String(node_types[id])))
+        end
+        for (id, (from_id, to_id)) in enumerate(links)
+            SQLite.execute(db, "INSERT INTO Link VALUES (?, ?, ?, 'flow')", (id, from_id, to_id))
+        end
+        logger = TestLogger()
+        graph = with_logger(
+            () -> try
+                Ribasim.create_graph(db, config)
+            catch end, logger
+        )
+        return graph, [log.message for log in logger.logs if log.level == Error]
+    end
+    as_ints(link) = (Int(link[1].value), Int(link[2].value))
+
+    # Invalid groups
+    for (links, message) in (
+            ([(1, 2), (2, 3), (3, 1), (4, 2)], "The links of a Junction group must form a tree, without cycles."),
+            ([(1, 2), (2, 3), (4, 2)], "Junction #3 must have at least 2 flow links (got 1)."),
+            ([(1, 2), (7, 2)], "Junction #2 must have at least 1 flow inneighbor and 1 flow outneighbor (got 2 and 0), since its Junction group does not have exactly one Basin as a neighbor."),
+            ([(1, 2), (2, 3), (2, 6), (3, 6)], "Duplicate link: a Junction group connects these nodes through multiple links."),
+            ([(1, 2), (2, 4), (4, 3), (3, 2)], "Invalid link: the opposite link already exists (this is only allowed for UserDemand)."),
+        )
+        graph, errors = create_graph(links)
+        @test isnothing(graph)
+        @test errors == [message]
+    end
+
+    # With one Basin each neighbor connects to it, also a UserDemand in both directions,
+    # whatever the direction of the links in the group
+    graph, errors = create_graph([(2, 1), (3, 2), (2, 4), (3, 5), (6, 3), (3, 6)])
+    @test isempty(errors)
+    @test Set(as_ints.(edge_labels(graph))) == Set([(1, 4), (1, 5), (1, 6), (6, 1)])
+
+    # Otherwise upstream neighbors connect to downstream ones along the direction of the links,
+    # and the flow rate of a Junction is the sum of its incoming links
+    graph, errors = create_graph([(1, 2), (2, 6), (2, 3), (7, 3), (3, 9)])
+    @test isempty(errors)
+    @test Set(as_ints.(edge_labels(graph))) == Set([(1, 6), (1, 9), (7, 9)])
+    @test [Set((as_ints(link), sign) for (link, sign) in flows) for flows in graph.graph_data.junction_flows] ==
+        [Set([((1, 6), 1), ((1, 9), 1)]), Set([((1, 9), 1), ((7, 9), 1)])]
+
+    # A Terminal does not take the place of the Basin, nor connects to it
+    graph, _ = create_graph([(1, 2), (2, 8)])
+    logger = TestLogger()
+    @test !with_logger(() -> Ribasim.valid_links(graph), logger)
+    @test only(logger.logs).message == "Cannot connect a basin to a terminal."
 end
 
 @testitem "PidControl connectivity validation" begin
@@ -267,7 +339,7 @@ end
 
     logger = TestLogger()
     with_logger(logger) do
-        @test !valid_subgrid(Int32(1), Int32(10), node_to_basin, [-1.0, 0.0], [-1.0, 0.0])
+        @test !valid_subgrid(Int32(1), Int32(10), node_to_basin)
     end
 
     @test length(logger.logs) == 1
@@ -276,21 +348,7 @@ end
     @test logger.logs[1].kwargs[:node_id] == Int32(10)
     @test logger.logs[1].kwargs[:subgrid_id] == 1
 
-    logger = TestLogger()
-    with_logger(logger) do
-        @test !valid_subgrid(
-            Int32(1),
-            Int32(9),
-            node_to_basin,
-            [-1.0, 0.0, 1.0],
-            [-1.0, 0.0, 0.0],
-        )
-    end
-
-    @test length(logger.logs) == 1
-    @test logger.logs[1].level == Error
-    @test logger.logs[1].message ==
-        "Basin / subgrid subgrid_id 1 has repeated element levels, this cannot be interpolated."
+    @test @test_logs valid_subgrid(Int32(1), Int32(9), node_to_basin)
 end
 
 @testitem "negative demand" begin
@@ -431,29 +489,6 @@ end
         "Pump #2 has multiple control states but is not controlled by DiscreteControl, add a row without control_state to define its parameters."
 end
 
-@testitem "Missing demand priority when allocation is active" begin
-    using Ribasim
-    using Logging
-    using IOCapture: capture
-
-    toml_path =
-        normpath(@__DIR__, "../../generated_testmodels/invalid_priorities/ribasim.toml")
-    @test ispath(toml_path)
-
-    logger = TestLogger()
-    with_logger(logger) do
-        @test_throws "Missing demand priority parameter(s)." Ribasim.run(toml_path)
-    end
-    @test length(logger.logs) == 3
-    @test logger.logs[1].level == Error
-    @test logger.logs[1].message ==
-        "Missing demand_priority parameter(s) for a FlowDemand / static node in the allocation problem."
-    @test logger.logs[2].message ==
-        "Missing demand_priority parameter(s) for a LevelDemand / static node in the allocation problem."
-    @test logger.logs[3].message ==
-        "Missing demand_priority parameter(s) for a UserDemand / static node in the allocation problem."
-end
-
 @testitem "Node ID not in Node table" begin
     using Ribasim
     import SQLite
@@ -491,8 +526,7 @@ end
         area = areas_valid,
         storage = skipped,
     )
-    error = validate_consistent_basin_initialization(profiles_repeated_levels)
-    @test error
+    @test !validate_consistent_basin_initialization(profiles_repeated_levels)
 
     # Profile with non-increasing storage should give an error
     levels_valid = [0, 1, 2, 3, 4, 5]
@@ -504,8 +538,7 @@ end
         area = skipped,
         storage = storage_non_increasing,
     )
-    error = validate_consistent_basin_initialization(profiles_non_increasing_storage)
-    @test error
+    @test !validate_consistent_basin_initialization(profiles_non_increasing_storage)
 
     # Profile with zero area at the bottom should give an error
     areas_with_zero = [0, 1, 2, 3, 4, 5]
@@ -516,8 +549,7 @@ end
         area = areas_with_zero,
         storage = skipped,
     )
-    error = validate_consistent_basin_initialization(profiles_zero_area)
-    @test error
+    @test !validate_consistent_basin_initialization(profiles_zero_area)
 
     # Profile with no storage and area should error
     profiles_missing_data = StructVector{Schema.Basin.Profile}(;
@@ -526,8 +558,7 @@ end
         area = skipped,
         storage = skipped,
     )
-    error = validate_consistent_basin_initialization(profiles_missing_data)
-    @test error
+    @test !validate_consistent_basin_initialization(profiles_missing_data)
 end
 
 @testitem "nested interpolations" begin
@@ -712,7 +743,45 @@ end
     @test valid_unique_rows(variable)
 end
 
-@testitem "UserDemand parameters equal per demand priority" begin
+@testitem "Number parameters constant over time" begin
+    using Logging
+    using Ribasim: NodeID, get_parameter_value
+
+    node_id = NodeID(:UserDemand, 1, 1)
+
+    val, valid = get_parameter_value(1:2, [1.0, 1.0], Float64, 0.0, node_id; from_static = false)
+    @test valid
+    @test val == 1.0
+
+    # Constant values over time are fine, also if some are missing and replaced by the default
+    val, valid = get_parameter_value(
+        1:2,
+        [0.0, missing],
+        Float64,
+        0.0,
+        node_id;
+        from_static = false,
+    )
+    @test valid
+
+    logger = TestLogger()
+    with_logger(logger) do
+        _, valid = get_parameter_value(
+            1:2,
+            [1.0, 2.0],
+            Float64,
+            0.0,
+            node_id;
+            from_static = false,
+            parameter_name = :min_level,
+        )
+        @test !valid
+    end
+    @test only(logger.logs).message ==
+        "UserDemand #1 has multiple different values over time for 'min_level', which does not support time-varying values."
+end
+
+@testitem "UserDemand parameter validation" begin
     using Logging
     using Dates: DateTime
     using StructArrays: StructVector
@@ -762,4 +831,258 @@ end
     end
     @test only(logger.logs).message ==
         "The return_factor and min_level of UserDemand #1 must be the same for all demand priorities."
+
+    # A UserDemand cannot return more than it abstracts
+    static = StructVector(
+        [
+            Schema.UserDemand.Static(1, 1.0, 0.0, 0.0, Int32(1)),
+            Schema.UserDemand.Static(2, 1.0, 1.0, 0.0, Int32(1)),
+            Schema.UserDemand.Static(3, 1.0, 1.2, 0.0, Int32(1)),
+            Schema.UserDemand.Static(4, 1.0, -0.1, 0.0, Int32(1)),
+        ]
+    )
+    logger = TestLogger()
+    with_logger(logger) do
+        @test !valid_user_demand_parameters(static)
+    end
+    @test length(logger.logs) == 2
+    @test logger.logs[1].message ==
+        "The return_factor of UserDemand #3 must be between 0 and 1, got 1.2."
+    @test logger.logs[2].message ==
+        "The return_factor of UserDemand #4 must be between 0 and 1, got -0.1."
+end
+
+@testitem "UserDemand min_level required for Basin inflow" begin
+    using Logging
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/invalid_user_demand_missing_min_level/ribasim.toml",
+    )
+    @test ispath(toml_path)
+
+    logger = TestLogger()
+    with_logger(logger) do
+        @test_throws "Errors encountered when parsing UserDemand data." Ribasim.Model(toml_path)
+    end
+    @test [string(log.message) for log in logger.logs if log.level == Logging.Error] ==
+        ["UserDemand #2 abstracts from a Basin, so a min_level must be provided."]
+end
+
+@testitem "Node table validation" begin
+    import SQLite
+    using Logging
+
+    db = SQLite.DB()
+    SQLite.execute(db, "CREATE TABLE Node (node_id, node_type)")
+    SQLite.execute(db, "CREATE TABLE Link (link_id, from_node_id, to_node_id, link_type)")
+    for (node_id, node_type) in ((1, "Basin"), (2, "Pump"))
+        SQLite.execute(db, "INSERT INTO Node VALUES (?, ?)", (node_id, node_type))
+    end
+    @test @test_logs Ribasim.valid_nodes(db)
+    @test_logs Ribasim.database_warning(db)
+
+    # Node IDs are unique over all node types
+    SQLite.execute(db, "INSERT INTO Node VALUES (2, 'Outlet')")
+    @test !(
+        @test_logs (:error, "Multiple occurrences of node_id 2 found in Node table.") Ribasim.valid_nodes(db)
+    )
+
+    SQLite.execute(db, "ALTER TABLE Link ADD COLUMN subnetwork_id")
+    @test_logs (:warn, r"'subnetwork_id' column in the 'Link' table is deprecated") Ribasim.database_warning(db)
+    close(db)
+end
+
+@testitem "Time interpolation validation" begin
+    using Ribasim: NodeID, valid_time_interpolation
+
+    node_id = NodeID(:Pump, 1, 1)
+    @test @test_logs valid_time_interpolation([0.0, 1.0, 2.0], [1.0, 2.0, 3.0], node_id, false)
+    @test @test_logs valid_time_interpolation([0.0, 1.0, 2.0], [1.0, 2.0, 1.0], node_id, true)
+    # A parameter that is not provided is NaN at all times
+    @test @test_logs valid_time_interpolation([0.0, 1.0], [NaN, NaN], node_id, true)
+
+    @test !(
+        @test_logs (:error, r"Pump #1 has repeated times") valid_time_interpolation(
+            [0.0, 1.0, 1.0], [1.0, 2.0, 3.0], node_id, false,
+        )
+    )
+    @test !(
+        @test_logs (:error, r"cyclic but in \(one of\) its time series the first and last value are not the same") valid_time_interpolation(
+            [0.0, 1.0, 2.0], [1.0, 2.0, 3.0], node_id, true,
+        )
+    )
+    @test !(
+        @test_logs (:error, r"cyclic but \(one of\) its time series has fewer than 2 data points") valid_time_interpolation(
+            [0.0], [1.0], node_id, true,
+        )
+    )
+end
+
+@testitem "Basin profile validation messages" begin
+    using Logging
+    using Ribasim: Schema, validate_consistent_basin_initialization
+    using StructArrays: StructVector
+
+    # Returns whether the profiles are valid, and the logs
+    function validate(node_id, level, area, storage)
+        profiles = StructVector{Schema.Basin.Profile}(; node_id, level, area, storage)
+        logger = TestLogger()
+        valid = with_logger(() -> validate_consistent_basin_initialization(profiles), logger)
+        return valid, logger.logs
+    end
+    messages(logs, level) = [log.message for log in logs if log.level == level]
+
+    valid, logs = validate([1], [0.0], [1.0], [missing])
+    @test !valid
+    @test messages(logs, Error) == ["Basin #1 profile must have at least two data points, got 1."]
+
+    valid, logs = validate([1, 1, 1], [0.0, 1.0, 2.0], [1.0, missing, 3.0], [missing, missing, missing])
+    @test !valid
+    @test messages(logs, Error) == ["Basin has missing area input at node: 1"]
+
+    valid, logs = validate([1, 1, 1], [0.0, 1.0, 2.0], [1.0, 2.0, 3.0], [0.0, missing, 4.0])
+    @test !valid
+    @test "Basin has missing storage input data at node: 1" in messages(logs, Error)
+
+    # Basins with different kinds of profile input are valid, but reported
+    valid, logs = validate(
+        [1, 1, 2, 2, 3, 3],
+        [0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
+        [1.0, 2.0, missing, missing, 1.0, 2.0],
+        [missing, missing, 0.0, 1.0, 0.0, 1.5],
+    )
+    @test valid
+    @test isempty(messages(logs, Error))
+    @test messages(logs, Info) == [
+        "Not all basins are initialised with the same input type",
+        "Basins initialized with area-level input:",
+        "Basins initialized with storage-level input:",
+        "Basins initialized with area-level and storage-level input:",
+    ]
+    @test [log.kwargs[:node_ids] for log in logs[2:end]] == [[1], [2], [3]]
+end
+
+@testitem "Model validation errors" setup = [ModelEdit] begin
+    using .ModelEdit: edited_model, error_messages
+
+    # (model, SQL statement, thrown error, logged error)
+    for (model_name, statement, error_message, message) in (
+            (
+                "pid_control",
+                """UPDATE "PidControl / time" SET listen_node_id = 4""",
+                "Invalid PidControl connectivity.",
+                "Listen node LevelBoundary #4 of PidControl #5 is not a Basin",
+            ),
+            (
+                "outlet_continuous_control",
+                """UPDATE "Outlet / static" SET min_upstream_level = -100.0 WHERE node_id = 4""",
+                "Invalid minimum upstream level of Outlet.",
+                "Minimum upstream level of Outlet #4 is lower than bottom of upstream Basin #3",
+            ),
+            (
+                "pid_control",
+                """UPDATE "Pump / static" SET min_upstream_level = -100.0""",
+                "Invalid minimum upstream level of Pump.",
+                "Minimum upstream level of Pump #3 is lower than bottom of upstream Basin #2",
+            ),
+            (
+                "small_primary_secondary_network",
+                """UPDATE "Outlet / static" SET max_flow_rate = NULL""",
+                "Invalid allocation-controlled Pump or Outlet capacity.",
+                "Allocation-controlled Outlet #4 requires a finite max_flow_rate.",
+            ),
+            (
+                "level_demand_with_rating_curve",
+                """UPDATE "TabulatedRatingCurve / static" SET level = -100.0 WHERE fid = 0""",
+                "Invalid level of TabulatedRatingCurve.",
+                "Lowest level of TabulatedRatingCurve #2 is lower than bottom of upstream Basin #1",
+            ),
+            (
+                "flow_condition",
+                """UPDATE "DiscreteControl / condition" SET threshold_low = 1.0""",
+                "Invalid discrete control state definition(s).",
+                "threshold_low is not less than or equal to threshold_high for 'DiscreteControl #5'",
+            ),
+            (
+                "trivial",
+                "INSERT INTO Link (link_id, from_node_id, to_node_id, link_type) VALUES (102, 6, 0, 'flow')",
+                "Invalid links found",
+                "Duplicate link",
+            ),
+            (
+                "trivial",
+                "INSERT INTO Link (link_id, from_node_id, to_node_id, link_type) VALUES (102, 0, 6, 'flow')",
+                "Invalid links found",
+                "Invalid link: the opposite link already exists (this is only allowed for UserDemand).",
+            ),
+        )
+        messages = error_messages(edited_model(model_name, statement), error_message)
+        @test messages == [message]
+    end
+end
+
+@testitem "Junction connectivity validation" setup = [ModelEdit] begin
+    using .ModelEdit: edited_model, error_messages
+
+    # Junction #22 and #23 divide the flow, and Junction #6 supplies UserDemand #8
+    for (statement, message) in (
+            (
+                "DELETE FROM Link WHERE to_node_id = 22",
+                "Junction #22 has rows in Junction / static but no inflow link.",
+            ),
+            (
+                "UPDATE Node SET node_type = 'Pump' WHERE node_id = 3",
+                "Junction #22 divides the flow or supplies a UserDemand, so it cannot flow into Pump #3: it has no level, and it can only flow into Basin, LevelBoundary, Terminal, UserDemand or Junction nodes.",
+            ),
+            (
+                "UPDATE Node SET node_type = 'LinearResistance' WHERE node_id = 5",
+                "Junction #23 divides the flow or supplies a UserDemand, so its inflow must come from a Pump, Outlet, TabulatedRatingCurve, FlowBoundary, UserDemand or such a Junction, not from LinearResistance #5.",
+            ),
+            (
+                "INSERT INTO Link (link_id, from_node_id, to_node_id, link_type) VALUES (99, 4, 8, 'flow')",
+                "UserDemand #8 must have either one or more Basin inflow links, or exactly one inflow link from a Junction that divides the flow or supplies a UserDemand.",
+            ),
+        )
+        toml_path = edited_model("junction_fraction", statement)
+        messages = error_messages(toml_path, "Invalid number of connections for certain node types.")
+        @test message in messages
+    end
+end
+
+@testitem "Subnetwork validation" setup = [ModelEdit] begin
+    using .ModelEdit: edited_model, error_messages
+
+    # Outlet #4 connects Basin #2 in the primary network to Basin #5 in subnetwork 2
+    connection_error = "Errors detected in connections between primary network and secondary networks."
+    for (statement, error_message, message) in (
+            (
+                """UPDATE "Outlet / static" SET allocation_controlled = 0""",
+                connection_error,
+                "This node connects the primary network to a secondary network without allocation_controlled set to true, which is not allowed.",
+            ),
+            (
+                "UPDATE Node SET subnetwork_id = 2 WHERE node_id = 4",
+                connection_error,
+                "This node connects the primary network to a secondary network but is not an outlet or pump, which is not allowed.",
+            ),
+            (
+                "UPDATE Node SET subnetwork_id = 3 WHERE node_id IN (2, 3, 4)",
+                connection_error,
+                "This node connects two secondary networks, which is not allowed.",
+            ),
+            (
+                "UPDATE Node SET subnetwork_id = 1 WHERE node_id = 6",
+                "Incomplete connectivity in subnetwork",
+                "All nodes in subnetwork 1 should be connected",
+            ),
+            (
+                """UPDATE "LevelDemand / static" SET demand_priority = (SELECT demand_priority FROM "UserDemand / static" LIMIT 1)""",
+                "Invalid demand priorities detected.",
+                "For demand priority 2 there are demands of both flow (UserDemand/FlowDemand) and storage (LevelDemand) type, this is not allowed because these demand types have different units.",
+            ),
+        )
+        toml_path = edited_model("small_primary_secondary_network", statement)
+        @test message in error_messages(toml_path, error_message)
+    end
 end
