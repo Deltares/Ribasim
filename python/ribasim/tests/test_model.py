@@ -16,6 +16,7 @@ try:
 except ImportError:
     # pre-v1 API
     from datacompy.core import Compare
+from packaging.version import Version
 from pydantic import ValidationError
 from pyproj import CRS
 from ribasim import Node
@@ -365,6 +366,10 @@ def empty_model() -> Model:
     return Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
 
 
+@pytest.mark.skipif(
+    Version(pd.__version__) < Version("3"),
+    reason="Before pandas 3, strings are by default not stored in Arrow chunks",
+)
 def test_add_keeps_string_columns_contiguous():
     """Each `add` appends an Arrow chunk to the string columns, which are merged again."""
     model = empty_model()
