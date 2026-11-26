@@ -1,7 +1,7 @@
 @testitem "trivial model" setup = [Teamcity] begin
     using NCDatasets: NCDataset, dimnames
     using Dates: DateTime
-    using Ribasim: get_tstops, tsaves, RibasimStateCVector
+    using Ribasim: tsaves, RibasimStateCVector
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
     @test ispath(toml_path)
@@ -318,7 +318,7 @@ end
     using DataFrames: DataFrame
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/allocation_example/ribasim.toml")
-    @test ispath(toml_path) skip = true
+    @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test success(Ribasim.solve!(model))
     @test model isa Ribasim.Model
@@ -334,7 +334,7 @@ end
 
 @testitem "Tracer transport through Basins in series" begin
     toml_path = normpath(@__DIR__, "../../generated_testmodels/tracer_chain/ribasim.toml")
-    @test ispath(toml_path) skip = true
+    @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test success(model)
 
@@ -357,7 +357,7 @@ end
 
 @testitem "Tracer concentration changes in between timesteps" begin
     toml_path = normpath(@__DIR__, "../../generated_testmodels/tracer_boundary_pulse/ribasim.toml")
-    @test ispath(toml_path) skip = true
+    @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test success(model)
 
@@ -370,7 +370,7 @@ end
 
 @testitem "Tracers with evaporation that leaves the mass behind" begin
     toml_path = normpath(@__DIR__, "../../generated_testmodels/tracer_evaporation/ribasim.toml")
-    @test ispath(toml_path) skip = true
+    @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test success(model)
 
@@ -392,7 +392,7 @@ end
 
 @testitem "Tracers through a UserDemand return flow" begin
     toml_path = normpath(@__DIR__, "../../generated_testmodels/tracer_user_demand/ribasim.toml")
-    @test ispath(toml_path) skip = true
+    @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test success(model)
 

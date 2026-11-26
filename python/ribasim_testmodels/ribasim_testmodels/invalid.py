@@ -16,6 +16,8 @@ from ribasim.nodes import (
 )
 from shapely.geometry import Point
 
+from ribasim_testmodels.continuous_control import outlet_continuous_control_model
+
 
 def invalid_qh_model() -> Model:
     """
@@ -389,7 +391,7 @@ def invalid_user_demand_missing_min_level_model() -> Model:
 
 
 def _invalid_subnetwork_model() -> Model:
-    """Create an empty model with allocation, to connect the primary network and subnetworks in."""
+    """Create an empty model with allocation, to connect the primary network and secondary networks in."""
     return Model(
         starttime=datetime(2020, 1, 1),
         endtime=datetime(2021, 1, 1),
@@ -407,7 +409,7 @@ def _invalid_subnetwork_basin_tables() -> list:
 
 
 def invalid_junction_subnetwork_boundary_model() -> Model:
-    """Put a Junction that stays in the simulation at the boundary between the primary network and a subnetwork."""
+    """Put a Junction that stays in the simulation at the boundary between the primary network and a secondary network."""
     model = _invalid_subnetwork_model()
     bsn1 = model.basin.add(Node(1, Point(0, 0)), _invalid_subnetwork_basin_tables())
     pmp = model.pump.add(
@@ -428,7 +430,7 @@ def invalid_junction_subnetwork_boundary_model() -> Model:
 
 
 def invalid_subnetwork_to_primary_model() -> Model:
-    """Flow from a subnetwork into the primary network."""
+    """Flow from a secondary network into the primary network."""
     model = _invalid_subnetwork_model()
     bsn1 = model.basin.add(
         Node(1, Point(0, 0), subnetwork_id=2), _invalid_subnetwork_basin_tables()
@@ -439,4 +441,15 @@ def invalid_subnetwork_to_primary_model() -> Model:
     bsn2 = model.basin.add(Node(3, Point(2, 0)), _invalid_subnetwork_basin_tables())
     model.link.add(bsn1, pmp)
     model.link.add(pmp, bsn2)
+    return model
+
+
+def invalid_circular_control_model() -> Model:
+    """Set up a model where two ContinuousControl nodes listen to the flow the other one sets."""
+    model = outlet_continuous_control_model()
+    model.experimental.concentration = False
+    variable = model.continuous_control.variable.df
+    assert variable is not None
+    variable.loc[variable.node_id == 8, "listen_node_id"] = 5
+    variable.loc[variable.node_id == 9, "listen_node_id"] = 4
     return model

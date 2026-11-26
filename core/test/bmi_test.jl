@@ -85,6 +85,19 @@ end
     @test storage0 == storage != ones(4)
 end
 
+@testitem "update_subgrid_level" begin
+    import BasicModelInterface as BMI
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    model = BMI.initialize(Ribasim.Model, toml_path)
+    subgrid_level = BMI.get_value_ptr(model, "basin.subgrid_level")
+    @test !isempty(subgrid_level)
+    # The subgrid levels are only computed when they are saved or asked for
+    @test all(isnan, subgrid_level)
+    @test Ribasim.update_subgrid_level(model) === model
+    @test all(isfinite, subgrid_level)
+end
+
 @testitem "get_value_ptr_all_values" begin
     import BasicModelInterface as BMI
 

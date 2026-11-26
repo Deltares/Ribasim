@@ -189,6 +189,20 @@ end
     @test flow_rates(23, 25) ≈ 0.4 .* flow_rates(5, 23)
 end
 
+@testitem "Junction subgraphs in parallel tasks" begin
+    model = Ribasim.Model(normpath(@__DIR__, "../../generated_testmodels/junction_fraction/ribasim.toml"))
+    (; u, p, t) = model.integrator
+    du = zero(u)
+    Ribasim.water_balance!(du, u, p, t)
+
+    # With 512 subgraphs, the loop over them runs in parallel tasks if Julia has threads
+    (; routed_subgraphs) = p.p_independent.junction
+    append!(routed_subgraphs, [Ribasim.NodeID[] for _ in (length(routed_subgraphs) + 1):512])
+    du_parallel = zero(u)
+    Ribasim.water_balance!(du_parallel, u, p, t)
+    @test du_parallel == du
+end
+
 @testitem "FlowBoundary time series through Junction" begin
     import BasicModelInterface as BMI
 
@@ -285,18 +299,18 @@ end
 @testitem "Junction at subnetwork boundary" setup = [JunctionValidation] begin
     messages = JunctionValidation.error_messages(
         "invalid_junction_subnetwork_boundary",
-        "Errors detected in connections between primary network and subnetworks."
+        "Errors detected in connections between primary network and secondary networks."
     )
     @test messages == ["Junction nodes at the boundary between subnetworks are not supported."]
 end
 
-@testitem "Subnetwork flows into primary network" setup = [JunctionValidation] begin
+@testitem "Secondary network flows into primary network" setup = [JunctionValidation] begin
     messages = JunctionValidation.error_messages(
         "invalid_subnetwork_to_primary",
-        "Errors detected in connections between primary network and subnetworks."
+        "Errors detected in connections between primary network and secondary networks."
     )
     @test messages ==
-        ["This node flows from a subnetwork into the primary network, which is not supported."]
+        ["This node flows from a secondary network into the primary network, which is not allowed."]
 end
 
 @testitem "Junction allocation" begin

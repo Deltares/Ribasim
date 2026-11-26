@@ -23,6 +23,8 @@ functions like `basin_data` and `flow_data` only return all results if they fit 
 - `mean_flows`: Buffers for the mean flows of the saveat interval that is being saved
 - `t_prev`: The time of the previous save, the start of the next saveat interval
 - `level_prev`: The Basin levels at `t_prev`
+- `t_allocation_unfinished`: The start of the intervention interval that is not finished at
+  `t_prev`, from where the allocation results are not complete yet
 - `solver_stats_prev`: The cumulative solver stats at `t_prev`
 - `chunk_time`: The number of time steps per write, also the chunk size along the time dimension
 
@@ -43,6 +45,7 @@ the like at each saveat, because those are averaged over an intervention interva
     const mean_flows::MeanFlows
     const level_prev::Vector{Float64}
     t_prev::Float64 = NaN
+    t_allocation_unfinished::Float64 = 0.0
     solver_stats_prev::SolverStats = zero_solver_stats()
     chunk_time::Int
 end
@@ -125,6 +128,9 @@ function Model(
         if !valid_pid_connectivity(pid_control.node_id, pid_control.listen_node_id, graph)
             error("Invalid PidControl connectivity.")
         end
+
+        # Errors for a circular dependency in the control of flows
+        set_control_order!(parameters)
 
         if !valid_min_upstream_level!(graph, outlet, basin)
             error("Invalid minimum upstream level of Outlet.")

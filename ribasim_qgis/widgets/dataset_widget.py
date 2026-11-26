@@ -44,7 +44,11 @@ from qgis.PyQt.QtWidgets import (
     QWidget,
 )
 
-from ribasim_qgis.core.junctions import link_towards_basin, read_junctions_in_static
+from ribasim_qgis.core.junctions import (
+    FlowGraph,
+    node_flow_links,
+    read_junctions_in_static,
+)
 from ribasim_qgis.core.model import (
     get_database_path_from_model_file,
     get_directory_path_from_model_file,
@@ -62,6 +66,10 @@ from ribasim_qgis.core.nodes import (
     load_nodes_from_geopackage,
 )
 from ribasim_qgis.core.observations import Observations, read_observations
+from ribasim_qgis.core.tracer_flow import (
+    InputConcentrations,
+    read_input_concentrations,
+)
 from ribasim_qgis.widgets.plot_widget import PlotData, PlotWidget, Trace, VariableTraces
 from ribasim_qgis.widgets.task import RibasimTask
 
@@ -101,27 +109,17 @@ _FLOW_RATE_FROM_OUTGOING_LINK: frozenset[str] = frozenset(
     }
 )
 
-# Non-conservative node types: inflow and outflow can differ, so we plot both
-# the incoming and outgoing flow links as separate traces.
-_FLOW_RATE_FROM_INCOMING_AND_OUTGOING_LINKS: frozenset[str] = frozenset({"UserDemand"})
-
 # Node types with potentially multiple incoming flow links whose summed
 # inflow we plot. ``Terminal`` only has incoming flow.
 _FLOW_RATE_FROM_INCOMING_LINKS_SUM: frozenset[str] = frozenset({"Terminal"})
 
 # Node types with potentially multiple incoming and outgoing flow links
 # where inflow and outflow may differ. We plot the sum of incoming and the
-# sum of outgoing links as separate traces.
+# sum of outgoing links as separate traces. A UserDemand can abstract from
+# multiple sources.
 _FLOW_RATE_FROM_INCOMING_AND_OUTGOING_LINKS_SUM: frozenset[str] = frozenset(
-    {"LevelBoundary"}
+    {"LevelBoundary", "UserDemand"}
 )
-
-# Observation flow variables and the link direction they sum over.
-# ``inflow_rate`` sums incoming flow links; ``outflow_rate`` sums outgoing.
-_OBSERVATION_FLOW_DIRECTION: dict[str, str] = {
-    "inflow_rate": "to",
-    "outflow_rate": "from",
-}
 
 RIBASIM_HOME_SETTING = "ribasim/home"
 RIBASIM_LAST_MODEL_PATH_SETTING = "ribasim/last_model_path"
@@ -156,8 +154,12 @@ class DatasetWidget:
 
         # Observation input data (read from the GeoPackage, not the results).
         self.observations: Observations | None = None
-        # The Junctions with rows in Junction / static, read from the GeoPackage
+        # The Junctions with rows in Junction / static
         self.junctions_in_static: frozenset[int] = frozenset()
+        # The concentration tables of FlowBoundary, LevelBoundary and UserDemand
+        self.input_concentrations = InputConcentrations()
+        # The end of the last interval of the flow results
+        self.flow_end: np.datetime64 | None = None
 
         # Plot widget for timeseries
         self.plot_widget = PlotWidget(
@@ -167,6 +169,7 @@ class DatasetWidget:
             concentration_for_node_getter=self._get_concentration_for_node,
             flow_for_link_getter=self._get_flow_for_link,
             junctions_in_static_getter=lambda: self.junctions_in_static,
+            input_concentration_getter=self._get_input_concentration,
         )
 
         # Track running simulations by model path
@@ -626,6 +629,7 @@ class DatasetWidget:
         self._load_netcdf_results()
         self._load_observations()
         self._load_junctions_in_static()
+        self._load_input_concentrations()
         self._preload_plot_variables()
         self._set_node_results()
         self._set_link_results()
@@ -679,6 +683,8 @@ class DatasetWidget:
 
     def _load_netcdf_results(self) -> None:
         """Load all NetCDF result files into self.results."""
+        # A file that is not there must not keep the results of an earlier model or run
+        self.results = {}
         results_dir = self._results_dir()
         readers = {
             "basin": read_basin_nc,
@@ -697,10 +703,38 @@ class DatasetWidget:
         )
 
     def _load_junctions_in_static(self) -> None:
-        """Load which Junctions have rows in Junction / static from the GeoPackage."""
+        """Load which Junctions have rows in Junction / static."""
+        model_path = self.ribasim_widget.path
+        netcdf_file = get_toml_dict(model_path).get("junction", {}).get("static")
+        input_dir = get_directory_path_from_model_file(model_path, property="input_dir")
         self.junctions_in_static = read_junctions_in_static(
-            get_database_path_from_model_file(self.ribasim_widget.path)
+            input_dir / "database.gpkg",
+            None if netcdf_file is None else input_dir / netcdf_file,
         )
+
+    def _load_input_concentrations(self) -> None:
+        """Load the concentration tables of FlowBoundary, LevelBoundary and UserDemand.
+
+        Also find the end of the last interval of the flow results, to average the tables
+        over these intervals. It is the end time, unless the simulation stopped early,
+        since then the results end at the last saveat.
+        """
+        model_path = self.ribasim_widget.path
+        self.input_concentrations = read_input_concentrations(
+            get_database_path_from_model_file(model_path)
+        )
+        result = self.results.get("flow")
+        if result is None:
+            self.flow_end = None
+            return
+        toml = get_toml_dict(model_path)
+        self.flow_end = np.datetime64(toml["endtime"], "ns")
+        saveat = float(toml.get("solver", {}).get("saveat", 86400.0))
+        times = result.time.to_numpy()
+        if len(times) > 0 and 0.0 < saveat < np.inf:
+            self.flow_end = min(
+                self.flow_end, times[-1] + np.timedelta64(int(saveat), "s")
+            )
 
     def _observation_units(self) -> dict[str, str]:
         """Map each observation variable to a unit borrowed from the results.
@@ -760,6 +794,15 @@ class DatasetWidget:
         return {
             sub: (time_strings, arr[:, idx]) for sub, arr in result.variables.items()
         }
+
+    def _get_input_concentration(self, node_id: int) -> dict[str, np.ndarray] | None:
+        """Return the mean input concentrations of a node over the flow result intervals."""
+        result = self.results.get("flow")
+        if result is None or self.flow_end is None:
+            return None
+        return self.input_concentrations.mean(
+            node_id, result.time.to_numpy(), self.flow_end
+        )
 
     def _get_flow_for_link(self, link_id: int) -> Trace | None:
         """Return the flow_rate trace for a single *link_id*."""
@@ -1099,17 +1142,15 @@ class DatasetWidget:
     ) -> None:
         """Add flow.nc flow_rate traces for selected non-Basin nodes.
 
-        Five cases:
+        Four cases:
 
         * Conservative single-link nodes (e.g. ``TabulatedRatingCurve``):
           show the outgoing flow link as the node's flow_rate.
-        * Non-conservative single-link nodes (e.g. ``UserDemand``): show
-          the incoming and outgoing flow links separately.
         * Multi-link inflow-only nodes (``Terminal``): show the sum of all
           incoming flow links.
-        * ``Junction``: see :meth:`_junction_flow_column`.
-        * Multi-link non-conservative nodes (``LevelBoundary``): show the
-          sum of incoming and the sum of outgoing flow links separately.
+        * ``Junction``: see :meth:`_node_flow_column`.
+        * Multi-link non-conservative nodes (``LevelBoundary``, ``UserDemand``):
+          show the sum of incoming and the sum of outgoing flow links separately.
         """
         flow_result = self.results.get("flow")
         if flow_result is None or link_layer is None:
@@ -1132,23 +1173,6 @@ class DatasetWidget:
                         time_strings,
                         outgoing[0],
                     )
-            elif node_type in _FLOW_RATE_FROM_INCOMING_AND_OUTGOING_LINKS:
-                incoming = self._connected_flow_columns(
-                    link_layer, node_id, "to", link_id_to_idx, flow_arr
-                )
-                outgoing = self._connected_flow_columns(
-                    link_layer, node_id, "from", link_id_to_idx, flow_arr
-                )
-                if incoming:
-                    new_traces[f"{node_type} #{node_id} inflow_rate"] = (
-                        time_strings,
-                        incoming[0],
-                    )
-                if outgoing:
-                    new_traces[f"{node_type} #{node_id} outflow_rate"] = (
-                        time_strings,
-                        outgoing[0],
-                    )
             elif node_type in _FLOW_RATE_FROM_INCOMING_LINKS_SUM:
                 incoming = self._connected_flow_columns(
                     link_layer, node_id, "to", link_id_to_idx, flow_arr
@@ -1159,7 +1183,7 @@ class DatasetWidget:
                         np.sum(incoming, axis=0),
                     )
             elif node_type == "Junction":
-                column = self._junction_flow_column(
+                column = self._node_flow_column(
                     link_layer,
                     self.ribasim_widget.node_layer,
                     node_id,
@@ -1220,37 +1244,33 @@ class DatasetWidget:
                 columns.append(flow_arr[:, idx])
         return columns
 
-    @classmethod
-    def _junction_flow_column(
-        cls,
+    @staticmethod
+    def _node_flow_column(
         link_layer: Any,
         node_layer: Any,
         node_id: int,
         link_id_to_idx: dict[int, int],
         flow_arr: np.ndarray,
         junctions_in_static: Collection[int] = frozenset(),
+        variable: str = "flow_rate",
     ) -> np.ndarray | None:
-        """Return the flow_rate of a Junction, as the core defines it.
+        """Return a flow of a node as the sum of the flows on its links.
 
-        For a Junction in *junctions_in_static*, those with rows in Junction / static,
-        it is the total inflow: the sum of the flows on its incoming links.
-        The other Junctions form groups. In a group with exactly one Basin it is the
-        flow on the link that leads to that Basin, positive in the direction of that
-        link. In other groups it is the sum of the flows on the incoming links.
+        See `node_flow_links`. The flow_rate of a Junction is the one the core gives it:
+        for a Junction in *junctions_in_static*, those with rows in Junction / static, the
+        sum of the flows on its incoming links. The other Junctions form groups. In a group
+        with exactly one Basin it is the flow on the link that leads to that Basin,
+        positive in the direction of that link. In other groups it is the sum of the flows
+        on the incoming links.
         """
-        link_id = link_towards_basin(
-            link_layer,
-            lambda i: cls._node_type_of(node_layer, i),
-            node_id,
-            junctions_in_static,
-        )
-        if link_id is not None:
-            idx = link_id_to_idx.get(link_id)
-            return None if idx is None else flow_arr[:, idx]
-        incoming = cls._connected_flow_columns(
-            link_layer, node_id, "to", link_id_to_idx, flow_arr
-        )
-        return np.sum(incoming, axis=0) if incoming else None
+        graph = FlowGraph(node_layer, link_layer, junctions_in_static)
+        columns = []
+        for link in node_flow_links(graph, node_id, variable):
+            idx = link_id_to_idx.get(link.link_id)
+            if idx is None:
+                return None
+            columns.append(flow_arr[:, idx])
+        return np.sum(columns, axis=0) if columns else None
 
     def _inject_observation_traces(
         self,
@@ -1271,7 +1291,6 @@ class DatasetWidget:
         if self.observations is None:
             return
 
-        node_layer = self.ribasim_widget.node_layer
         for node_id, node_type in selected_nodes:
             if node_type != "Observation":
                 continue
@@ -1280,11 +1299,6 @@ class DatasetWidget:
                 continue
 
             target_id = self._observation_target_node_id(link_layer, node_id)
-            target_type = (
-                self._node_type_of(node_layer, target_id)
-                if target_id is not None
-                else None
-            )
 
             for variable, (times, values) in node_data.items():
                 var_traces = plot_data.setdefault("observation", {}).setdefault(
@@ -1297,7 +1311,7 @@ class DatasetWidget:
                 simulated: Trace | None = None
                 if target_id is not None:
                     simulated = self._simulated_observation_trace(
-                        target_id, target_type, variable, link_layer
+                        target_id, variable, link_layer
                     )
                 if simulated is not None:
                     var_traces[f"Observation #{node_id} simulated {variable}"] = (
@@ -1307,15 +1321,14 @@ class DatasetWidget:
     def _simulated_observation_trace(
         self,
         target_id: int,
-        target_type: str | None,
         variable: str,
         link_layer: Any,
     ) -> Trace | None:
         """Return the simulated series of *variable* for the observed target node.
 
         Node-indexed results (e.g. Basin ``level``, ``inflow_rate``) are looked
-        up directly by node_id. Flow variables on connector nodes are derived
-        from the connected flow links of ``flow.nc``.
+        up directly by node_id. Flow variables on other nodes are derived from
+        the connected flow links of ``flow.nc``, see :meth:`_node_flow_column`.
         """
         # Node-indexed results: direct lookup by node_id.
         basin_result = self.results.get("basin")
@@ -1330,72 +1343,21 @@ class DatasetWidget:
 
         # Flow variables: derive from connected flow links.
         flow_result = self.results.get("flow")
-        if (
-            flow_result is not None
-            and link_layer is not None
-            and target_type is not None
-        ):
+        if flow_result is not None and link_layer is not None:
             flow_arr = flow_result.variables.get("flow_rate")
             if flow_arr is not None:
                 link_id_to_idx = {int(v): i for i, v in enumerate(flow_result.ids)}
-                column = self._observation_flow_column(
-                    link_layer,
-                    target_id,
-                    target_type,
-                    variable,
-                    link_id_to_idx,
-                    flow_arr,
-                )
-                if column is not None:
-                    return (flow_result.time_strings, column)
-
-        return None
-
-    def _observation_flow_column(
-        self,
-        link_layer: Any,
-        target_id: int,
-        target_type: str,
-        variable: str,
-        link_id_to_idx: dict[int, int],
-        flow_arr: np.ndarray,
-    ) -> np.ndarray | None:
-        """Return the summed flow_rate column for a flow observation variable.
-
-        ``inflow_rate`` and ``outflow_rate`` sum incoming resp. outgoing flow
-        links. Plain ``flow_rate`` is only meaningful for conservative nodes and
-        is taken from the relevant single link direction.
-        """
-        direction = _OBSERVATION_FLOW_DIRECTION.get(variable)
-        if direction is not None:
-            columns = self._connected_flow_columns(
-                link_layer, target_id, direction, link_id_to_idx, flow_arr
-            )
-            return np.sum(columns, axis=0) if columns else None
-
-        if variable == "flow_rate":
-            if target_type == "Junction":
-                return self._junction_flow_column(
+                column = self._node_flow_column(
                     link_layer,
                     self.ribasim_widget.node_layer,
                     target_id,
                     link_id_to_idx,
                     flow_arr,
                     self.junctions_in_static,
+                    variable,
                 )
-            # A conservative node's flow_rate equals its single connected flow
-            # link: outgoing for source-style nodes, incoming for sink-style.
-            if target_type in _FLOW_RATE_FROM_OUTGOING_LINK:
-                columns = self._connected_flow_columns(
-                    link_layer, target_id, "from", link_id_to_idx, flow_arr
-                )
-            elif target_type in _FLOW_RATE_FROM_INCOMING_LINKS_SUM:
-                columns = self._connected_flow_columns(
-                    link_layer, target_id, "to", link_id_to_idx, flow_arr
-                )
-            else:
-                return None
-            return np.sum(columns, axis=0) if columns else None
+                if column is not None:
+                    return (flow_result.time_strings, column)
 
         return None
 
@@ -1413,14 +1375,4 @@ class DatasetWidget:
         )
         for feat in link_layer.getFeatures(request):
             return int(feat["to_node_id"])
-        return None
-
-    @staticmethod
-    def _node_type_of(node_layer: Any, node_id: int) -> str | None:
-        """Return the node_type of *node_id* from the node layer, if found."""
-        if node_layer is None:
-            return None
-        request = QgsFeatureRequest().setFilterExpression(f'"node_id" = {node_id}')
-        for feat in node_layer.getFeatures(request):
-            return str(feat["node_type"])
         return None

@@ -38,9 +38,26 @@ table_from_schema(
         :length => "positive",
         :manning_n => "positive",
         :profile_width => "non-negative, not zero together with profile_slope",
+        :profile_slope => "non-negative, not zero together with profile_width, horizontal length per unit of vertical, see below",
     ),
 )
 ```
+
+## Profile
+
+The cross section of the reach is a trapezoid, described by the `profile_width` $w$ at the bottom and the `profile_slope` of the banks, as shown in the schematic above.
+
+The `profile_slope` is $\Delta y / \Delta z$, the horizontal length $\Delta y$ per unit of vertical length $\Delta z$, so it is **not** the steepness $\Delta z / \Delta y$ of the bank.
+The steeper the bank, the smaller the `profile_slope`:
+
+| bank                   | `profile_slope` |
+| ---------------------- | --------------- |
+| vertical (rectangular) | 0               |
+| 45 degrees             | 1               |
+| 1 vertical in 2 horizontal | 2           |
+
+A rectangular profile therefore has `profile_slope = 0`, and a triangular profile has `profile_width = 0`.
+The two cannot both be zero.
 
 # Equations
 

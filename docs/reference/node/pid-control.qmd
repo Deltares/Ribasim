@@ -97,6 +97,8 @@ $$
 
 where the clamping is again done last.
 Note that to compute this, $\hat{f}_\text{PID}$ has to be known first, meaning that the PID controlled Pump or Outlet flow rate has to be computed after all other contributions to the PID controlled Basin's storage are known.
+Ribasim determines this order at initialization, so these contributions include flows set by other `PidControl` or [ContinuousControl](/reference/node/continuous-control.qmd) nodes and flows via [Junction](/reference/node/junction.qmd) nodes.
+A circular dependency is an error, for instance two `PidControl` nodes with a derivative term whose controlled flows both connect to the Basin the other one listens to.
 
 ## The sign of the parameters
 

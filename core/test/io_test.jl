@@ -576,45 +576,95 @@ end
     @test chunk_time(; solver_saveat = 60) == 65536
 end
 
-@testitem "results up to the last accepted time step" begin
+@testitem "results of a simulation that stops before the end time" begin
     using NCDatasets: NCDataset
-    using Dates: DateTime, Day
-    using Ribasim: BMI, write_results, results_path, RESULTS_FILENAME
+    using SciMLBase: step!
+    using Ribasim: write_results, results_path, datetime_since, RESULTS_FILENAME
 
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
-    @test ispath(toml_path)
+    function read_results(config)
+        results = Dict{String, Array}()
+        for filename in values(RESULTS_FILENAME)
+            path = results_path(config, filename)
+            (endswith(filename, ".nc") && isfile(path)) || continue
+            NCDataset(path) do ds
+                for name in keys(ds)
+                    name == "computation_time" && continue
+                    results["$filename/$name"] = Array(ds[name])
+                end
+            end
+        end
+        return results
+    end
+
     day = 86400.0
-    config = Ribasim.Config(toml_path; results_dir = mktempdir(), results_significant_bits = 0)
+    # Stop in between two saves, after an allocation, and with a saveat of two days also after a
+    # control state change at day 281
+    for (name, t_save, t_stop, kwargs) in (
+            ("basic", 2day, 2.5day, (;)),
+            ("medium_primary_secondary_network", 2day, 2.5day, (;)),
+            ("switch_allocation_control", 280day, 281.5day, (; solver_saveat = 2day)),
+        )
+        toml_path = normpath(@__DIR__, "../../generated_testmodels/$name/ribasim.toml")
+        @test ispath(toml_path)
+        config = Ribasim.Config(toml_path; results_dir = mktempdir(), kwargs...)
+        model = Ribasim.Model(config)
+        # Not with BMI.update_until, which makes this one intervention interval
+        step!(model.integrator, t_stop, true)
+        @test Ribasim.tsaves(model)[end] == t_save
+
+        # The simulation can stop in a time step in progress, for instance after an error. The
+        # state in the integrator and the forcing up to a later time are not used.
+        (; integrator) = model
+        Ribasim.water_balance!(zero(integrator.u), integrator.u, integrator.p, t_stop + 3600.0)
+        integrator.u .= NaN
+        write_results(model)
+
+        # The results equal those of a simulation that ends at the last save
+        endtime = datetime_since(t_save, config.starttime)
+        config_save = Ribasim.Config(toml_path; results_dir = mktempdir(), endtime, kwargs...)
+        Ribasim.run(config_save)
+        expected = read_results(config_save)
+        results = read_results(config)
+        @test keys(results) == keys(expected)
+        for (key, value) in expected
+            @test isequal(results[key], value)
+        end
+    end
+
+    # With a saveat shorter than the intervention interval, the allocation results end with the
+    # last intervention interval that ended by the last save, also if they are written in chunks
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/medium_primary_secondary_network/ribasim.toml")
+    config = Ribasim.Config(toml_path; results_dir = mktempdir(), solver_saveat = day / 4)
     model = Ribasim.Model(config)
-    BMI.update_until(model, 2.5day)
-    (; integrator) = model
-    @test Ribasim.tsaves(model) == [0, 1, 2] .* day
-
-    # The state in the integrator can be from a time step in progress, for instance if an error
-    # occurs there, that one isn't accepted so it must not be used.
-    integrator.u .= NaN
+    model.saved.chunk_time = 1
+    step!(model.integrator, 2.6day, true)
     write_results(model)
-    @test Ribasim.tsaves(model) == [0, 1, 2, 2.5] .* day
+    endtime = datetime_since(2day, config.starttime)
+    config_save =
+        Ribasim.Config(toml_path; results_dir = mktempdir(), solver_saveat = day / 4, endtime)
+    Ribasim.run(config_save)
+    expected = read_results(config_save)
+    results = read_results(config)
+    for (key, value) in expected
+        startswith(key, "allocation") || continue
+        @test isequal(results[key], value)
+    end
 
-    (; storage, level, storage_rate, balance_error) = Ribasim.basin_data(model; table = false)
-    (; current_storage) = integrator.p.current_basin_properties
-    @test size(storage, 2) == 3
-    # The last time step covers half a day, and ends at the state in the results
-    @test storage[:, end] .+ 0.5day .* storage_rate[:, end] ≈ current_storage
-    @test maximum(abs, balance_error) < 1.0e-10
-    NCDataset(results_path(config, RESULTS_FILENAME.basin)) do ds
-        @test ds["time"][:] == DateTime(2020) .+ Day.(0:2)
-        @test ds["storage"][:, :] == storage
-    end
-    NCDataset(results_path(config, RESULTS_FILENAME.flow)) do ds
-        @test ds.dim["time"] == 3
-    end
-    NCDataset(results_path(config, RESULTS_FILENAME.solver_stats)) do ds
-        @test ds.dim["time"] == 3
-    end
+    # With saveat = Inf only the start is saved, and the results of an earlier simulation are
+    # removed instead of left behind
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    config = Ribasim.Config(toml_path; results_dir = mktempdir(), solver_saveat = Inf)
+    Ribasim.run(config)
+    model = Ribasim.Model(config)
+    level_start = copy(model.saved.level_prev)
+    step!(model.integrator, 2.5day, true)
+    write_results(model)
+    @test Ribasim.tsaves(model) == [0.0]
+    @test !isfile(results_path(config, RESULTS_FILENAME.basin))
+    @test !isfile(results_path(config, RESULTS_FILENAME.flow))
     NCDataset(results_path(config, RESULTS_FILENAME.basin_state)) do ds
-        @test ds["level"][:] == model.saved.level_prev
-        @test !any(isnan, ds["level"][:])
+        @test ds["level"][:] == level_start
     end
 end
 
@@ -767,7 +817,7 @@ end
 
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/allocation_example/ribasim.toml")
-    @test ispath(toml_path) skip = true
+    @test ispath(toml_path)
     config = Ribasim.Config(toml_path)
     model = Ribasim.run(config)
     @test success(model)
