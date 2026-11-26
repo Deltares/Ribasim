@@ -182,6 +182,8 @@ migrate-model = "python utils/migrate_model.py"
 filter-model = "python utils/filter_model.py"
 # Release
 github-release = "python utils/github-release.py"
+# GitHub project board
+issue-status = "python utils/issue_status.py"
 
 # QGIS plugin installation, this doesn't need QGIS itself
 [tasks.install-ribasim-qgis]

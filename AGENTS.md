@@ -47,23 +47,11 @@ When a change may affect the allocation problems, delete `generated_testmodels/`
 
 ## Issues and pull requests
 
-Issues and PRs are on https://github.com/Deltares/Ribasim.
+Issues and PRs are on https://github.com/Deltares/Ribasim and planned on the [Team Hydro Core board](https://github.com/orgs/Deltares/projects/138/views/3).
 
-Be up-front on GitHub about what you are working on, so others can see it and don't duplicate it. Before you start:
-
-- Search for an existing issue, and create one if there is none. A new issue says in one line where it came from, such as a review or a failing model.
-- Assign the issue to the person you work for (`gh issue edit <number> --add-assignee @me`). If someone else is already assigned, check with the person you work for first.
-- Move the issue to "In progress" on the Team Hydro Core project board, if it isn't there already.
-- Set the issue's "Iteration" on that board to the current iteration.
-
-As the work proceeds:
-
-- Always open PRs as drafts (`gh pr create --draft`); the person you work for marks them ready.
-- Move the issue to "Review" once its PR is marked ready, if it isn't there already.
-- Changing the project board needs the `project` token scope (`gh auth refresh -s project`). If you can't do one of these steps, say so instead of skipping it silently.
-
-When writing on GitHub:
-
+- Before you start, find or create the issue and run `pixi run issue-status <number>`, so others can see what you work on. It assigns the issue to the person you work for and puts it "In progress" in the current iteration. If it says someone else is assigned, or that `gh` lacks the `project` scope, ask the person you work for.
+- A new issue says in one line where it came from, such as a review or a failing model.
+- Always open PRs as drafts (`gh pr create --draft`) that say `Closes #<number>`; the person you work for marks them ready and runs `pixi run issue-status <number> Review`. Closing the issue moves it to "Done".
 - Issues, PR descriptions and comments start with a concise version that says the details are folded below:
 
   ```md
