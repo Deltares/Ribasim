@@ -957,7 +957,7 @@ end
     (; basin) = model.integrator.p.p_independent
     idx = findfirst(==(2189), getfield.(basin.node_id, :value))
     reserve = basin.low_storage_reserve[idx]
-    _, bottom = Ribasim.basin_bottom(basin, basin.node_id[idx])
+    bottom = Ribasim.basin_bottom(basin, basin.node_id[idx])
     @test all(>=(reserve), basin_table.storage)
     @test all(x -> x - bottom < 0.01, basin_table.level)
     @test all(x -> abs(x) < 1.0e-5, basin_table.storage_rate)

@@ -124,7 +124,15 @@ function Model(
             error("Invalid discrete control state definition(s).")
         end
 
-        (; basin, graph, outlet, pid_control, pump, tabulated_rating_curve) = p_independent
+        (;
+            basin,
+            graph,
+            outlet,
+            pid_control,
+            pump,
+            tabulated_rating_curve,
+            user_demand,
+        ) = p_independent
         if !valid_pid_connectivity(pid_control.node_id, pid_control.listen_node_id, graph)
             error("Invalid PidControl connectivity.")
         end
@@ -138,6 +146,10 @@ function Model(
 
         if !valid_min_upstream_level!(graph, pump, basin)
             error("Invalid minimum upstream level of Pump.")
+        end
+
+        if !valid_user_demand_min_level_above_bottom(user_demand, basin)
+            error("Invalid minimum level of UserDemand.")
         end
 
         if !valid_allocation_flow_capacity(pump) || !valid_allocation_flow_capacity(outlet)

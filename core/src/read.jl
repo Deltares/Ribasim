@@ -696,16 +696,10 @@ function ManningResistance(db::DB, config::Config, graph::MetaGraph, basin::Basi
         manning_resistance.control_mapping,
     )
 
-    map!(
-        id -> basin_bottom(basin, inflow_id(graph, id))[2],
-        manning_resistance.upstream_bottom,
-        node_id,
-    )
-    map!(
-        id -> basin_bottom(basin, outflow_id(graph, id))[2],
-        manning_resistance.downstream_bottom,
-        node_id,
-    )
+    # The neighbor is not necessarily a Basin, then the bottom is not used
+    bottom_or_zero(id) = id.is_basin ? basin_bottom(basin, id) : 0.0
+    map!(id -> bottom_or_zero(inflow_id(graph, id)), manning_resistance.upstream_bottom, node_id)
+    map!(id -> bottom_or_zero(outflow_id(graph, id)), manning_resistance.downstream_bottom, node_id)
 
     errors && error("Errors encountered when parsing ManningResistance data.")
 
@@ -1063,7 +1057,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     for id in node_id
         # Compute the low storage threshold as the disk of water between the bottom
         # and `depth_threshold` meters above the bottom
-        bottom = basin_bottom(basin, id)[2]
+        bottom = basin_bottom(basin, id)
         basin.low_storage_threshold[id.idx] =
             get_storage_from_level(basin, id.idx, bottom + config.solver.depth_threshold)
         basin.low_storage_reserve[id.idx] = get_storage_from_level(

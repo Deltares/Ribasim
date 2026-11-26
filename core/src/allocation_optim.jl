@@ -345,8 +345,12 @@ function set_simulation_data!(
         t_level,
     )
 
-    # Allocation controlled: Q(h_a) linearized around the current upstream level.
-    # All factors that reduce the flow are in [0, 1], so they are left out.
+    # Allocation controlled: Q(h_a) linearized around the current upstream level, scaled by
+    # the level reduction factors, which are held constant over the allocation timestep.
+    # The factor is not linearized: its derivative is zero outside the level difference
+    # threshold band, and inside it a linearized capacity could become negative, which makes
+    # the problem infeasible since the flow must be at least 0.
+    # The low storage factor is left out, since it is in [0, 1] and the physical layer applies it.
     (; scaling) = allocation_model
     (; interpolations, current_interpolation_index) = tabulated_rating_curve
     capacity_constraint = problem[:tabulated_rating_curve_capacity_constraint]
@@ -355,12 +359,16 @@ function set_simulation_data!(
         h_a = get_level(NaN, p, inflow_id, t_level)
         qh = interpolations[current_interpolation_index[node_id.idx](t_level)]
         constraint = capacity_constraint[node_id]
-        JuMP.set_normalized_rhs(constraint, qh(h_a) / scaling.flow)
+        factor = level_reduction_factor(tabulated_rating_curve, node_id, p, t_level)
+        capacity = factor * qh(h_a)
+        # Treat what is left of the capacity as closed when it is negligible, see MIN_SCALED_CAPACITY
+        closed = (factor < 1) && (capacity < MIN_SCALED_CAPACITY * scaling.flow)
+        JuMP.set_normalized_rhs(constraint, closed ? 0.0 : capacity / scaling.flow)
         if inflow_id.type == NodeType.Basin
             set_partial_derivative_wrt_level!(
                 allocation_model,
                 inflow_id,
-                forward_diff(qh, h_a),
+                closed ? 0.0 : factor * forward_diff(qh, h_a),
                 p,
                 constraint,
             )
@@ -406,8 +414,7 @@ function set_simulation_data!(
             t_,
             component_cache,
         ),
-        component_cache,
-        !is_pump;
+        component_cache;
         apply_low_storage_factor,
     )
 
@@ -876,7 +883,7 @@ function set_demands!(
         level_demand_id = basin.level_demand_id[basin_id.idx]
 
         level_now = current_level[basin_id.idx]
-        level_min_prev_priority = basin_bottom(basin, basin_id)[2]
+        level_min_prev_priority = basin_bottom(basin, basin_id)
         level_max_prev_priority = Inf
         A = current_area[basin_id.idx]
         storage_now = current_storage[basin_id.idx]
@@ -1475,36 +1482,6 @@ function update_allocation_controlled!(
         end
     end
     return changed
-end
-
-"""
-The product of the level based reduction factors that the physical layer applies to the flow
-of a Pump or Outlet, see `pump_or_outlet_flow`. It is evaluated at the levels at the start of
-the allocation timestep `t` and held constant over that timestep, which keeps the problem
-linear.
-"""
-function level_reduction_factor(
-        node::Union{Pump, Outlet},
-        node_id::NodeID,
-        p::Parameters,
-        t::Float64,
-    )::Float64
-    (; level_difference_threshold) = p.p_independent
-    inflow_id = node.inflow_link[node_id.idx].link[1]
-    downstream_id = node.downstream_level_id[node_id.idx]
-    # Outside of automatic differentiation get_level ignores the storage argument
-    src_level = get_level(0.0, p, inflow_id, t)
-    dst_level = get_level(0.0, p, downstream_id, t)
-
-    factor = 1.0
-    if node isa Outlet
-        factor *= reduction_factor(src_level - dst_level, level_difference_threshold)
-    end
-    min_upstream_level = node.min_upstream_level[node_id.idx](t)
-    max_downstream_level = node.max_downstream_level[node_id.idx](t)
-    factor *= reduction_factor(src_level - min_upstream_level, level_difference_threshold)
-    factor *= reduction_factor(max_downstream_level - dst_level, level_difference_threshold)
-    return factor
 end
 
 """

@@ -155,7 +155,8 @@ A TabulatedRatingCurve that is not allocation-controlled (the default) follows i
 Allocation takes this flow into account, but cannot set it directly: it follows from the upstream water level, like in the simulation.
 
 For an allocation-controlled TabulatedRatingCurve, allocation can reduce the flow below what the $Q(h)$ relationship gives, for instance to keep water upstream for a demand there.
-Allocation never plans more flow than the rating curve can deliver at the expected upstream level.
+Allocation never plans more flow than the rating curve can deliver at the expected upstream level, including the reduction for the level difference and for `max_downstream_level`, so it plans no flow through a rating curve that these keep closed.
+These reductions are evaluated at the levels at the start of an allocation timestep and held over that timestep: a rating curve that is closed at the start stays closed for the whole timestep, and a limit reached within a timestep is seen one timestep late.
 The flow rate that allocation sets is used until the next intervention time, set by `intervention_interval` in the [allocation settings](/reference/usage.qmd#sec-allocation-settings), and is in [`allocation_control.nc`](/reference/usage.qmd#sec-results).
 The simulated flow in `flow.nc` is the lower of this flow rate and the flow that $Q(h)$ gives at the current level, so it can be lower than what allocation set, for instance when the upstream level dropped, the upstream Basin is almost empty, or `max_downstream_level` is reached.
 Since `allocation_controlled` can be given per control state, a [DiscreteControl](/reference/node/discrete-control.qmd) node can switch allocation control on and off.

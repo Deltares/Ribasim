@@ -330,6 +330,28 @@ end
 end
 
 
+@testitem "Allocation controlled rating curve closed by max_downstream_level" begin
+    using DataFrames: DataFrame
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/allocation_rating_curve_max_downstream_level/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    # The downstream level starts above max_downstream_level, so the physical layer keeps the
+    # rating curve closed. Allocation must not plan flow through it.
+    allocation_flow_table = DataFrame(Ribasim.allocation_flow_data(model))
+    flow_table = DataFrame(Ribasim.flow_data(model))
+    allocated = filter(r -> r.from_node_id == 2 && r.to_node_id == 3, allocation_flow_table)
+    realised = filter(r -> r.from_node_id == 3 && r.to_node_id == 4, flow_table)
+    @test !isempty(allocated)
+    @test all(≈(0.0; atol = 1.0e-6), allocated.flow_rate)
+    @test all(≈(0.0; atol = 1.0e-6), realised.flow_rate)
+end
+
 @testitem "switch allocation controlled states" begin
     using DataFrames: DataFrame
 

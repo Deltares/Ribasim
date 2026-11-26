@@ -863,7 +863,7 @@ end
 
 - **Pump and Outlet**: the tightest `min_flow_rate` and `max_flow_rate` over $[t, t + \Delta t]$, since allocation assigns a single flow rate for the whole timestep. Both are multiplied by `level_reduction_factor`: the product of the level based reduction factors of the physical layer (`min_upstream_level`, `max_downstream_level` and for an Outlet the level difference), evaluated at the levels at the start of the allocation timestep. If this leaves less than `MIN_SCALED_CAPACITY` (in units of the flow scaling), the node is treated as closed: a level that rests at its limit leaves a capacity too small for the solver tolerances, which makes the problem infeasible next to a FlowDemand;
 - **LinearResistance, ManningResistance and non-allocation-controlled TabulatedRatingCurve**: `linearized_flow_bounds`, see below;
-- **allocation controlled TabulatedRatingCurve**: $[0, Q(h_{a,\max})]$ where $h_{a,\max}$ is the highest reachable upstream level;
+- **allocation controlled TabulatedRatingCurve**: $[0, \infty)$, with the upper bound set by the `tabulated_rating_curve_capacity_constraint`: $Q(h_a)$ linearized around the current upstream level, with the right-hand side and level coefficient multiplied by `level_reduction_factor` (level difference and `max_downstream_level`), evaluated at the start of the allocation timestep. Below `MIN_SCALED_CAPACITY` the rating curve is treated as closed;
 - **UserDemand**: $[0, \infty)$, tightened afterwards by `update_user_demand_flow_bounds!`;
 - **anything else**: $(-\infty, \infty)$, i.e. no bound from this node.
 
@@ -1343,6 +1343,7 @@ end
 ```
 
 The physical layer still applies the usual reduction factors (low storage, level difference, maximum downstream level) to this flow rate, so the realized flow can be lower than the allocated flow rate.
+For a Pump, Outlet and TabulatedRatingCurve the level based factors are also applied in allocation, evaluated at the start of the allocation timestep. A structure that is closed at the start of a timestep therefore stays closed for that whole timestep, in allocation and in the physical layer, and a limit reached within a timestep is seen one timestep late.
 
 # Handling Infeasibility
 

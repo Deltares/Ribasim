@@ -1297,7 +1297,7 @@ function SciMLBase.log_numerical_instability(
     end
 
     # Check whether any Basins have a too large water depth
-    depths = [current_basin_properties.current_level[id.idx] - basin_bottom(basin, id)[2] for id in basin.node_id]
+    depths = [current_basin_properties.current_level[id.idx] - basin_bottom(basin, id) for id in basin.node_id]
     too_large_depth_idxs = findall(d -> !(0 ≤ d ≤ max_depth), depths)
     depth_analysis = String[]
     for (i, basin_idx) in enumerate(too_large_depth_idxs)

@@ -172,7 +172,7 @@ function get_level(
                 storage_to_level[node_id.idx](storage)
             else
                 # For negative storage mirror the Basin profile in the bottom
-                2 * basin_bottom(basin, node_id)[2] - storage_to_level[node_id.idx](-storage)
+                2 * basin_bottom(basin, node_id) - storage_to_level[node_id.idx](-storage)
             end
         else
             current_basin_properties.current_level[node_id.idx]
@@ -210,16 +210,11 @@ function get_area(
     end
 end
 
-"Return the bottom elevation of the basin with index i, or nothing if it doesn't exist"
-function basin_bottom(basin::Basin, node_id::NodeID)::Tuple{Bool, Float64}
-    return if node_id.is_basin
-        # get level(storage) interpolation function
-        level_discrete = basin_levels(basin, node_id.idx)
-        # and return the first level in this vector, representing the bottom
-        return true, first(level_discrete)
-    else
-        return false, 0.0
-    end
+"Return the bottom elevation of the Basin `node_id`"
+function basin_bottom(basin::Basin, node_id::NodeID)::Float64
+    @assert node_id.is_basin "$node_id is not a Basin"
+    # the first level in the level(storage) vector represents the bottom
+    return first(basin_levels(basin, node_id.idx))
 end
 
 """
@@ -293,6 +288,47 @@ function reduction_factor(x::T, threshold::Real)::T where {T <: Real}
         (-2 * x_scaled + 3) * x_scaled^2
     else
         one(T)
+    end
+end
+
+"""
+The product of the level based reduction factors of a TabulatedRatingCurve: one for the
+level difference and one for `max_downstream_level`. Shared by the physical layer and
+allocation.
+"""
+function level_reduction_factor(
+        tabulated_rating_curve::TabulatedRatingCurve,
+        node_id::NodeID,
+        h_a::Number,
+        h_b::Number,
+        level_difference_threshold::Number,
+    )::Number
+    max_downstream_level = tabulated_rating_curve.max_downstream_level[node_id.idx]
+    factor = reduction_factor(h_a - h_b, level_difference_threshold)
+    factor *= reduction_factor(max_downstream_level - h_b, level_difference_threshold)
+    return factor
+end
+
+"""
+The product of the level based reduction factors of a Pump or Outlet: for `min_upstream_level`,
+for `max_downstream_level` and, for an Outlet, for the level difference. Shared by the physical
+layer and allocation.
+"""
+function level_reduction_factor(
+        node::Union{Pump, Outlet},
+        src_level::Number,
+        dst_level::Number,
+        min_upstream_level::Number,
+        max_downstream_level::Number,
+        level_difference_threshold::Number,
+    )::Number
+    factor =
+        reduction_factor(src_level - min_upstream_level, level_difference_threshold) *
+        reduction_factor(max_downstream_level - dst_level, level_difference_threshold)
+    return if node isa Outlet
+        reduction_factor(src_level - dst_level, level_difference_threshold) * factor
+    else
+        factor
     end
 end
 

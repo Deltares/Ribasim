@@ -343,6 +343,31 @@ function valid_user_demand_min_level(user_demand::UserDemand)::Bool
     return !errors
 end
 
+"""
+Check that the min_level of a UserDemand is not below the bottom of the Basin(s) it abstracts
+from. The reduction of the abstraction for low storage works from the bottom, so a lower
+min_level would never be reached, which is more likely a mistake than intended.
+"""
+function valid_user_demand_min_level_above_bottom(
+        user_demand::UserDemand,
+        basin::Basin,
+    )::Bool
+    errors = false
+    for (id, inflow_links, min_level) in
+        zip(user_demand.node_id, user_demand.inflow_links, user_demand.min_level)
+        for link_metadata in inflow_links
+            id_in = link_metadata.link[1]
+            id_in.is_basin || continue
+            basin_bottom_level = basin_bottom(basin, id_in)
+            if min_level < basin_bottom_level
+                @error "Minimum level of $id is lower than bottom of source $id_in" min_level basin_bottom_level
+                errors = true
+            end
+        end
+    end
+    return !errors
+end
+
 function valid_config(config::Config)::Bool
     errors = false
 
@@ -672,7 +697,7 @@ function valid_min_upstream_level!(
     for (id, min_upstream_level) in zip(node.node_id, node.min_upstream_level)
         id_in = inflow_id(graph, id)
         if id_in.is_basin
-            basin_bottom_level = basin_bottom(basin, id_in)[2]
+            basin_bottom_level = basin_bottom(basin, id_in)
             if all(==(-Inf), min_upstream_level.u)
                 min_upstream_level.u .= basin_bottom_level
             elseif minimum(min_upstream_level.u) < basin_bottom_level
@@ -734,7 +759,7 @@ function valid_tabulated_curve_level(
         )
         id_in = inflow_id(graph, id)
         if id_in.is_basin
-            basin_bottom_level = basin_bottom(basin, id_in)[2]
+            basin_bottom_level = basin_bottom(basin, id_in)
             # for the complete timeseries this needs to hold
             for interpolation_index in index_lookup.u
                 qh = tabulated_rating_curve.interpolations[interpolation_index]

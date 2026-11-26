@@ -809,3 +809,57 @@ function average_record(
         sum(durations[d.time] * d.flow_rate for d in group) / Δt,
     )
 end
+
+"""
+The level reduction factor that the physical layer applies to the flow of a Pump or Outlet,
+see `pump_or_outlet_flow`, for allocation. It is evaluated at the levels at the start of the
+allocation timestep `t` and held constant over that timestep, which keeps the problem linear.
+"""
+function level_reduction_factor(
+        node::Union{Pump, Outlet},
+        node_id::NodeID,
+        p::Parameters,
+        t::Float64,
+    )::Float64
+    (; level_difference_threshold) = p.p_independent
+    inflow_id = node.inflow_link[node_id.idx].link[1]
+    downstream_id = node.downstream_level_id[node_id.idx]
+    # Outside of automatic differentiation get_level ignores the storage argument
+    src_level = get_level(0.0, p, inflow_id, t)
+    dst_level = get_level(0.0, p, downstream_id, t)
+
+    return level_reduction_factor(
+        node,
+        src_level,
+        dst_level,
+        node.min_upstream_level[node_id.idx](t),
+        node.max_downstream_level[node_id.idx](t),
+        level_difference_threshold,
+    )
+end
+
+"""
+The level reduction factor of a TabulatedRatingCurve for allocation, see
+`tabulated_rating_curve_flow`. Like for a Pump or Outlet it is evaluated at the levels at the
+start of the allocation timestep `t` and held constant over that timestep.
+"""
+function level_reduction_factor(
+        tabulated_rating_curve::TabulatedRatingCurve,
+        node_id::NodeID,
+        p::Parameters,
+        t::Float64,
+    )::Float64
+    (; level_difference_threshold) = p.p_independent
+    inflow_id = tabulated_rating_curve.inflow_link[node_id.idx].link[1]
+    downstream_id = tabulated_rating_curve.downstream_level_id[node_id.idx]
+    # Outside of automatic differentiation get_level ignores the storage argument
+    src_level = get_level(0.0, p, inflow_id, t)
+    dst_level = get_level(0.0, p, downstream_id, t)
+    return level_reduction_factor(
+        tabulated_rating_curve,
+        node_id,
+        src_level,
+        dst_level,
+        level_difference_threshold,
+    )
+end

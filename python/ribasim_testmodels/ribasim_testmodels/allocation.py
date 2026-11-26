@@ -275,7 +275,7 @@ def allocation_example_model() -> Model:
         Node(3, Point(1, 1), subnetwork_id=2),
         [
             user_demand.Static(
-                demand=[1.5], return_factor=0.0, min_level=-1.0, demand_priority=1
+                demand=[1.5], return_factor=0.0, min_level=0.0, demand_priority=1
             )
         ],
     )
@@ -288,7 +288,7 @@ def allocation_example_model() -> Model:
         Node(6, Point(3, 1), subnetwork_id=2),
         [
             user_demand.Static(
-                demand=[1.0], return_factor=0.0, min_level=-1.0, demand_priority=3
+                demand=[1.0], return_factor=0.0, min_level=0.0, demand_priority=3
             )
         ],
     )
@@ -1234,7 +1234,7 @@ def allocation_control_model() -> Model:
                 time=["2020-01-01", "2020-06-01", "2021-01-01"],
                 demand=[0.0, 10.0, 0.0],
                 return_factor=0.0,
-                min_level=-5.0,
+                min_level=0.0,
                 demand_priority=1,
             )
         ],
@@ -1582,7 +1582,7 @@ def tied_routes_model() -> Model:
                 time=time,
                 demand=1 + 0.1 * np.sin(day / 5),
                 return_factor=0,
-                min_level=-5,
+                min_level=0.0,
             )
         ],
     )
@@ -1973,6 +1973,55 @@ def level_demand_with_rating_curve_model() -> Model:
     model.link.add(bsn, trc)
     model.link.add(trc, trm)
     model.link.add(ld, bsn)
+
+    return model
+
+
+def allocation_rating_curve_max_downstream_level_model() -> Model:
+    """Create a model with an allocation-controlled TabulatedRatingCurve that is closed by its `max_downstream_level`.
+
+    The downstream Basin starts above `max_downstream_level`, and has a LevelDemand that it never meets.
+    Allocation must plan no flow through the rating curve, since the physical layer keeps it closed.
+    """
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 1, 21),
+        crs="EPSG:28992",
+        experimental=Experimental(allocation=True),
+    )
+
+    fb = model.flow_boundary.add(
+        Node(1, Point(0, 0), subnetwork_id=1),
+        [flow_boundary.Static(flow_rate=[0.2])],
+    )
+    up = model.basin.add(
+        Node(2, Point(1, 0), subnetwork_id=1),
+        [basin.Profile(area=1e5, level=[0.0, 5.0]), basin.State(level=[2.0])],
+    )
+    trc = model.tabulated_rating_curve.add(
+        Node(3, Point(2, 0), subnetwork_id=1),
+        [
+            tabulated_rating_curve.Static(
+                level=[0.0, 3.0],
+                flow_rate=[0.0, 3.0],
+                allocation_controlled=True,
+                max_downstream_level=1.2,
+            )
+        ],
+    )
+    down = model.basin.add(
+        Node(4, Point(3, 0), subnetwork_id=1),
+        [basin.Profile(area=1e5, level=[0.0, 5.0]), basin.State(level=[1.5])],
+    )
+    ld = model.level_demand.add(
+        Node(5, Point(3, 1), subnetwork_id=1),
+        [level_demand.Static(min_level=[2.5], max_level=[2.6], demand_priority=1)],
+    )
+
+    model.link.add(fb, up)
+    model.link.add(up, trc)
+    model.link.add(trc, down)
+    model.link.add(ld, down)
 
     return model
 
