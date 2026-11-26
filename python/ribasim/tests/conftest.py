@@ -3,6 +3,14 @@ import ribasim
 import ribasim_testmodels
 
 
+@pytest.fixture(autouse=True, scope="session")
+def _configure_matplotlib():
+    """Force matplotlib to use the non-interactive 'Agg' backend for testing."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+
+
 # we can't call fixtures directly, so we keep separate versions
 @pytest.fixture()
 def basic() -> ribasim.Model:

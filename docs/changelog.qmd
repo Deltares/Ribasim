@@ -9,10 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - QGIS: Plot the fractional flow of a selected node, such as a Pump or a Junction, and of the flow an Observation node observes, together with the observed flow. [#3446](https://github.com/Deltares/Ribasim/pull/3446)
 - ContinuousControl can listen to flows set by other ContinuousControl or PidControl nodes, also via Junctions. Before, such a flow was read as 0 without an error. A circular dependency in the control of flows is now an error. [#3408](https://github.com/Deltares/Ribasim/issues/3408)
 - The reduced linear solve is now exact for chained control, so the Newton iterations of models where ContinuousControl listens to a flow set by ContinuousControl or PidControl converge as fast as those without.
+- Add `ribasim.merge.merge_models` to Ribasim Python, which merges two models by replacing overlapping boundary nodes with a ManningResistance between their Basins. See the [merging models guide](/guide/merging-models.qmd).
 - Add `[logging] progress` TOML option and `RIBASIM_PROGRESS` environment variable, which takes precedence, to disable the progress bar, which avoids repeated progress lines in logs and documentation. [#3111](https://github.com/Deltares/Ribasim/issues/3111)
 - Python: `Model.plot` draws the Basin and FlowBoundary areas, toggled with `indicate_areas`, and the legend can be left out with `legend=False`.
 
 ### Changed
+- Merge: place new `ManningResistance` nodes at the boundary locations from the first model and log a warning when paired boundary locations are farther apart than `tolerance`.
 - Docs: explain the hydrological meaning, units and tuning of the PidControl parameters. [#1544](https://github.com/Deltares/Ribasim/issues/1544)
 - Docs: check the rendered documentation for dead links with lychee in CI. [#1844](https://github.com/Deltares/Ribasim/issues/1844)
 - Allocation: solve every problem from scratch, so that HiGHS uses presolve, which is much faster for large subnetworks. Start values made HiGHS construct a basis and then skip presolve. [#3387](https://github.com/Deltares/Ribasim/pull/3387)

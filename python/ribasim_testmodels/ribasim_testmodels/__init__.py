@@ -131,6 +131,7 @@ from ribasim_testmodels.precompile_workload import (
     precompile_workload_allocation_model,
     precompile_workload_model,
 )
+from ribasim_testmodels.river import river_model
 from ribasim_testmodels.solver import pump_pit_model
 from ribasim_testmodels.time import (
     flow_boundary_time_model,
@@ -247,6 +248,7 @@ __all__ = [
     "pump_pit_model",
     "rating_curve_between_basins_model",
     "rating_curve_model",
+    "river_model",
     "small_primary_secondary_network_model",
     "small_primary_secondary_network_verification_model",
     "storage_condition_model",

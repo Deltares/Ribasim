@@ -1,5 +1,7 @@
 project:
   type: website
+  pre-render:
+    - python visualize_merge.py
   render:
     - index.qmd
     - "*.qmd"
@@ -51,6 +53,7 @@ website:
         - guide/modeling-process.qmd
         - guide/installing-other-versions.qmd
         - guide/updating-ribasim.qmd
+        - guide/merging-models.qmd
         - guide/coupling.qmd
         - section: "Coupling guides"
           contents:
