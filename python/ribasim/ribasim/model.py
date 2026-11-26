@@ -980,7 +980,7 @@ class Model(FileModel, ParentModel):
             labels += labels_subnetworks
 
         if legend:
-            ax.legend(handles, labels, loc="lower left", bbox_to_anchor=(1, 0.5))
+            ax.legend(handles, labels, loc="center left", bbox_to_anchor=(1, 0.5))
 
         # Enforce aspect ratio bound
         xlim = ax.get_xlim()
