@@ -76,6 +76,21 @@ The first run will be slow.
 
 ![](https://github.com/Deltares/Ribasim/assets/4471859/58077f71-11d0-4c45-8d95-4eba8c0a0139)
 
+## Linting
+
+The prek hooks format Julia code with Runic.
+Julia code is linted with [LintApp.jl](https://github.com/julia-vscode/LintApp.jl), the static analyzer behind the VS Code Julia extension, so you see the same diagnostics while you edit.
+It is configured by `JuliaLint.toml` in the repository root.
+The `security` preset adds rules from the [secure Julia coding best practices](https://juliahub.com/white-papers/secure-julia-coding-best-practices), such as command injection and unsafe memory access.
+The LintApp.jl version is pinned in the `utils/linting` environment, which is updated together with the other Julia dependencies.
+To lint all Julia code from the command line, run:
+
+```sh
+pixi run lint-julia
+```
+
+On CI, the `Julia Lint` workflow shows errors and warnings as annotations on the pull request, fails when there are errors, and uploads all findings to the GitHub Security tab.
+
 ## Render documentation
 
 Example models are created and simulated as part of the rendering of the documentation.

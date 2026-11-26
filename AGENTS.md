@@ -28,6 +28,7 @@ pixi run test-ribasim-python  # Python tests
 pixi run generate-testmodels  # write the test models used by the tests
 pixi run codegen              # regenerate the Python schemas from the Julia schemas
 pixi run check                # formatting and linting hooks (prek)
+pixi run lint-julia           # Julia static analysis (LintApp.jl, JuliaLint.toml)
 pixi run docs                 # preview the docs
 ```
 
