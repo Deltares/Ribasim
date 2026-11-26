@@ -620,7 +620,7 @@ The linear system for the transport of substances between Basins over a timestep
 substances share. See the section on substance concentrations in `docs/concept/core.qmd` for
 the derivation of the scheme, and [`transport_tracers!`](@ref) for its implementation.
 """
-struct TracerTransport
+@kwdef struct TracerTransport
     # Matrix with a fixed sparsity pattern: the diagonal and both directions of each Basin to Basin flow
     A::SparseMatrixCSC{Float64, Int}
     # Index into nonzeros(A) of the diagonal entry per Basin
@@ -629,15 +629,22 @@ struct TracerTransport
     forward_nz::Vector{Int}
     backward_nz::Vector{Int}
     # Volume that left each Basin with its mixed concentration over the timestep
-    outflow::Vector{Float64}
+    outflow::Vector{Float64} = zeros(size(A, 1))
+    # The outflow minus the flow from the Basin to itself
+    net_outflow::Vector{Float64} = zeros(size(A, 1))
     # Right hand side of the linear system, Basin x substance
     rhs::Matrix{Float64}
     # Per Basin the weight 1 - θ of the concentration at the start of the timestep in its outflows
-    weight_start::Vector{Float64}
+    weight_start::Vector{Float64} = zeros(size(A, 1))
     # Volume that flowed back from each Basin into a Junction node over the timestep
-    backflow::Vector{Float64}
+    backflow::Vector{Float64} = zeros(size(A, 1))
+    # The transpose of A, to gather the entries of a row: column i holds the entries of row i of A,
+    # in ascending order of the column of A, with the index into `nonzeros(A)` as value
+    A_rows::SparseMatrixCSC{Int, Int} = permutedims(
+        SparseMatrixCSC(size(A)..., A.colptr, A.rowval, collect(1:length(nonzeros(A)))),
+    )
     # KLU factorization of A, refactorized with new values each timestep
-    linear_solve::TracerLinearSolve
+    linear_solve::TracerLinearSolve = init_tracer_linear_solve(A, rhs)
 end
 
 @kwdef struct ConcentrationData
@@ -1172,8 +1179,27 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
     derivative::Vector{ScalarConstantInterpolation} =
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
+    # Whether the derivative gain is nonzero in any control state, set after parsing
+    has_derivative_term::Vector{Bool} = fill(false, length(node_id))
     control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
         OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
+end
+
+"""
+A level in the order in which `formulate_controlled_flows!` computes the flows and variables that
+can depend on other flows, see `set_control_order!`. Everything in a level only depends on the
+flows that are not controlled by PidControl or ContinuousControl and on the earlier levels.
+
+user_demand_idx: the UserDemand nodes in Junction subgraphs whose flows are needed in a later level
+compound_idx: the ContinuousControl nodes whose compound variable is computed
+pid_idx: the PidControl nodes whose controlled flow is computed
+continuous_idx: the ContinuousControl nodes whose controlled flow is computed
+"""
+@kwdef struct ControlOrderLevel
+    user_demand_idx::Vector{Int} = Int[]
+    compound_idx::Vector{Int} = Int[]
+    pid_idx::Vector{Int} = Int[]
+    continuous_idx::Vector{Int} = Int[]
 end
 
 """
@@ -1479,6 +1505,8 @@ an immutable struct.
     const reduced_implicit_solve::Bool
     # Matrix which aggregates flows into the basin storages
     const incidence_matrix::SparseMatrixCSC{Float64, Int}
+    # The transpose of the incidence matrix, of which a column holds the flows of a Basin
+    const incidence_matrix_transpose::SparseMatrixCSC{Float64, Int} = permutedims(incidence_matrix)
     # Per flow state the Basins it flows into via Junction nodes, with the weights, see `set_routing!`
     const routed_basins::Vector{Vector{Tuple{Int, Float64}}}
     # The indices of the flow states with a nonempty `routed_basins`
@@ -1503,6 +1531,8 @@ an immutable struct.
     # Per state the node whose level is the downstream level, see `set_downstream_level_ids!`
     const downlink_level_id::FlowCVector{NodeID}
     const state_id::FlowCVector{NodeID}
+    # The order in which the controlled flows are computed, see `set_control_order!`
+    const control_order::Vector{ControlOrderLevel} = ControlOrderLevel[]
     # Linear system for the implicit tracer transport between Basins
     const tracer_transport::TracerTransport =
         TracerTransport(inflow_id, outflow_id, basin, do_concentration)
@@ -1513,8 +1543,6 @@ an immutable struct.
     const cumulative_flow_dt::FlowCVector{Float64} = zero(storage_uplink)
     # State at previous saveat
     const u_prev_saveat::RibasimStateCVector{Float64} = cvector_from_axes(state_ranges)
-    # State at the last accepted time step, the state in the integrator can be in between
-    const u_accepted::RibasimStateCVector{Float64} = zero(u_prev_saveat)
     # Cumulative flow over last allocation times
     const cumulative_flow_prev_allocation_dt::FlowCVector{Float64} = zero(storage_uplink)
     # How much of the solver error is attributed to each state, see [`accumulate_residual!`](@ref).

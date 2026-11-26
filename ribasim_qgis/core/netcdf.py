@@ -137,6 +137,17 @@ def _read_2d_nc(path: Path, id_name: str) -> NetCDFResult | None:
     return NetCDFResult(time=time_index, ids=ids, variables=variables, units=units)
 
 
+def read_netcdf_variable(path: Path, name: str) -> np.ndarray | None:
+    """Read a single variable of a NetCDF file, or ``None`` if it is not there."""
+    root = _open_netcdf(path)
+    if root is None or name not in root.GetMDArrayNames():
+        return None
+    array = root.OpenMDArray(name)
+    if any(dim.GetSize() == 0 for dim in array.GetDimensions()):
+        return np.array([])
+    return array.ReadAsArray()
+
+
 def read_basin_nc(path: Path) -> NetCDFResult | None:
     """Read basin.nc into a NetCDFResult.
 

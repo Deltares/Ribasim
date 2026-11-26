@@ -113,7 +113,7 @@ The allocation LP linearizes the Basin profiles and the flow-level relationships
 
 The simulation starts with $\Delta t = \Delta t_{\min}$, the configured `dtmin`, and $\Delta t_{\max}$ is the configured `dtmax`, both limited to `intervention_interval`. Allocation timesteps are shortened to end at the next intervention time.
 
-The allocation output contains the time-averaged results per intervention interval. If `solver.saveat` is 0, the results of every allocation timestep are written instead.
+The allocation output contains the time-averaged results per intervention interval. If `solver.saveat` is 0, the results of every allocation timestep are written instead. If the simulation stops before the end time, the allocation output ends with the last intervention interval that finished at the last `saveat`.
 
 ## The high level algorithm {#sec-high-level-algorithm}
 The allocation algorithm contains 2 types of optimization:

@@ -1357,6 +1357,9 @@ function PidControl(db::DB, config::Config, graph::MetaGraph)
 
     errors && error("Errors encountered when parsing LinearResistance data.")
 
+    pid_control.has_derivative_term .=
+        [compute_has_derivative_term(pid_control, idx) for idx in eachindex(node_id)]
+
     return pid_control
 end
 
