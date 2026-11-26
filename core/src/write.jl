@@ -2,21 +2,22 @@
     write_results(model::Model)::Model
 
 Write all results that are not written yet to NetCDF files as specified in the model
-configuration, up to the last accepted time step. Most of the results are already written during
-the simulation, see [`SaveResults`](@ref). If a file can't be written, the others still are, and
+configuration, up to the last save. Most of the results are already written during the
+simulation, see [`SaveResults`](@ref). If the simulation stopped before the `endtime`, because of
+an error, because it was interrupted or because a coupled simulation stopped there, what comes
+after the last save is left out. This way all results end at the same time, also the state, which
+can then be used to restart from there. If a file can't be written, the others still are, and
 then this throws an error that names the file.
 """
 function write_results(model::Model)::Model
     (; config, saved) = model
     (; results) = config
 
-    @info "Writing results."
-
-    save_until_last_time_step!(model)
+    @info "Writing results up to $(datetime_since(saved.t_prev, config.starttime))."
 
     finish_allocation_results!(model)
     try
-        write_saved_files(saved, config)
+        write_saved_files(saved, config; nkeep = ntime_after_save(saved))
     finally
         # state, not quantized since it can be used as the initial state of another simulation
         data = basin_state_data(model; table = false)
@@ -36,27 +37,53 @@ Write the results of all files with a time dimension that are in memory, after t
 that the files already have. It is safe to do this again, for instance if it failed halfway.
 If a file can't be written, the others still are, and then this throws an error that names it.
 
-During the simulation the last time step of some files is not written with `nkeep = 1`: the
-supplied flows in `allocation.nc` are set by the next time step, and `subgrid_level.nc` has a
-time step more than the others because it includes the end of the last interval. This way the
-writes stay aligned with the chunks, and the files only get complete time steps.
+The last `nkeep` time steps in memory of a file are not written, `nkeep` is given per file name
+and is 0 if not given. See [`ntime_after_save`](@ref) for the time steps after the last save.
+During the simulation also the last time step of `allocation.nc` is held back, as its supplied
+flows are set by the next time step, as well as the last time step of `subgrid_level.nc`, which
+has a time step more than the others because it includes the end of the last interval. This way
+the writes stay aligned with the chunks, and the files only get complete time steps.
 """
-function write_saved_files(saved::SavedResults, config::Config; nkeep::Int = 0)::Nothing
+function write_saved_files(saved::SavedResults, config::Config; nkeep::NamedTuple = (;))::Nothing
     (; chunk_time) = saved
     failed = String[]
-    write_saved_file!(failed, saved.basin, RESULTS_FILENAME.basin, config, chunk_time)
-    write_saved_file!(failed, saved.flow, RESULTS_FILENAME.flow, config, chunk_time)
-    write_saved_file!(failed, saved.concentration, RESULTS_FILENAME.concentration, config, chunk_time)
-    write_saved_file!(failed, saved.subgrid_level, RESULTS_FILENAME.subgrid_level, config, chunk_time; nkeep)
-    write_saved_file!(failed, saved.solver_stats, RESULTS_FILENAME.solver_stats, config, chunk_time)
-    write_saved_file!(failed, saved.control, RESULTS_FILENAME.control, config, NC_CONTROL_CHUNK_TIME)
-    write_saved_file!(failed, saved.allocation, RESULTS_FILENAME.allocation, config, chunk_time; nkeep)
-    write_saved_file!(failed, saved.allocation_flow, RESULTS_FILENAME.allocation_flow, config, chunk_time)
-    write_saved_file!(failed, saved.allocation_control, RESULTS_FILENAME.allocation_control, config, chunk_time)
+    write_file!(file, name, chunk_time) =
+        write_saved_file!(failed, file, RESULTS_FILENAME[name], config, chunk_time; nkeep = get(nkeep, name, 0))
+    write_file!(saved.basin, :basin, chunk_time)
+    write_file!(saved.flow, :flow, chunk_time)
+    write_file!(saved.concentration, :concentration, chunk_time)
+    write_file!(saved.subgrid_level, :subgrid_level, chunk_time)
+    write_file!(saved.solver_stats, :solver_stats, chunk_time)
+    write_file!(saved.control, :control, NC_CONTROL_CHUNK_TIME)
+    write_file!(saved.allocation, :allocation, chunk_time)
+    write_file!(saved.allocation_flow, :allocation_flow, chunk_time)
+    write_file!(saved.allocation_control, :allocation_control, chunk_time)
     isempty(failed) && return nothing
     error(
         "Cannot write these result NetCDF files, are they open in another application?\n" *
             join("- " .* failed, "\n"),
+    )
+end
+
+"""
+The number of time steps at the end of the files that are in memory, but that are not complete
+at the last save at `saved.t_prev`. When a simulation stops before the `endtime` these are left
+out, such that all results end at the last save. The other files only get a time step at a save.
+
+A control result is a change at a point in time. An allocation result is over an intervention
+interval, or over an allocation timestep within one if `saveat` is 0. The results of the
+intervention interval that is not finished at the last save, and of those after it, are left out.
+"""
+function ntime_after_save(
+        saved::SavedResults,
+    )::@NamedTuple{control::Int, allocation::Int, allocation_flow::Int, allocation_control::Int}
+    (; t_prev, t_allocation_unfinished) = saved
+    ntime_from(file::SavedFile) = length(file.time) - searchsortedfirst(file.time, t_allocation_unfinished) + 1
+    return (;
+        control = length(saved.control.time) - searchsortedlast(saved.control.time, t_prev),
+        allocation = ntime_from(saved.allocation),
+        allocation_flow = ntime_from(saved.allocation_flow),
+        allocation_control = ntime_from(saved.allocation_control),
     )
 end
 
@@ -82,19 +109,21 @@ end
 """
 Write the results that are in memory to file and remove them from memory. If a file can't be
 written this throws an error, and they stay in memory such that `write_results` can write the
-other files up to the last accepted time step.
+other files up to the last save.
 """
 function write_chunk!(saved::SavedResults, config::Config)::Nothing
-    write_saved_files(saved, config; nkeep = 1)
+    nkeep = ntime_after_save(saved)
+    nkeep = (; nkeep..., subgrid_level = 1, allocation = max(nkeep.allocation, 1))
+    write_saved_files(saved, config; nkeep)
     remove_written!(saved.basin)
     remove_written!(saved.flow)
     remove_written!(saved.concentration)
-    remove_written!(saved.subgrid_level; nkeep = 1)
+    remove_written!(saved.subgrid_level; nkeep = nkeep.subgrid_level)
     remove_written!(saved.solver_stats)
-    remove_written!(saved.control)
-    remove_written!(saved.allocation; nkeep = 1)
-    remove_written!(saved.allocation_flow)
-    remove_written!(saved.allocation_control)
+    remove_written!(saved.control; nkeep = nkeep.control)
+    remove_written!(saved.allocation; nkeep = nkeep.allocation)
+    remove_written!(saved.allocation_flow; nkeep = nkeep.allocation_flow)
+    remove_written!(saved.allocation_control; nkeep = nkeep.allocation_control)
     return nothing
 end
 
@@ -616,12 +645,10 @@ function get_storages_and_levels(
     )
 end
 
-"Create the basin state table from the saved data"
+"Create the basin state table at the last save, the end of the last interval of the results"
 function basin_state_data(model::Model; table::Bool = true)
-    (; p) = model.integrator
-    (; basin, u_accepted) = p.p_independent
-    set_current_basin_properties!(u_accepted.flow, p, p.p_mutable.tprev)
-    return (; node_id = Int32.(basin.node_id), level = copy(p.current_basin_properties.current_level))
+    (; integrator, saved) = model
+    return (; node_id = Int32.(integrator.p.p_independent.basin.node_id), level = copy(saved.level_prev))
 end
 
 "Create the basin result table from the saved data"
@@ -742,13 +769,14 @@ function write_netcdf(
         ntime_written::Int = 0,
     )::Nothing
     mkpath(dirname(path))
+    is_new = iszero(ntime_written)
+    # Creating a file that is open in another application would empty it before failing, and
+    # if there is nothing to write the file of an earlier simulation must not stay
+    is_new && rm(path; force = true)
     # Don't write empty files
     haskey(data, :time) && isempty(data.time) && return nothing
     file_name = splitext(basename(path))[1]
     attrib = merge(CF_GLOBAL_ATTRIB, OrderedDict("title" => "Ribasim results: $file_name"))
-    is_new = iszero(ntime_written)
-    # Creating a file that is open in another application would empty it before failing
-    is_new && rm(path; force = true)
     NCDataset(path, is_new ? "c" : "a"; attrib = is_new ? attrib : empty(attrib)) do ds
         for (var_name, var_data) in pairs(data)
             var_name = String(var_name)
