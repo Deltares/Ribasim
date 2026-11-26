@@ -16,6 +16,7 @@ try:
 except ImportError:
     # pre-v1 API
     from datacompy.core import Compare
+from matplotlib.patches import Patch
 from pydantic import ValidationError
 from pyproj import CRS
 from ribasim import Node
@@ -130,9 +131,34 @@ def test_tabulated_rating_curve_model(tabulated_rating_curve, tmp_path):
     )
 
 
+def _legend(ax) -> dict:
+    legend = ax.get_legend()
+    labels = [text.get_text() for text in legend.get_texts()]
+    return dict(zip(labels, legend.legend_handles, strict=True))
+
+
 def test_plot(basic, discrete_control_of_pid_control):
-    basic.plot()
+    # Node types are listed in the legend, drawn with their icon.
+    legend = _legend(basic.plot())
+    assert set(basic.node.df["node_type"]) | {"Flow link"} <= legend.keys()
+    assert isinstance(legend["Basin"], Patch)
+
+    # Zoomed in on one node, the icons outside the view don't grow the tight bbox.
+    ax = basic.plot(legend=False)
+    assert ax.get_legend() is None
+    node = basic.node.df.geometry.iloc[0]
+    ax.set_xlim(node.x - 0.1, node.x + 0.1)
+    ax.set_ylim(node.y - 0.1, node.y + 0.1)
+    assert ax.figure.get_tightbbox().width <= ax.figure.get_figwidth()
+
     discrete_control_of_pid_control.plot()
+
+
+def test_plot_areas(tabulated_rating_curve):
+    assert "Basin area" in _legend(tabulated_rating_curve.plot())
+    assert "Basin area" not in _legend(
+        tabulated_rating_curve.plot(indicate_areas=False)
+    )
 
 
 def test_control_link_adds_listen_links(discrete_control_of_pid_control):

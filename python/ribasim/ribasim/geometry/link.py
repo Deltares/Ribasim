@@ -18,7 +18,7 @@ from shapely.geometry import LineString, MultiLineString, Point
 from ribasim.db_utils import _get_db_schema_version
 from ribasim.geometry.node import NodeData
 from ribasim.input_base import SpatialTableModel
-from ribasim.utils import UsedIDs, _concat
+from ribasim.utils import UsedIDs, _concat, _line_midpoint_direction
 from ribasim.validation import (
     can_connect,
     link_neighbor_amount,
@@ -411,21 +411,20 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         if where_observation.any():
             self.df[where_observation].plot(**kwargs_observation)
 
-        # Determine the angle for every caret marker and where to place it.
-        coords, index = shapely.get_coordinates(self.df.geometry, return_index=True)
-        keep = np.diff(index) == 0
-        link_coords = np.stack((coords[:-1, :], coords[1:, :]), axis=1)[keep]
-        x, y = np.mean(link_coords, axis=1).T
-        dx, dy = np.diff(link_coords, axis=1)[:, 0, :].T
-        angle = np.degrees(np.arctan2(dy, dx)) - 90
+        # Place one caret marker halfway along every link, pointing along the link.
+        # The triangle marker (3, 0, 0) points up, so rotate it by direction - 90.
+        geometry = self.df.geometry.to_numpy()
+        has_geometry = ~shapely.is_missing(geometry)
+        x, y, direction = _line_midpoint_direction(geometry[has_geometry])
+        angle = direction - 90
 
-        # Set the color of the marker to match the line.
+        # Set the color of the marker to match the line, one marker per link.
         # Black is default, set color_flow otherwise; then set color_control, color_listen, color_observation.
-        color_index = index[1:][keep]
-        color = np.where(where_flow[color_index], color_flow, "k")
-        color = np.where(where_control[color_index], color_control, color)
-        color = np.where(where_listen[color_index], color_listen, color)
-        color = np.where(where_observation[color_index], color_observation, color)
+        color = np.where(where_flow, color_flow, "k")
+        color = np.where(where_control, color_control, color)
+        color = np.where(where_listen, color_listen, color)
+        color = np.where(where_observation, color_observation, color)
+        color = color[has_geometry]
 
         # A faster alternative may be ax.quiver(). However, getting the scaling
         # right is tedious.

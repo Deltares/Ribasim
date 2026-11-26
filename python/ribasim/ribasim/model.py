@@ -16,6 +16,8 @@ import tomli
 import tomli_w
 import xarray as xr
 from matplotlib import pyplot as plt
+from matplotlib.colors import to_rgba
+from matplotlib.patches import Patch
 from packaging import version
 from pydantic import (
     DirectoryPath,
@@ -64,6 +66,7 @@ from ribasim.input_base import (
     context_file_writing,
     init_context,
 )
+from ribasim.node_icons import NODE_ICON_BY_PASCAL
 from ribasim.utils import (
     MissingOptionalModule,
     _concat,
@@ -897,13 +900,41 @@ class Model(FileModel, ParentModel):
                 )
         return results_dir
 
+    def _plot_areas(self, ax, zorder=None) -> tuple[list[Patch], list[str]]:
+        """Plot the Basin and FlowBoundary areas, filled in their node icon color."""
+        handles: list[Patch] = []
+        labels: list[str] = []
+        for node_type, area in (
+            ("Basin", self.basin.area),
+            ("FlowBoundary", self.flow_boundary.area),
+        ):
+            if area.df is None or area.df.empty:
+                continue
+            color = NODE_ICON_BY_PASCAL[node_type].color
+            facecolor = to_rgba(color, 0.15)
+            edgecolor = to_rgba(color)
+            area.df.plot(
+                ax=ax,
+                zorder=zorder,
+                facecolor=facecolor,
+                edgecolor=edgecolor,
+                linewidth=0.5,
+            )
+            handles.append(
+                Patch(facecolor=facecolor, edgecolor=edgecolor, linewidth=0.5)
+            )
+            labels.append(f"{node_type} area")
+        return handles, labels
+
     def plot(
         self,
         ax=None,
         indicate_subnetworks: bool = True,
+        indicate_areas: bool = True,
         aspect_ratio_bound: float = 0.33,
+        legend: bool = True,
     ) -> Any:
-        """Plot the nodes, links and allocation networks of the model.
+        """Plot the nodes, links, areas and allocation networks of the model.
 
         Parameters
         ----------
@@ -911,9 +942,13 @@ class Model(FileModel, ParentModel):
             Axes on which to draw the plot.
         indicate_subnetworks : bool
             Whether to indicate subnetworks with a convex hull backdrop.
+        indicate_areas : bool
+            Whether to draw the Basin and FlowBoundary areas in the background.
         aspect_ratio_bound : float
             The maximal aspect ratio in (0,1). The smaller this number, the further the figure
             shape is allowed to be from a square
+        legend : bool
+            Whether to add a legend of the node types, link types and areas.
 
         Returns
         -------
@@ -931,6 +966,11 @@ class Model(FileModel, ParentModel):
 
         handles, labels = ax.get_legend_handles_labels()
 
+        if indicate_areas:
+            handles_areas, labels_areas = self._plot_areas(ax=ax, zorder=0)
+            handles += handles_areas
+            labels += labels_areas
+
         if indicate_subnetworks:
             (
                 handles_subnetworks,
@@ -939,7 +979,8 @@ class Model(FileModel, ParentModel):
             handles += handles_subnetworks
             labels += labels_subnetworks
 
-        ax.legend(handles, labels, loc="lower left", bbox_to_anchor=(1, 0.5))
+        if legend:
+            ax.legend(handles, labels, loc="center left", bbox_to_anchor=(1, 0.5))
 
         # Enforce aspect ratio bound
         xlim = ax.get_xlim()
