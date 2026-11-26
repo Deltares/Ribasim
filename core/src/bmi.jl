@@ -17,7 +17,7 @@ end
 """
     BMI.finalize(model::Model)::Model
 
-Write all results to the configured files.
+Write all results to the configured files, up to the last save, see [`write_results`](@ref).
 """
 function BMI.finalize(model::Model)::Nothing
     with_logger(model.logger) do

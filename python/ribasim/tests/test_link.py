@@ -44,7 +44,12 @@ def test_validation(link):
 
 
 def test_link_plot(link):
-    link.plot()
+    ax = link.plot()
+    # One caret per link, halfway along it and pointing along it: the bent link
+    # is halfway on its first segment, pointing up, the straight one up and right.
+    carets = [line for line in ax.lines if line.get_linestyle() == "None"]
+    assert [caret.get_marker()[2] for caret in carets] == pytest.approx([0.0, -45.0])
+    assert carets[1].get_xydata()[0] == pytest.approx([0.5, 0.5])
 
 
 def test_link_indexing(link):

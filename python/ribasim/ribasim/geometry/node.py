@@ -37,7 +37,7 @@ from ribasim.input_base import (
     TableModel,
     delimiter,
 )
-from ribasim.node_icons import make_icon_box
+from ribasim.node_icons import NodeIconLegendEntry, make_icon_box
 from ribasim.schemas import _BaseSchema
 from ribasim.utils import UsedIDs, _concat, _pascal_to_snake
 
@@ -145,7 +145,8 @@ class NodeTable(SpatialTableModel[NodeSchema], ChildModel):
 
         Returns
         -------
-        None
+        ax : matplotlib.axes.Axes
+            The axis on which the nodes are plotted.
         """
         if ax is None:
             _, ax = plt.subplots()
@@ -154,11 +155,14 @@ class NodeTable(SpatialTableModel[NodeSchema], ChildModel):
         if self.df.empty:
             return ax
 
-        NODE_ICON_SIZE = 22.0  # display-points per icon
+        NODE_ICON_SIZE = 16.0  # points per icon
         for nodetype, df in self.df.groupby("node_type"):
             assert isinstance(nodetype, str)
             for x, y in zip(df.geometry.x, df.geometry.y, strict=True):
                 icon_box = make_icon_box(nodetype, size=NODE_ICON_SIZE)
+                # Unlike Annotation, AnnotationBbox counts for bbox_inches="tight"
+                # also when it lies outside the view and isn't drawn, which gives
+                # zoomed-in plots a huge empty border. Leave the icons out of it.
                 marker_artist = AnnotationBbox(
                     icon_box,
                     (x, y),
@@ -166,11 +170,13 @@ class NodeTable(SpatialTableModel[NodeSchema], ChildModel):
                     pad=0.0,
                     box_alignment=(0.5, 0.5),
                     zorder=zorder,
+                    in_layout=False,
                 )
                 ax.add_artist(marker_artist)
+            ax.add_line(NodeIconLegendEntry(nodetype))
 
         # AnnotationBbox doesn't update axes data limits, so do it manually
-        # to prevent bbox_inches='tight' from computing absurd figure sizes.
+        # to keep all nodes in view.
         geometry = self.df["geometry"]
         coords = np.column_stack((geometry.x, geometry.y))
         ax.update_datalim(coords)

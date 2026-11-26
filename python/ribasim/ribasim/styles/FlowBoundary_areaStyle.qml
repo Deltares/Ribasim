@@ -13,9 +13,9 @@
     <layer enabled="1" locked="0" class="GradientFill" id="{d4360ce4-7709-4e1c-a383-3489a024a12a}" pass="0">
      <Option type="Map">
       <Option name="angle" type="QString" value="0"/>
-      <Option name="color" type="QString" value="0,0,255,255,rgb:0,0,1,1"/>
-      <Option name="color1" type="QString" value="247,251,255,255,rgb:0.96862745098039216,0.98431372549019602,1,1"/>
-      <Option name="color2" type="QString" value="128,0,128,255,rgb:0.50196078431372548,0,0.50196078431372548,1"/>
+      <Option name="color" type="QString" value="255,127,0,255,rgb:1,0.49803921568627452,0,1"/>
+      <Option name="color1" type="QString" value="255,245,235,255,rgb:1,0.96078431372549022,0.92156862745098034,1"/>
+      <Option name="color2" type="QString" value="127,39,4,255,rgb:0.49803921568627452,0.15294117647058825,0.015686274509803921,1"/>
       <Option name="color_type" type="QString" value="1"/>
       <Option name="coordinate_mode" type="QString" value="0"/>
       <Option name="direction" type="QString" value="ccw"/>
@@ -31,6 +31,7 @@
       <Option name="reference_point2_iscentroid" type="QString" value="0"/>
       <Option name="spec" type="QString" value="rgb"/>
       <Option name="spread" type="QString" value="0"/>
+      <Option name="stops" type="QString" value="0.13;254,230,206,255,rgb:0.99607843137254903,0.90196078431372551,0.80784313725490198,1;rgb;ccw:0.26;253,208,162,255,rgb:0.99215686274509807,0.81568627450980391,0.63529411764705879,1;rgb;ccw:0.39;253,174,107,255,rgb:0.99215686274509807,0.68235294117647061,0.41960784313725491,1;rgb;ccw:0.52;253,141,60,255,rgb:0.99215686274509807,0.55294117647058827,0.23529411764705882,1;rgb;ccw:0.65;241,105,19,255,rgb:0.94509803921568625,0.41176470588235292,0.074509803921568626,1;rgb;ccw:0.78;217,72,1,255,rgb:0.85098039215686272,0.28235294117647058,0.0039215686274509803,1;rgb;ccw:0.9;166,54,3,255,rgb:0.65098039215686276,0.21176470588235294,0.011764705882352941,1;rgb;ccw"/>
       <Option name="type" type="QString" value="1"/>
      </Option>
      <data_defined_properties>
