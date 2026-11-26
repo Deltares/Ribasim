@@ -13,6 +13,11 @@ their inflows don't mix with their outflows. A link between these Junctions, or 
 a Junction and the Basin, carries the net tracer flows of the neighbors behind it. Other
 groups connect their neighbors along the direction of their links, so their Junctions mix
 their inflows.
+
+The flows of the results are means over the saveat intervals, the Basin concentrations are
+those at the end of each interval, and the input tables are averaged over each interval.
+The core mixes the water within each timestep instead, so the split is approximate where
+concentrations change much within an interval.
 """
 
 from collections.abc import Callable, Collection
@@ -341,8 +346,14 @@ class InputConcentrations:
     )
     cyclic: frozenset[int] = frozenset()
 
-    def at(self, node_id: int, times: np.ndarray) -> Tracers | None:
-        """Return the concentrations of a node at *times*, as the core interpolates them.
+    def mean(
+        self, node_id: int, times: np.ndarray, end: np.datetime64
+    ) -> Tracers | None:
+        """Return the mean concentrations of a node over the intervals of the results.
+
+        The intervals start at *times*, and the last one ends at *end*. These are the
+        intervals the flow results are means over, so for a constant flow within an
+        interval, the mean concentration gives the mass the core adds over it.
 
         The core uses block interpolation, which holds a value until the next time, with
         the first and last value before and after the series, or repeats the series for a
@@ -351,16 +362,43 @@ class InputConcentrations:
         node_series = self.series.get(node_id)
         if not node_series:
             return None
-        times = np.asarray(times, dtype="datetime64[ns]")
+        bounds = np.append(
+            np.asarray(times, dtype="datetime64[ns]"), np.datetime64(end, "ns")
+        )
+        duration = np.diff(bounds) / np.timedelta64(1, "s")
+        cyclic = node_id in self.cyclic
         result: Tracers = {}
         for substance, (series_times, values) in node_series.items():
-            at = times
-            period = series_times[-1] - series_times[0]
-            if node_id in self.cyclic and period > np.timedelta64(0, "ns"):
-                at = series_times[0] + (times - series_times[0]) % period
-            index = np.searchsorted(series_times, at, side="right") - 1
-            result[substance] = values[np.clip(index, 0, len(values) - 1)]
+            start_value, integral = _block_interpolation(
+                series_times, values, bounds, cyclic
+            )
+            mean = np.diff(integral) / np.where(duration > 0.0, duration, 1.0)
+            result[substance] = np.where(duration > 0.0, mean, start_value[:-1])
         return result
+
+
+def _block_interpolation(
+    times: np.ndarray, values: np.ndarray, at: np.ndarray, cyclic: bool
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return a block interpolated series at *at*, and its integral up to *at*.
+
+    The integral is in seconds, from the first time of the series.
+    """
+    seconds = (times - times[0]) / np.timedelta64(1, "s")
+    x = (at - times[0]) / np.timedelta64(1, "s")
+    # The integral up to each time of the series
+    cumulative = np.concatenate(([0.0], np.cumsum(values[:-1] * np.diff(seconds))))
+    period = seconds[-1]
+    cycles = np.zeros_like(x)
+    if cyclic and period > 0.0:
+        cycles = np.floor(x / period)
+        x = x - cycles * period
+    index = np.clip(np.searchsorted(seconds, x, side="right") - 1, 0, len(values) - 1)
+    value = values[index]
+    integral = (
+        cycles * cumulative[-1] + cumulative[index] + value * (x - seconds[index])
+    )
+    return value, integral
 
 
 def read_input_concentrations(gpkg_path: Path) -> InputConcentrations:

@@ -106,6 +106,7 @@ class FlowGraph:
         self.junctions_in_static = frozenset(junctions_in_static)
         self._node_types: dict[int, str | None] = {}
         self._links: dict[int, tuple[FlowLink, ...]] = {}
+        self._link_by_id: dict[int, FlowLink | None] = {}
         self._groups: dict[int, JunctionGroup] = {}
 
     def _flow_links(self, expression: str) -> tuple[FlowLink, ...]:
@@ -144,8 +145,10 @@ class FlowGraph:
 
     def link(self, link_id: int) -> FlowLink | None:
         """Return a flow link, or ``None`` if it is not found."""
-        links = self._flow_links(f'"link_id" = {int(link_id)}')
-        return links[0] if links else None
+        if link_id not in self._link_by_id:
+            links = self._flow_links(f'"link_id" = {int(link_id)}')
+            self._link_by_id[link_id] = links[0] if links else None
+        return self._link_by_id[link_id]
 
     def observed_node(self, observation_id: int) -> int | None:
         """Return the node that an Observation node observes, if any."""

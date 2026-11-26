@@ -1605,19 +1605,28 @@ def test_read_input_concentrations(tmp_path):
         ["2020-01-01", "2020-01-02", "2020-01-03", "2020-01-04", "2020-01-05"],
         dtype="datetime64[ns]",
     )
+    end = np.datetime64("2020-01-06", "ns")
     # Block interpolation, with the first and last value outside the series
-    flow_boundary = concentrations.at(1, times)
+    flow_boundary = concentrations.mean(1, times, end)
     assert flow_boundary is not None
     assert flow_boundary.keys() == {"Foo"}
     assert np.allclose(flow_boundary["Foo"], [2.0, 2.0, 2.0, 3.0, 3.0])
     # A cyclic series repeats
-    level_boundary = concentrations.at(2, times)
+    level_boundary = concentrations.mean(2, times, end)
     assert level_boundary is not None
     assert np.allclose(level_boundary["Foo"], [1.0, 5.0, 1.0, 5.0, 1.0])
-    user_demand = concentrations.at(3, times)
+    user_demand = concentrations.mean(3, times, end)
     assert user_demand is not None
     assert np.allclose(user_demand["Bar"], [1.0, 4.0, 1.0, 4.0, 1.0])
-    assert concentrations.at(4, times) is None
+    assert concentrations.mean(4, times, end) is None
+    # The mean over intervals in which the concentration changes
+    times = times[[0, 2]]
+    flow_boundary = concentrations.mean(1, times, end)
+    assert flow_boundary is not None
+    assert np.allclose(flow_boundary["Foo"], [2.0, 8.0 / 3.0])
+    level_boundary = concentrations.mean(2, times, end)
+    assert level_boundary is not None
+    assert np.allclose(level_boundary["Foo"], [3.0, 7.0 / 3.0])
     assert read_input_concentrations(tmp_path / "missing.gpkg") == (
         InputConcentrations()
     )

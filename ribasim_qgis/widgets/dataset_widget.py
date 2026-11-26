@@ -158,6 +158,8 @@ class DatasetWidget:
         self.junctions_in_static: frozenset[int] = frozenset()
         # The concentration tables of FlowBoundary, LevelBoundary and UserDemand
         self.input_concentrations = InputConcentrations()
+        # The end of the last interval of the flow results
+        self.flow_end: np.datetime64 | None = None
 
         # Plot widget for timeseries
         self.plot_widget = PlotWidget(
@@ -711,10 +713,28 @@ class DatasetWidget:
         )
 
     def _load_input_concentrations(self) -> None:
-        """Load the concentration tables of FlowBoundary, LevelBoundary and UserDemand."""
+        """Load the concentration tables of FlowBoundary, LevelBoundary and UserDemand.
+
+        Also find the end of the last interval of the flow results, to average the tables
+        over these intervals. It is the end time, unless the simulation stopped early,
+        since then the results end at the last saveat.
+        """
+        model_path = self.ribasim_widget.path
         self.input_concentrations = read_input_concentrations(
-            get_database_path_from_model_file(self.ribasim_widget.path)
+            get_database_path_from_model_file(model_path)
         )
+        result = self.results.get("flow")
+        if result is None:
+            self.flow_end = None
+            return
+        toml = get_toml_dict(model_path)
+        self.flow_end = np.datetime64(toml["endtime"], "ns")
+        saveat = float(toml.get("solver", {}).get("saveat", 86400.0))
+        times = result.time.to_numpy()
+        if len(times) > 0 and 0.0 < saveat < np.inf:
+            self.flow_end = min(
+                self.flow_end, times[-1] + np.timedelta64(int(saveat), "s")
+            )
 
     def _observation_units(self) -> dict[str, str]:
         """Map each observation variable to a unit borrowed from the results.
@@ -776,11 +796,13 @@ class DatasetWidget:
         }
 
     def _get_input_concentration(self, node_id: int) -> dict[str, np.ndarray] | None:
-        """Return the input concentrations of a node at the flow result times."""
+        """Return the mean input concentrations of a node over the flow result intervals."""
         result = self.results.get("flow")
-        if result is None:
+        if result is None or self.flow_end is None:
             return None
-        return self.input_concentrations.at(node_id, result.time.to_numpy())
+        return self.input_concentrations.mean(
+            node_id, result.time.to_numpy(), self.flow_end
+        )
 
     def _get_flow_for_link(self, link_id: int) -> Trace | None:
         """Return the flow_rate trace for a single *link_id*."""
