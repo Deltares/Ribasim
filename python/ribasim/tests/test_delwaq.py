@@ -91,9 +91,10 @@ def test_offline_delwaq_coupling(tmp_path):
         assert delwaq[name].attrs == core[name].attrs
     assert (delwaq.time == core.time).all()
     assert (delwaq.node_id == core.node_id).all()
-    assert list(delwaq.substance.to_numpy()) == [
-        s for s in core.substance.to_numpy() if s in delwaq.substance
-    ]
+    # Delwaq has all tracers of the core except ResidenceTime
+    assert set(delwaq.substance.to_numpy()) == set(core.substance.to_numpy()) - {
+        "ResidenceTime"
+    }
     # Both start with the initial condition
     initial = delwaq.concentration.sel(substance="Initial").isel(time=0)
     assert np.allclose(initial, 1.0)
@@ -257,19 +258,7 @@ def test_parse_without_delwaq(basic, tmp_path):
         assert ds["node_id"].dtype == np.int32
         assert list(ds.node_id.to_numpy()) == [1, 3, 6, 9]
         assert (ds.time.to_numpy() == time.to_numpy()).all()
-        # The substances are in the order of the core
-        assert list(ds.substance.to_numpy()) == [
-            "Continuity",
-            "Initial",
-            "LevelBoundary",
-            "FlowBoundary",
-            "Drainage",
-            "Precipitation",
-            "SurfaceRunoff",
-            "Cl",
-            "Tracer",
-            "Basic",
-        ]
+        assert list(ds.substance.to_numpy()) == substances
         for substance in substances:
             expected = value(substance, ds.node_id.to_numpy(), np.arange(3)[:, None])
             assert (ds.concentration.sel(substance=substance) == expected).all()

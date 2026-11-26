@@ -17,7 +17,7 @@ options:
 
 import argparse
 import logging
-from collections.abc import Callable, Collection
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Literal, cast
 
@@ -29,18 +29,6 @@ import xarray as xr
 import ribasim
 from ribasim.config import Results
 from ribasim.utils import _concat
-
-# The tracers of the core, in the order of its results
-_CORE_TRACERS = (
-    "Continuity",
-    "Initial",
-    "LevelBoundary",
-    "FlowBoundary",
-    "Drainage",
-    "Precipitation",
-    "SurfaceRunoff",
-    "ResidenceTime",
-)
 
 # Number of values in a chunk, 1 MiB of float64, as in the core
 _NC_CHUNK_LENGTH = 131072
@@ -85,8 +73,7 @@ def parse(
             )
         )
         substances = set(nc["substances"].to_numpy().astype(str))
-
-    substances = _ordered_substances(model, substances | {"Continuity"})
+    substances = sorted(substances | {"Continuity"})
 
     with xr.open_dataset(folder / "delwaq_map.nc") as ds:
         time = ds["nTimesDlwq"].to_numpy()
@@ -118,28 +105,6 @@ def parse(
         model.basin.concentration_external = _concat(dfs, ignore_index=True)
 
     return model
-
-
-def _ordered_substances(model: ribasim.Model, substances: Collection[str]) -> list[str]:
-    """Order the substances like the core: its own tracers, then those of the input tables.
-
-    The substances that the core doesn't know of come last, sorted.
-    """
-    order = list(_CORE_TRACERS)
-    for table in (
-        model.basin.concentration_state,
-        model.basin.concentration,
-        model.basin.mass_load,
-        model.flow_boundary.concentration,
-        model.level_boundary.concentration,
-    ):
-        df = table.df
-        if df is not None:
-            # The core sorts the tables, and adds the substances in order of appearance
-            order.extend(map(str, df.sort_values(table._sort_keys).substance.unique()))
-    substances = set(map(str, substances))
-    order = [substance for substance in dict.fromkeys(order) if substance in substances]
-    return order + sorted(substances - set(order))
 
 
 def _balanced_chunksizes(nlocation: int, ntime: int) -> tuple[int, int]:
