@@ -425,7 +425,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 <tr class="even">
 <td><a href="#ribasim.Model.plot">plot</a></td>
-<td>Plot the nodes, links and allocation networks of the model.</td>
+<td>Plot the nodes, links, areas and allocation networks of the model.</td>
 </tr>
 <tr class="odd">
 <td><a href="#ribasim.Model.read">read</a></td>
@@ -513,8 +513,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim.Model.plot" class="level3" data-number="1.2.8">
 <h3 data-number="1.2.8" class="anchored" data-anchor-id="ribasim.Model.plot"><span class="header-section-number">1.2.8</span> plot</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>Model.plot(ax<span class="op">=</span><span class="va">None</span>, indicate_subnetworks<span class="op">=</span><span class="va">True</span>, aspect_ratio_bound<span class="op">=</span><span class="fl">0.33</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Plot the nodes, links and allocation networks of the model.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>Model.plot(</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    ax<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    indicate_subnetworks<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    indicate_areas<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>    aspect_ratio_bound<span class="op">=</span><span class="fl">0.33</span>,</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>    legend<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Plot the nodes, links, areas and allocation networks of the model.</p>
 <section id="parameters" class="level4 doc-section doc-section-parameters" data-number="1.2.8.1">
 <h4 class="doc-section doc-section-parameters anchored" data-number="1.2.8.1" data-anchor-id="parameters"><span class="header-section-number">1.2.8.1</span> Parameters</h4>
 <table class="caption-top table">
@@ -546,10 +552,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>True</code></td>
 </tr>
 <tr class="odd">
+<td>indicate_areas</td>
+<td>bool</td>
+<td>Whether to draw the Basin and FlowBoundary areas in the background.</td>
+<td><code>True</code></td>
+</tr>
+<tr class="even">
 <td>aspect_ratio_bound</td>
 <td>float</td>
 <td>The maximal aspect ratio in (0,1). The smaller this number, the further the figure shape is allowed to be from a square</td>
 <td><code>0.33</code></td>
+</tr>
+<tr class="odd">
+<td>legend</td>
+<td>bool</td>
+<td>Whether to add a legend of the node types, link types and areas.</td>
+<td><code>True</code></td>
 </tr>
 </tbody>
 </table>

@@ -321,6 +321,7 @@ ul.task-list li input[type="checkbox"] {
 <li>ContinuousControl can listen to flows set by other ContinuousControl or PidControl nodes, also via Junctions. Before, such a flow was read as 0 without an error. A circular dependency in the control of flows is now an error. <a href="https://github.com/Deltares/Ribasim/issues/3408">#3408</a></li>
 <li>The reduced linear solve is now exact for chained control, so the Newton iterations of models where ContinuousControl listens to a flow set by ContinuousControl or PidControl converge as fast as those without.</li>
 <li>Add <code>[logging] progress</code> TOML option and <code>RIBASIM_PROGRESS</code> environment variable, which takes precedence, to disable the progress bar, which avoids repeated progress lines in logs and documentation. <a href="https://github.com/Deltares/Ribasim/issues/3111">#3111</a></li>
+<li>Python: <code>Model.plot</code> draws the Basin and FlowBoundary areas, toggled with <code>indicate_areas</code>, and the legend can be left out with <code>legend=False</code>.</li>
 </ul>
 </section>
 <section id="changed" class="level3" data-number="1.1.2">
@@ -347,6 +348,8 @@ ul.task-list li input[type="checkbox"] {
 <li>Junction: a model with 512 or more separate groups of Junctions with rows in <code>Junction / static</code> no longer stops with an error when run with multiple threads. <a href="https://github.com/Deltares/Ribasim/pull/3480">#3480</a></li>
 <li>Long simulations of large models initialize quickly again. In v2026.2.0-rc1 the initialization time grew quadratically with the number of Basins. A 3-year run with 20 000 Basins took 7 minutes to start instead of 20 seconds. <a href="https://github.com/Deltares/Ribasim/pull/3484">#3484</a></li>
 <li>QGIS: The fractional flow plot follows the water through Junctions with rows in <code>Junction / static</code>, also into Junctions without rows, and takes the tracers of FlowBoundary, LevelBoundary and UserDemand nodes into account. Without concentration results it says that it needs them, instead of that it could not find a Basin. <a href="https://github.com/Deltares/Ribasim/pull/3446">#3446</a></li>
+<li>Python: <code>Model.plot</code> lists the node types in the legend again, draws one direction marker per link instead of one per segment, and keeps node icons the same size at any DPI.</li>
+<li>QGIS: FlowBoundary areas are orange, like the FlowBoundary node, instead of the old purple.</li>
 </ul>
 </section>
 </section>
