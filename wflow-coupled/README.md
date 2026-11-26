@@ -22,3 +22,5 @@ pixi run wflow-coupled-run      # run both models in online coupling
 
 The Julia project in this directory is part of the Ribasim Julia workspace, so it uses Ribasim from this repository.
 HydroMT-Ribasim is not yet public, so the `wflow-coupled` Pixi environment requires read access to it.
+
+The CI runs this on TeamCity Windows agents, which can map the P: drive, see `.teamcity/Templates/TestWflowCoupling.kt`.
