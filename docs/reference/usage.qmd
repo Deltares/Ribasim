@@ -375,6 +375,28 @@ name          | String                        | (optional, does not have to be u
 Similarly to the node table, you can use a geometry to visualize the connections between the
 nodes in QGIS. For instance, you can draw a line connecting the two node coordinates.
 
+# Building large models with Python {#sec-large-models}
+
+Every `add` call copies the tables it adds rows to, and every table object, such as
+`basin.Static(...)`, is validated when it is created. With thousands of nodes this takes
+minutes. If several nodes have the same data, save time by creating the table object once
+and passing it to every `add` call. `add` copies its rows, so the object itself does not
+change.
+
+```python
+import ribasim
+from ribasim import Node
+from ribasim.nodes import basin
+from shapely.geometry import Point
+
+model = ribasim.Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+
+profile = basin.Profile(level=[0.0, 1.0], area=[100.0, 1000.0])
+state = basin.State(level=[0.5])
+for node_id in range(1, 1001):
+    model.basin.add(Node(node_id, Point(node_id, 0)), [profile, state])
+```
+
 # Results {#sec-results}
 
 Results are written in NetCDF format by default, which stores data as multidimensional arrays rather than flat tables.

@@ -18,7 +18,7 @@ from shapely.geometry import LineString, MultiLineString, Point
 from ribasim.db_utils import _get_db_schema_version
 from ribasim.geometry.node import NodeData
 from ribasim.input_base import SpatialTableModel
-from ribasim.utils import UsedIDs, _concat
+from ribasim.utils import UsedIDs, _combine_string_chunks, _concat
 from ribasim.validation import (
     can_connect,
     link_neighbor_amount,
@@ -157,23 +157,22 @@ class LinkTable(SpatialTableModel[LinkSchema]):
 
         # Links with the same ID or between the same nodes are replaced.
         # Validate against the table without them, and only modify the table once all checks pass.
-        same_nodes = (self.df["from_node_id"] == from_node.node_id) & (
-            self.df["to_node_id"] == to_node.node_id
+        # Compare NumPy arrays, which has much less overhead than comparing Series
+        same_nodes = (self.df["from_node_id"].to_numpy() == from_node.node_id) & (
+            self.df["to_node_id"].to_numpy() == to_node.node_id
         )
         replaced_ids = [int(i) for i in dict.fromkeys(self.df.index[same_nodes])]
         if link_id is None:
             link_id = replaced_ids[0] if replaced_ids else self._used_link_ids.new_id()
         elif link_id in self.df.index and link_id not in replaced_ids:
             replaced_ids.append(link_id)
-        df = self.df.drop(index=replaced_ids)
+        # Dropping nothing would still copy the whole table
+        df = self.df.drop(index=replaced_ids) if replaced_ids else self.df
 
-        reverse_link_types = set(
-            df.loc[
-                (df.from_node_id == to_node.node_id)
-                & (df.to_node_id == from_node.node_id),
-                "link_type",
-            ]
+        is_reverse = (df["from_node_id"].to_numpy() == to_node.node_id) & (
+            df["to_node_id"].to_numpy() == from_node.node_id
         )
+        reverse_link_types = set(df["link_type"].iloc[np.flatnonzero(is_reverse)])
 
         if (
             "UserDemand" not in [from_node.node_type, to_node.node_type]
@@ -209,12 +208,14 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         for replaced_id in replaced_ids:
             warnings.warn(f"Replacing link #{replaced_id}", UserWarning, stacklevel=2)
 
+        new_df = _concat([df, table_to_append])
+        _combine_string_chunks(new_df)
         if kwargs:
             # User-provided extra columns go through validation (checks meta_ prefix).
-            self.df = _concat([df, table_to_append])
+            self.df = new_df
         else:
             with self._no_validate():
-                self.df = _concat([df, table_to_append])
+                self.df = new_df
 
         self._used_link_ids.node_ids.difference_update(replaced_ids)
         self._used_link_ids.add(link_id)
@@ -304,15 +305,16 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         df: pd.DataFrame,
     ) -> None:
         """Raise ``ValueError`` if adding this link to ``df`` would exceed the neighbor bounds."""
-        in_neighbor: int = df.loc[
-            (df["to_node_id"] == to_node.node_id) & (df["link_type"] == link_type)
-        ].shape[0]
 
-        out_to_node_ids = df.loc[
-            (df["from_node_id"] == from_node.node_id) & (df["link_type"] == link_type),
-            "to_node_id",
-        ]
-        out_neighbor: int = out_to_node_ids.shape[0]
+        def rows_of(column: str, node_id: int) -> NDArray[np.intp]:
+            """Return the row numbers of the `link_type` links with `node_id` in `column`."""
+            rows = np.flatnonzero(df[column].to_numpy() == node_id)
+            # Only compare the link type of these rows, comparing all strings is slow
+            return rows[(df["link_type"].iloc[rows] == link_type).to_numpy()]
+
+        in_rows = rows_of("to_node_id", to_node.node_id)
+        in_neighbor = len(in_rows)
+        out_neighbor = len(rows_of("from_node_id", from_node.node_id))
         neighbor_bounds = link_neighbor_amount[link_type]
 
         max_in: int = neighbor_bounds[to_node.node_type][1]
@@ -324,11 +326,7 @@ class LinkTable(SpatialTableModel[LinkSchema]):
             routed_ids = model.junction._routed_node_ids()
             if to_node.node_type == "UserDemand":
                 # A UserDemand abstracts from Basins, or from exactly one such Junction
-                in_from_node_ids = df.loc[
-                    (df["to_node_id"] == to_node.node_id)
-                    & (df["link_type"] == link_type),
-                    "from_node_id",
-                ].tolist()
+                in_from_node_ids = df["from_node_id"].iloc[in_rows].tolist()
                 in_from_node_ids.append(from_node.node_id)
                 if len(in_from_node_ids) > 1 and any(
                     node_id in routed_ids for node_id in in_from_node_ids

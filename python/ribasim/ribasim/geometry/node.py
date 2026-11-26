@@ -39,7 +39,7 @@ from ribasim.input_base import (
 )
 from ribasim.node_icons import make_icon_box
 from ribasim.schemas import _BaseSchema
-from ribasim.utils import UsedIDs, _concat, _pascal_to_snake
+from ribasim.utils import UsedIDs, _combine_string_chunks, _concat, _pascal_to_snake
 
 from .base import _GeoBaseSchema
 
@@ -226,11 +226,12 @@ class Node(PydanticBaseModel):
             geometry = Point(geometry.x, geometry.y)
         super().__init__(node_id=node_id, geometry=geometry, **kwargs)
 
-    def into_geodataframe(self, node_type: str, node_id: int) -> gpd.GeoDataFrame:
+    def into_geodataframe(
+        self, node_type: str, node_id: int, crs: str | None = None
+    ) -> gpd.GeoDataFrame:
         extra = self.model_extra if self.model_extra is not None else {}
         gdf = gpd.GeoDataFrame(
             data={
-                "node_id": pd.Series([node_id], dtype=np.int32),
                 "node_type": pd.Series([node_type], dtype=str),
                 "name": pd.Series([self.name], dtype=str),
                 "subnetwork_id": pd.Series([self.subnetwork_id], dtype=pd.Int32Dtype()),
@@ -241,8 +242,10 @@ class Node(PydanticBaseModel):
                 **extra,
             },
             geometry=[self.geometry],
+            crs=crs,
         )
-        gdf.set_index("node_id", inplace=True)
+        # Assigning the index is much cheaper than `set_index`, which copies the table
+        gdf.index = pd.Index(np.array([node_id], dtype=np.int32), name="node_id")
         return gdf
 
 
@@ -496,14 +499,15 @@ class NodeModel(ParentModel, ChildModel):
             new_table = _concat([existing_table, table_to_append], ignore_index=True)
             # Restore index name lost by ignore_index=True (normally set by pandera).
             new_table.index.name = type(existing_member).tableschema()._index_name()
+            _combine_string_chunks(new_table)
             with existing_member._no_validate():
                 existing_member.df = new_table
 
         node_table = node.into_geodataframe(
-            node_type=self.__class__.__name__, node_id=node_id
+            node_type=self.__class__.__name__, node_id=node_id, crs=model.crs
         )
-        node_table.set_crs(model.crs, inplace=True)
         df = _concat([model.node.df, node_table])
+        _combine_string_chunks(df)
 
         has_extra_cols = (
             node.model_extra is not None
@@ -518,7 +522,12 @@ class NodeModel(ParentModel, ChildModel):
                 model.node.df = df
 
         model.node._used_node_ids.add(node_id)
-        return self[node_id]
+        # Unlike `self[node_id]`, this doesn't have to index the new table to look up the row
+        return NodeData(
+            node_id=int(node_id),
+            node_type=self.__class__.__name__,
+            geometry=node.geometry,
+        )
 
     def __getitem__(self, index: int) -> NodeData:
         # Unlike TableModel, support only indexing single rows.

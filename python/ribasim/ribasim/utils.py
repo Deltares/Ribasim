@@ -86,6 +86,20 @@ def _concat(dfs, **kwargs):
         return pd.concat(dfs, **kwargs)
 
 
+def _combine_string_chunks(df: pd.DataFrame, max_chunks: int = 64) -> None:
+    """Merge the chunks of Arrow-backed string columns in place, once there are many.
+
+    Every concatenation appends a chunk to such a column, and operations on it slow
+    down with the number of chunks. Merging copies the column, so it is only done
+    once more than `max_chunks` have piled up.
+    """
+    for column, dtype in df.dtypes.items():
+        if isinstance(dtype, pd.StringDtype) and dtype.storage.startswith("pyarrow"):
+            chunked = cast(Any, df[column].array).__arrow_array__()
+            if chunked.num_chunks > max_chunks:
+                df[column] = pd.array(df[column].to_numpy(), dtype=dtype)
+
+
 class UsedIDs(BaseModel):
     """A helper class to manage globally unique node IDs.
 

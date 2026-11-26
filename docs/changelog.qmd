@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Add `[logging] progress` TOML option and `RIBASIM_PROGRESS` environment variable, which takes precedence, to disable the progress bar, which avoids repeated progress lines in logs and documentation. [#3111](https://github.com/Deltares/Ribasim/issues/3111)
 
 ### Changed
+- Python: building a model with `add` is faster, especially for large models: about 40% faster for 10 000 nodes. The docs describe how [reusing table objects](/reference/usage.qmd#sec-large-models) speeds it up further. [#1245](https://github.com/Deltares/Ribasim/issues/1245)
 - Docs: explain the hydrological meaning, units and tuning of the PidControl parameters. [#1544](https://github.com/Deltares/Ribasim/issues/1544)
 - Docs: check the rendered documentation for dead links with lychee in CI. [#1844](https://github.com/Deltares/Ribasim/issues/1844)
 - Allocation: solve every problem from scratch, so that HiGHS uses presolve, which is much faster for large subnetworks. Start values made HiGHS construct a basis and then skip presolve. [#3387](https://github.com/Deltares/Ribasim/pull/3387)
