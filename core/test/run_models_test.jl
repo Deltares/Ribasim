@@ -283,7 +283,12 @@ end
         "Bar",
         "Foo",
     ]
-    @test all(table.concentration[table.substance .== "ResidenceTime"] .> 0)
+    # Like the storages, the concentrations start with the initial state
+    data = Ribasim.concentration_data(model; table = false)
+    @test data.time == Ribasim.basin_data(model; table = false).time
+    residence_time = data.concentration[:, findfirst(==("ResidenceTime"), data.substance), :]
+    @test all(iszero, residence_time[:, 1])
+    @test all(residence_time[:, 2:end] .> 0)
 
     integrator.u *= 1.0e6
     # TabulatedRatingCurve #4 drains Basin #3 into Terminal #14
@@ -347,10 +352,9 @@ end
 
     (; basin) = model.integrator.p.p_independent
     substance_idx = Ribasim.find_index(:FlowBoundary, basin.concentration_data.substances)
-    # The concentration is saved at the end of each period, which starts at the saved time
-    t = model.saved.concentration.time[2:end]
+    t = model.saved.concentration.time
     concentration = Ribasim.concentration_data(model; table = false).concentration[end, substance_idx, :]
-    @test maximum(abs.(concentration[1:(end - 1)] .- tanks_in_series.(t))) < 1.0e-3
+    @test maximum(abs.(concentration .- tanks_in_series.(t))) < 1.0e-3
     # The tracer passes through all Basins
     @test last(concentration) ≈ 1 atol = 1.0e-3
 end
@@ -383,10 +387,9 @@ end
 
     (; basin) = model.integrator.p.p_independent
     substance_idx = Ribasim.find_index(:FlowBoundary, basin.concentration_data.substances)
-    # The concentration is saved at the end of each period, which starts at the saved time
-    t = model.saved.concentration.time[2:end]
+    t = model.saved.concentration.time
     concentration = Ribasim.concentration_data(model; table = false).concentration[1, substance_idx, :]
-    @test maximum(abs.(concentration[1:(end - 1)] .- exact.(t))) < 1.0e-5
+    @test maximum(abs.(concentration .- exact.(t))) < 1.0e-5
     @test last(concentration) > 1
 end
 

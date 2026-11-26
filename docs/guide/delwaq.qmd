@@ -139,6 +139,8 @@ concentration_nc
 ```
 
 By default (`to_input=False`), the parsed model writes the Delwaq tracer results to `results/concentration.nc` and does not populate the `Basin / concentration_external` table.
+This file replaces the one that Ribasim writes with the [experimental concentration feature](/reference/usage.qmd#experimental-features), and has the same layout, see [`concentration.nc`](/reference/usage.qmd#concentration---concentration.nc).
+Each record holds the concentrations at its time, starting with the initial condition, so the results of Ribasim and Delwaq can be compared directly.
 
 
 ```{python}

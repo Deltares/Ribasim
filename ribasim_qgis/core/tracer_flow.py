@@ -14,10 +14,11 @@ a Junction and the Basin, carries the net tracer flows of the neighbors behind i
 groups connect their neighbors along the direction of their links, so their Junctions mix
 their inflows.
 
-The flows of the results are means over the saveat intervals, the Basin concentrations are
-those at the end of each interval, and the input tables are averaged over each interval.
-The core mixes the water within each timestep instead, so the split is approximate where
-concentrations change much within an interval.
+The flows of the results are means over the saveat intervals, and the input tables are
+averaged over each interval. The Basin results hold the concentrations at the start of each
+interval, so a Basin sends the mean of those at the start and end of an interval, see
+`interval_mean`. The core mixes the water within each timestep instead, so the split is
+approximate where concentrations change much within an interval.
 """
 
 from collections.abc import Callable, Collection
@@ -47,6 +48,19 @@ CONCENTRATION_TABLES: tuple[str, ...] = tuple(
 )
 
 
+def interval_mean(values: np.ndarray) -> np.ndarray:
+    """Return the mean of the values at the start and end of each interval.
+
+    The values are those at the start of each interval, like the Basin concentrations of
+    the results. The end of the last interval is not in the results, so it keeps the value
+    at its start.
+    """
+    values = np.asarray(values, dtype=float)
+    result = values.copy()
+    result[:-1] = 0.5 * (values[:-1] + values[1:])
+    return result
+
+
 def _add(result: Tracers, tracers: Tracers, factor: float | np.ndarray) -> None:
     for substance, values in tracers.items():
         result[substance] = result.get(substance, 0.0) + factor * values
@@ -62,7 +76,7 @@ class TracerFlows:
     flow:
         The flow rate of a link over time.
     basin_concentration:
-        The concentrations of a Basin over time.
+        The concentrations of the water that leaves a Basin, per interval.
     n_time:
         The number of times, which all values must have.
     substances:

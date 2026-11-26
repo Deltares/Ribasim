@@ -346,12 +346,16 @@ function save_results!(saved::SavedResults, u, t::Float64, integrator)::Bool
     save_allocation_records!(saved, p_independent)
     if !is_start
         errors = save_mean_flows!(saved, u, t, integrator)
-        save_concentrations!(saved, integrator)
+        save_concentrations!(saved, p_independent)
         save_solver_stats!(saved, t, integrator)
     end
     save_subgrid_level!(saved, t, integrator)
 
     saved.level_prev .= current_basin_properties.current_level
+    if p_independent.do_concentration
+        # From substance, Basin to Basin, substance
+        permutedims!(saved.concentration_prev, p_independent.basin.concentration_data.concentration_state, (2, 1))
+    end
     saved.solver_stats_prev = get_solver_stats(t, integrator)
     saved.t_prev = t
     # The next intervention interval starts at t if the current one ends there
@@ -595,15 +599,15 @@ function save_external_flows!(file::SavedFile, mean_flows::MeanFlows, p::Paramet
     return nothing
 end
 
-"Add the concentrations per Basin and substance at the end of the saveat interval."
-function save_concentrations!(saved::SavedResults, integrator)::Nothing
-    (; p_independent) = integrator.p
+"""
+Add the concentrations per Basin and substance at the start of the saveat interval, like the
+storages and levels.
+"""
+function save_concentrations!(saved::SavedResults, p_independent::ParametersIndependent)::Nothing
     p_independent.do_concentration || return nothing
-    (; concentration_state) = p_independent.basin.concentration_data
     file = saved.concentration
     push!(file.time, saved.t_prev)
-    # From substance, Basin to Basin, substance
-    append!(file.variables.concentration, permutedims(concentration_state))
+    append!(file.variables.concentration, saved.concentration_prev)
     return nothing
 end
 
