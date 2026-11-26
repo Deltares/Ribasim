@@ -767,7 +767,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="junction_into_junction" class="level1" data-number="43">
 <h1 data-number="43"><span class="header-section-number">43</span> junction_into_junction</h1>
 <p>Create a model where a Junction with fractions flows into Junctions without rows.</p>
-<p>FlowBoundary #1 flows into Junction #2, which sends 40% to Junction #4 and the rest to Junction #5, neither of which has rows. Junction #4 also receives FlowBoundary #3 and passes everything on to Basin #6. Junction #5 connects Basin #7 with LinearResistance #8, which drains into LevelBoundary #9, so it is a Junction group with one Basin. The rows of Junction #2 name #4 and #5, and apply to the links that replace them. The <code>Junction / static</code> table is written to NetCDF rather than the database.</p>
+<p>FlowBoundary #1 flows into Junction #2, which sends 40% to Junction #4 and the rest to Junction #5, neither of which has rows. Junction #4 also receives FlowBoundary #3 and passes everything on to Basin #6. Junction #5 connects Basin #7 with LinearResistance #8, which drains into LevelBoundary #9, so it is a Junction group with one Basin. The rows of Junction #2 name #4 and #5, and apply to the links that replace them. The <code>Junction / static</code> table is written to NetCDF rather than the database. Tracers are enabled, so QGIS can plot the fractional flow through these Junctions.</p>
 <p><img src="test-models_files/figure-html/cell-2-output-122.png" width="312" height="315"></p>
 </section>
 <section id="junction_level" class="level1" data-number="44">
