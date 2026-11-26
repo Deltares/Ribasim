@@ -369,10 +369,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="issues-and-pull-requests" class="level2" data-number="2.4">
 <h2 data-number="2.4" class="anchored" data-anchor-id="issues-and-pull-requests"><span class="header-section-number">2.4</span> Issues and pull requests</h2>
-<p>Issues and PRs are on https://github.com/Deltares/Ribasim.</p>
+<p>Issues and PRs are on https://github.com/Deltares/Ribasim and planned on the <a href="https://github.com/orgs/Deltares/projects/138/views/3">Team Hydro Core board</a>.</p>
 <ul>
-<li><p>Always open PRs as drafts (<code>gh pr create --draft</code>); the person you work for marks them ready.</p></li>
-<li><p>A PR without an issue says in one line where it came from, such as a review or a failing model.</p></li>
+<li><p>Before you start, find or create the issue and run <code>pixi run issue-status &lt;number&gt;</code>, so others can see what you work on. It assigns the issue to the person you work for and puts it “In progress” in the current iteration. If it says someone else is assigned, or that <code>gh</code> lacks the <code>project</code> scope, ask the person you work for.</p></li>
+<li><p>A new issue says in one line where it came from, such as a review or a failing model.</p></li>
+<li><p>Always open PRs as drafts (<code>gh pr create --draft</code>) that say <code>Closes #&lt;number&gt;</code>; the person you work for marks them ready and runs <code>pixi run issue-status &lt;number&gt; Review</code>. Closing the issue moves it to “Done”.</p></li>
 <li><p>Issues, PR descriptions and comments start with a concise version that says the details are folded below:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode md code-with-copy"><code class="sourceCode markdown"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="dt">&lt;</span><span class="kw">details</span><span class="dt">&gt;</span></span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="dt">&lt;</span><span class="kw">summary</span><span class="dt">&gt;</span>▶ Click to expand: full details<span class="dt">&lt;/</span><span class="kw">summary</span><span class="dt">&gt;</span></span>
