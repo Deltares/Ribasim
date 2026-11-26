@@ -17,6 +17,8 @@ object TestWflowCouplingWindows : Template({
 
     params {
         param("env.JULIA_DEPOT_PATH", generateJuliaDepotPath("Windows"))
+        // GitHub token with read access to Deltares-research/hydromt_ribasim
+        password("env.HYDROMT_RIBASIM_TOKEN", "credentialsJSON:aca31dba-434e-4a69-b4bc-1e97bce6ebb2")
     }
 
     dependencies {
