@@ -358,6 +358,7 @@ platforms = ["win-64", "linux-64"]
 [feature.wflow-coupled.dependencies]
 julia = { version = "==1.13.4", channel = "https://prefix.dev/julia-forge" }
 python = "3.13.*"
+pytest = "*"
 
 [feature.wflow-coupled.pypi-dependencies]
 hydromt-ribasim = { git = "https://github.com/Deltares-research/hydromt_ribasim.git", rev = "0c4018fced8d478215f3a02d1885a5fc92eaa40e" }
@@ -382,6 +383,15 @@ wflow-coupled-build-mapping = { cmd = "julia --startup-file=no --project=wflow-c
 wflow-coupled-prepare = { depends-on = ["wflow-coupled-build-mapping"] }
 wflow-coupled-run = { cmd = "julia --startup-file=no --project=wflow-coupled wflow-coupled/online.jl", depends-on = [
     "wflow-coupled-instantiate-julia",
+] }
+wflow-coupled-test-julia = { cmd = "julia --startup-file=no --project=wflow-coupled wflow-coupled/test/runtests.jl", depends-on = [
+    "wflow-coupled-instantiate-julia",
+] }
+wflow-coupled-test-python = "pytest --basetemp=wflow-coupled/test/temp wflow-coupled/test"
+# The tests tagged `:model` need the models of wflow-coupled-prepare
+wflow-coupled-test = { depends-on = [
+    "wflow-coupled-test-python",
+    "wflow-coupled-test-julia",
 ] }
 
 [target.win-64.dependencies]

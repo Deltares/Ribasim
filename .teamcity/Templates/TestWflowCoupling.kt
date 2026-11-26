@@ -74,6 +74,12 @@ object TestWflowCouplingWindows : Template({
             workingDir = "ribasim"
             scriptContent = "pixi run --environment wflow-coupled wflow-coupled-run"
         }
+        script {
+            name = "Test the coupling"
+            id = "Test_coupling"
+            workingDir = "ribasim"
+            scriptContent = "pixi run --environment wflow-coupled wflow-coupled-test"
+        }
     }
 
     failureConditions {

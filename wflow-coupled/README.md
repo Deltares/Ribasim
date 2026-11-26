@@ -18,6 +18,7 @@ This uses the `wflow-coupled` Pixi environment, from the root of the repository 
 ```sh
 pixi run wflow-coupled-prepare  # build the Wflow and Ribasim models, and the mapping between them
 pixi run wflow-coupled-run      # run both models in online coupling
+pixi run wflow-coupled-test     # test the scripts, needs the prepared models
 ```
 
 The Julia project in this directory is part of the Ribasim Julia workspace, so it uses Ribasim from this repository.

@@ -3,3 +3,4 @@ coupling.gpkg
 coupling_diagnostics.csv
 plotting/*.png
 *.qgz
+test/temp/
