@@ -54,6 +54,7 @@ Be up-front on GitHub about what you are working on, so others can see it and do
 - Search for an existing issue, and create one if there is none. A new issue says in one line where it came from, such as a review or a failing model.
 - Assign the issue to the person you work for (`gh issue edit <number> --add-assignee @me`). If someone else is already assigned, check with the person you work for first.
 - Move the issue to "In progress" on the Team Hydro Core project board, if it isn't there already.
+- Set the issue's "Iteration" on that board to the current iteration.
 
 As the work proceeds:
 
