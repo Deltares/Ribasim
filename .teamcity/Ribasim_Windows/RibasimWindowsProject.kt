@@ -5,6 +5,7 @@ import jetbrains.buildServer.configs.kotlin.AbsoluteId
 import jetbrains.buildServer.configs.kotlin.BuildType
 import jetbrains.buildServer.configs.kotlin.FailureAction
 import jetbrains.buildServer.configs.kotlin.Project
+import jetbrains.buildServer.configs.kotlin.PublishMode
 import jetbrains.buildServer.configs.kotlin.triggers.vcs
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
 import jetbrains.buildServer.configs.kotlin.buildSteps.PowerShellStep
@@ -20,10 +21,12 @@ object RibasimWindowsProject : Project({
     buildType(Windows_BuildRibasim)
     buildType(Windows_BuildMsix)
     buildType(Windows_TestDelwaqCoupling)
+    buildType(Windows_TestWflowCoupling)
     buildType(Windows_TestRibasimBinaries)
 
     template(TestBinariesWindows)
     template(TestDelwaqCouplingWindows)
+    template(TestWflowCouplingWindows)
     template(GenerateCacheWindows)
 
     features {
@@ -194,6 +197,39 @@ object Windows_TestDelwaqCoupling : BuildType({
             buildRule = lastSuccessful()
             artifactRules = """
                 DWAQ_win64_Release_Visual Studio *.zip!** => dimr
+            """.trimIndent()
+        }
+    }
+})
+
+object Windows_TestWflowCoupling : BuildType({
+    templates(WindowsAgent, GithubCommitStatusIntegration, TestWflowCouplingWindows, GithubPullRequestsIntegration)
+    name = "Test Wflow coupling"
+
+    publishArtifacts = PublishMode.ALWAYS
+    artifactRules = """
+        ribasim/wflow-coupled/coupling_diagnostics.csv
+        ribasim/wflow-coupled/models/ribasim_piave/results => ribasim_piave_results.zip
+    """.trimIndent()
+
+    triggers {
+        vcs {
+            id = "TRIGGER_WFLOW_COUPLING"
+            branchFilter = """
+                +:<default>
+                +:refs/pull/*
+                +:pull/*
+            """.trimIndent()
+            triggerRules = """
+                +:ribasim/core/**
+                +:ribasim/python/ribasim/**
+                +:ribasim/wflow-coupled/**
+                +:ribasim/pixi.toml
+                +:ribasim/pixi.lock
+                +:ribasim/Project.toml
+                +:ribasim/Manifest.toml
+                +:ribasim/.teamcity/Templates/TestWflowCoupling.kt
+                -:comment=skip ci:**
             """.trimIndent()
         }
     }
