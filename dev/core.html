@@ -299,9 +299,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#developing-on-ribasim" id="toc-developing-on-ribasim" class="nav-link" data-scroll-target="#developing-on-ribasim"><span class="header-section-number">3</span> Developing on Ribasim</a>
   <ul class="collapse">
   <li><a href="#sec-test" id="toc-sec-test" class="nav-link" data-scroll-target="#sec-test"><span class="header-section-number">3.1</span> Running tests</a></li>
-  <li><a href="#render-documentation" id="toc-render-documentation" class="nav-link" data-scroll-target="#render-documentation"><span class="header-section-number">3.2</span> Render documentation</a></li>
-  <li><a href="#run-ribasim-simulations" id="toc-run-ribasim-simulations" class="nav-link" data-scroll-target="#run-ribasim-simulations"><span class="header-section-number">3.3</span> Run Ribasim simulations</a></li>
-  <li><a href="#build-ribasim" id="toc-build-ribasim" class="nav-link" data-scroll-target="#build-ribasim"><span class="header-section-number">3.4</span> Build Ribasim</a></li>
+  <li><a href="#linting" id="toc-linting" class="nav-link" data-scroll-target="#linting"><span class="header-section-number">3.2</span> Linting</a></li>
+  <li><a href="#render-documentation" id="toc-render-documentation" class="nav-link" data-scroll-target="#render-documentation"><span class="header-section-number">3.3</span> Render documentation</a></li>
+  <li><a href="#run-ribasim-simulations" id="toc-run-ribasim-simulations" class="nav-link" data-scroll-target="#run-ribasim-simulations"><span class="header-section-number">3.4</span> Run Ribasim simulations</a></li>
+  <li><a href="#build-ribasim" id="toc-build-ribasim" class="nav-link" data-scroll-target="#build-ribasim"><span class="header-section-number">3.5</span> Build Ribasim</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -374,15 +375,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>In order to debug tests, you can run individual test items from Visual Studio Code. Click the green play icon in front of a test item, as shown in the image below. The first run will be slow.</p>
 <p><img src="https://github.com/Deltares/Ribasim/assets/4471859/58077f71-11d0-4c45-8d95-4eba8c0a0139.png" class="img-fluid"></p>
 </section>
-<section id="render-documentation" class="level2" data-number="3.2">
-<h2 data-number="3.2" class="anchored" data-anchor-id="render-documentation"><span class="header-section-number">3.2</span> Render documentation</h2>
+<section id="linting" class="level2" data-number="3.2">
+<h2 data-number="3.2" class="anchored" data-anchor-id="linting"><span class="header-section-number">3.2</span> Linting</h2>
+<p>The prek hooks format Julia code with Runic. Julia code is linted with <a href="https://github.com/julia-vscode/LintApp.jl">LintApp.jl</a>, the static analyzer behind the VS Code Julia extension, so you see the same diagnostics while you edit. It is configured by <code>JuliaLint.toml</code> in the repository root. The <code>security</code> preset adds rules from the <a href="https://juliahub.com/white-papers/secure-julia-coding-best-practices">secure Julia coding best practices</a>, such as command injection and unsafe memory access. The LintApp.jl version is pinned in the <code>utils/linting</code> environment, which is updated together with the other Julia dependencies. To lint all Julia code from the command line, run:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run lint-julia</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>On CI, the <code>Julia Lint</code> workflow shows errors and warnings as annotations on the pull request, fails when there are errors, and uploads all findings to the GitHub Security tab.</p>
+</section>
+<section id="render-documentation" class="level2" data-number="3.3">
+<h2 data-number="3.3" class="anchored" data-anchor-id="render-documentation"><span class="header-section-number">3.3</span> Render documentation</h2>
 <p>Example models are created and simulated as part of the rendering of the documentation.</p>
 <p>In order to preview documentation you can run the following command from the <code>docs/</code> folder. Afterwards, a browser tab will open with the rendered documentation, updating it as you make changes.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run docs</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run docs</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>To preview without executing code cells (much faster for checking layout):</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run docs <span class="at">--</span> <span class="at">--no-execute</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run docs <span class="at">--</span> <span class="at">--no-execute</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>To preview a single file:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run docs guide/delwaq.qmd</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run docs guide/delwaq.qmd</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The documentation also includes <a href="https://jupyter.org/">Jupyter notebooks</a>. Note that they are stored in the repository without any output, and this should stay this way to keep the repository small. The documentation rendering process adds the output by running the notebooks.</p>
 <div class="callout callout-style-default callout-tip callout-titled">
 <div class="callout-header d-flex align-content-center">
@@ -398,13 +405,13 @@ Tip
 </div>
 </div>
 </section>
-<section id="run-ribasim-simulations" class="level2" data-number="3.3">
-<h2 data-number="3.3" class="anchored" data-anchor-id="run-ribasim-simulations"><span class="header-section-number">3.3</span> Run Ribasim simulations</h2>
+<section id="run-ribasim-simulations" class="level2" data-number="3.4">
+<h2 data-number="3.4" class="anchored" data-anchor-id="run-ribasim-simulations"><span class="header-section-number">3.4</span> Run Ribasim simulations</h2>
 <p>Assuming your working directory is the root of the repository, you can activate this project by entering the Pkg mode of the REPL with <code>]</code> and execute:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>pkg<span class="op">&gt;</span> activate .</span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>pkg<span class="op">&gt;</span> instantiate</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>pkg<span class="op">&gt;</span> activate .</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>pkg<span class="op">&gt;</span> instantiate</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Press backspace to go back to the Julia REPL. There you can run a model with:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>julia<span class="op">&gt;</span> Ribasim.<span class="fu">run</span>(<span class="st">"path/to/model/ribasim.toml"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>julia<span class="op">&gt;</span> Ribasim.<span class="fu">run</span>(<span class="st">"path/to/model/ribasim.toml"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="callout callout-style-default callout-tip callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -419,8 +426,8 @@ Tip
 </div>
 </div>
 </section>
-<section id="build-ribasim" class="level2" data-number="3.4">
-<h2 data-number="3.4" class="anchored" data-anchor-id="build-ribasim"><span class="header-section-number">3.4</span> Build Ribasim</h2>
+<section id="build-ribasim" class="level2" data-number="3.5">
+<h2 data-number="3.5" class="anchored" data-anchor-id="build-ribasim"><span class="header-section-number">3.5</span> Build Ribasim</h2>
 <p>The Ribasim core can be built into an executable with a command line interface (CLI) and a shared library, libribasim. These products will run without a Julia installation. To create both these products at once, run:</p>
 <pre><code>pixi run build</code></pre>
 <p>To verify that the build was successful, you can run both these commands.</p>
