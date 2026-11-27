@@ -327,6 +327,7 @@ ul.task-list li input[type="checkbox"] {
 <section id="changed" class="level3" data-number="1.1.2">
 <h3 data-number="1.1.2" class="anchored" data-anchor-id="changed"><span class="header-section-number">1.1.2</span> Changed</h3>
 <ul>
+<li>Python: building a model with <code>add</code> is faster, especially for large models: about 40% faster for 10 000 nodes. <a href="https://github.com/Deltares/Ribasim/issues/1245">#1245</a></li>
 <li>Docs: explain the hydrological meaning, units and tuning of the PidControl parameters. <a href="https://github.com/Deltares/Ribasim/issues/1544">#1544</a></li>
 <li>Docs: check the rendered documentation for dead links with lychee in CI. <a href="https://github.com/Deltares/Ribasim/issues/1844">#1844</a></li>
 <li>Allocation: solve every problem from scratch, so that HiGHS uses presolve, which is much faster for large subnetworks. Start values made HiGHS construct a basis and then skip presolve. <a href="https://github.com/Deltares/Ribasim/pull/3387">#3387</a></li>
