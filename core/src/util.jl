@@ -1215,7 +1215,7 @@ function update_time_dependent_cache!(p::Parameters, t::Float64)::Nothing
         (refresh || time_varying[idx]) || continue
         itp = current_interpolation_index[idx]
         interpolation_index[idx] = itp(t)
-        time_varying[idx] = !is_constant_in_time(itp)
+        refresh && (time_varying[idx] = !is_constant_in_time(itp))
     end
     p_mutable.refresh_time_dependent_cache = false
     return nothing
@@ -1251,14 +1251,15 @@ function update_time_dependent_cache!(
         for (interpolations, values) in time_series
             itp = interpolations[idx]
             values[idx] = itp(interpolation_time(itp, p, t))
-            varying |= !is_constant_in_time(itp)
+            refresh && (varying |= !is_constant_in_time(itp))
         end
         if isassigned(time_dependent_flow_rate, idx)
             itp = time_dependent_flow_rate[idx]
             cache.current_flow_rate_setpoint[idx] = itp(interpolation_time(itp, p, t))
-            varying |= !is_constant_in_time(itp)
+            refresh && (varying |= !is_constant_in_time(itp))
         end
-        time_varying[idx] = varying
+        # The interpolations only change in a control state change, which sets `refresh`
+        refresh && (time_varying[idx] = varying)
     end
     return nothing
 end
