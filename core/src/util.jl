@@ -1463,21 +1463,16 @@ function set_basin_profiles!(basin::Basin)::Nothing
             derivative(storage_to_level_i, last(storage_to_level_i.t)),
         )
         push!(profiles.offset, length(profiles.storage))
-        push!(profiles.segment, 1)
-        push!(profiles.area_segment, 1)
     end
     return nothing
 end
 
 """
-Find the last segment j in `first_idx:(last_idx - 1)` with `points[j] ≤ x`, searching from `guess`.
-This is how DataInterpolations finds the segment.
+The last segment j in `first_idx:(last_idx - 1)` with `points[j] ≤ x`, as DataInterpolations finds it.
+The tables are short, so a linear search from the start is faster than remembering the last segment.
 """
-@inline function find_segment(x::Real, points::Vector{Float64}, first_idx::Int, last_idx::Int, guess::Int)::Int
-    j = clamp(guess, first_idx, last_idx - 1)
-    while j > first_idx && points[j] > x
-        j -= 1
-    end
+@inline function find_segment(x::Real, points::Vector{Float64}, first_idx::Int, last_idx::Int)::Int
+    j = first_idx
     while j < last_idx - 1 && points[j + 1] <= x
         j += 1
     end
@@ -1486,16 +1481,14 @@ end
 
 """
 The level of Basin i at a storage, the same as evaluating `storage_to_level`.
-Returns `nothing` below the profile. Only updates the segment to start the next search from if
-`update_segment`, which must be false when called for the same Basin in parallel.
+Returns `nothing` below the profile.
 """
 @inline function basin_level(
         profiles::BasinProfiles,
         i::Int,
-        storage::T;
-        update_segment::Bool = true,
+        storage::T,
     )::Union{Nothing, T} where {T <: Union{Float64, ForwardDiff.Dual}}
-    (; offset, segment, level, top_level_slope) = profiles
+    (; offset, level, top_level_slope) = profiles
     first_idx = offset[i] + 1
     last_idx = offset[i + 1]
     storage < profiles.storage[first_idx] && return nothing
@@ -1504,12 +1497,30 @@ Returns `nothing` below the profile. Only updates the segment to start the next 
         return level[last_idx] + top_level_slope[i] * (storage - profiles.storage[last_idx])
     end
 
-    j = find_segment(storage, profiles.storage, first_idx, last_idx, first_idx - 1 + segment[i])
-    update_segment && (segment[i] = j - first_idx + 1)
+    j = find_segment(storage, profiles.storage, first_idx, last_idx)
     # Same as `_interpolate` for a `LinearInterpolationIntInv` in DataInterpolations
     Δstorage = storage - profiles.storage[j]
     x = profiles.dS_dh[j]
     return level[j] + 2Δstorage / (x + sqrt(x^2 + profiles.dS_dh_slope[j] * 2Δstorage))
+end
+
+"""
+The area of Basin i at a level, the same as evaluating `level_to_area`.
+Returns `nothing` below the profile.
+"""
+@inline function basin_area(
+        profiles::BasinProfiles,
+        i::Int,
+        h::T,
+    )::Union{Nothing, T} where {T <: Union{Float64, ForwardDiff.Dual}}
+    (; offset, level, area, area_slope) = profiles
+    first_idx = offset[i] + 1
+    last_idx = offset[i + 1]
+    h < level[first_idx] && return nothing
+    # Same as the constant extrapolation of `level_to_area`
+    h > level[last_idx] && return area[last_idx] + zero(h)
+    k = find_segment(h, level, first_idx, last_idx)
+    return area[k] + area_slope[k] * (h - level[k])
 end
 
 """
@@ -1523,16 +1534,8 @@ The level and area of Basin i at a storage, the same as evaluating `storage_to_l
     )::Union{Nothing, Tuple{Float64, Float64}}
     h = basin_level(profiles, i, storage)
     isnothing(h) && return nothing
-    (; offset, area_segment, level) = profiles
-    first_idx = offset[i] + 1
-    last_idx = offset[i + 1]
-    # Same as the constant extrapolation of `level_to_area`
-    storage > profiles.storage[last_idx] && return h, profiles.area[last_idx] + 0.0
-
-    k = find_segment(h, level, first_idx, last_idx, first_idx - 1 + area_segment[i])
-    area_segment[i] = k - first_idx + 1
-    area = profiles.area[k] + profiles.area_slope[k] * (h - level[k])
-    return h, area
+    # At or above the bottom of the profile, so not nothing
+    return h, basin_area(profiles, i, h)::Float64
 end
 
 "Copy the Q(h) interpolations of all TabulatedRatingCurves into `tabulated_rating_curve.tables`"
@@ -1559,7 +1562,7 @@ function rating_curve_flow(
         node_idx::Int,
         h::Union{Float64, ForwardDiff.Dual},
     )::Number
-    (; interpolations, interpolation_index, tables, segment) = tabulated_rating_curve
+    (; interpolations, interpolation_index, tables) = tabulated_rating_curve
     (; offset, level, flow_rate, dflow_rate, c₁, c₂) = tables
     k = interpolation_index[node_idx]
     first_idx = offset[k] + 1
@@ -1567,8 +1570,7 @@ function rating_curve_flow(
     # Outside the table the interpolation extrapolates
     (level[first_idx] <= h <= level[last_idx]) || return interpolations[k](h)
 
-    j = find_segment(h, level, first_idx, last_idx, first_idx - 1 + segment[node_idx])
-    segment[node_idx] = j - first_idx + 1
+    j = find_segment(h, level, first_idx, last_idx)
     # Same as `_interpolate` for a `CubicHermiteSpline` in DataInterpolations
     Δt₀ = h - level[j]
     Δt₁ = h - level[j + 1]
@@ -1583,32 +1585,10 @@ function rating_curve_flow(tabulated_rating_curve::TabulatedRatingCurve, node_id
     return interpolations[interpolation_index[node_idx]](h)
 end
 
-# The profiles are evaluated in parallel during automatic differentiation, so the segment is not updated
 get_level_from_profile(basin::Basin, i::Int, storage::Union{Float64, ForwardDiff.Dual}) =
-    basin_level(basin.profiles, i, storage; update_segment = false)
-# Other number types, such as those for the sparsity detection, use the interpolation
-get_level_from_profile(::Basin, ::Int, ::Number) = nothing
-
-"""
-The area of Basin i at a level, the same as evaluating `level_to_area`. Returns `nothing` below
-the profile. The segment to start the search from is not updated, see `basin_level`.
-"""
-@inline function basin_area(
-        profiles::BasinProfiles,
-        i::Int,
-        h::T,
-    )::Union{Nothing, T} where {T <: Union{Float64, ForwardDiff.Dual}}
-    (; offset, area_segment, level, area, area_slope) = profiles
-    first_idx = offset[i] + 1
-    last_idx = offset[i + 1]
-    h < level[first_idx] && return nothing
-    # Same as the constant extrapolation of `level_to_area`
-    h > level[last_idx] && return area[last_idx] + zero(h)
-    k = find_segment(h, level, first_idx, last_idx, first_idx - 1 + area_segment[i])
-    return area[k] + area_slope[k] * (h - level[k])
-end
-
+    basin_level(basin.profiles, i, storage)
 get_area_from_profile(basin::Basin, i::Int, level::Union{Float64, ForwardDiff.Dual}) =
     basin_area(basin.profiles, i, level)
-# Other number types, such as those for the sparsity detection, use the interpolation
+# Other number types, such as those for the sparsity detection, use the interpolations
+get_level_from_profile(::Basin, ::Int, ::Number) = nothing
 get_area_from_profile(::Basin, ::Int, ::Number) = nothing

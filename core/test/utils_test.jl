@@ -755,7 +755,7 @@ end
                 @test area === level_to_area(level)
                 # The Jacobian evaluates the profiles with Dual numbers
                 storage_dual = Dual(storage, 1.0)
-                level_dual = Ribasim.basin_level(basin.profiles, i, storage_dual; update_segment = false)
+                level_dual = Ribasim.basin_level(basin.profiles, i, storage_dual)
                 @test level_dual === storage_to_level(storage_dual)
                 @test Ribasim.basin_area(basin.profiles, i, level_dual) === level_to_area(level_dual)
             end

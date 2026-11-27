@@ -719,9 +719,9 @@ const StorageToLevelType = LinearInterpolationIntInv{
 }
 
 """
-The profiles of all Basins in contiguous vectors, to quickly compute the levels and areas of all
-Basins in `set_current_basin_properties!`. This gives exactly the same results as
-`storage_to_level` and `level_to_area`, which are used below the profile.
+The profiles of all Basins in contiguous vectors, to quickly compute Basin levels and areas in the
+right hand side and the Jacobian. This gives exactly the same results as `storage_to_level` and
+`level_to_area`, which are used below the profile.
 Both relations have the same level points.
 """
 @kwdef struct BasinProfiles
@@ -738,9 +738,6 @@ Both relations have the same level points.
     # Per Basin the slope of `storage_to_level` above the profile, where it extrapolates linearly
     # and `level_to_area` constantly
     top_level_slope::Vector{Float64} = Float64[]
-    # Per Basin the segment of the last evaluation, where the search starts
-    segment::Vector{Int} = Int[]
-    area_segment::Vector{Int} = Int[]
 end
 
 """
@@ -832,9 +829,8 @@ allocation_controlled: whether this TabulatedRatingCurve is controlled by alloca
     current_interpolation_index::Vector{IndexLookup} = IndexLookup[]
     # The value of `current_interpolation_index` at the time of the time dependent cache
     interpolation_index::Vector{Int} = ones(Int, length(node_id))
-    # The interpolations in contiguous vectors, and per node the segment of the last evaluation
+    # The interpolations in contiguous vectors
     tables::RatingCurveTables = RatingCurveTables()
-    segment::Vector{Int} = ones(Int, length(node_id))
     # Whether `current_interpolation_index` varies in time, see `update_time_dependent_cache!`
     time_varying::Vector{Bool} = fill(true, length(node_id))
     control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
