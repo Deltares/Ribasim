@@ -18,7 +18,12 @@ from shapely.geometry import LineString, MultiLineString, Point
 from ribasim.db_utils import _get_db_schema_version
 from ribasim.geometry.node import NodeData
 from ribasim.input_base import SpatialTableModel
-from ribasim.utils import UsedIDs, _concat, _line_midpoint_direction
+from ribasim.utils import (
+    UsedIDs,
+    _combine_string_chunks,
+    _concat,
+    _line_midpoint_direction,
+)
 from ribasim.validation import (
     can_connect,
     link_neighbor_amount,
@@ -165,7 +170,8 @@ class LinkTable(SpatialTableModel[LinkSchema]):
             link_id = replaced_ids[0] if replaced_ids else self._used_link_ids.new_id()
         elif link_id in self.df.index and link_id not in replaced_ids:
             replaced_ids.append(link_id)
-        df = self.df.drop(index=replaced_ids)
+        # Dropping nothing would still copy the whole table
+        df = self.df.drop(index=replaced_ids) if replaced_ids else self.df
 
         reverse_link_types = set(
             df.loc[
@@ -209,12 +215,14 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         for replaced_id in replaced_ids:
             warnings.warn(f"Replacing link #{replaced_id}", UserWarning, stacklevel=2)
 
+        new_df = _concat([df, table_to_append])
+        _combine_string_chunks(new_df)
         if kwargs:
             # User-provided extra columns go through validation (checks meta_ prefix).
-            self.df = _concat([df, table_to_append])
+            self.df = new_df
         else:
             with self._no_validate():
-                self.df = _concat([df, table_to_append])
+                self.df = new_df
 
         self._used_link_ids.node_ids.difference_update(replaced_ids)
         self._used_link_ids.add(link_id)

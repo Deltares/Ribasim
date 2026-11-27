@@ -17,6 +17,7 @@ except ImportError:
     # pre-v1 API
     from datacompy.core import Compare
 from matplotlib.patches import Patch
+from packaging.version import Version
 from pydantic import ValidationError
 from pyproj import CRS
 from ribasim import Node
@@ -25,7 +26,7 @@ from ribasim.geometry.link import LinkTable
 from ribasim.geometry.node import NodeData, NodeTable
 from ribasim.input_base import esc_id
 from ribasim.model import Model
-from ribasim.nodes import basin, pid_control
+from ribasim.nodes import basin, pid_control, pump
 from ribasim_testmodels import (
     basic_model,
     outlet_model,
@@ -389,6 +390,39 @@ def test_link_table(basic):
 
 def empty_model() -> Model:
     return Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+
+
+@pytest.mark.skipif(
+    Version(pd.__version__) < Version("3"),
+    reason="Before pandas 3, strings are by default not stored in Arrow chunks",
+)
+def test_add_keeps_string_columns_contiguous():
+    """Each `add` appends an Arrow chunk to the string columns, which are merged again."""
+    model = empty_model()
+    source = model.basin.add(Node(1, Point(0, 0)))
+    n = 70  # more than the number of chunks that `add` allows
+    control_states = ["on" if i % 2 == 0 else None for i in range(n)]
+    for i, control_state in enumerate(control_states):
+        node = model.pump.add(
+            Node(i + 2, Point(1, i), name=f"pump {i}"),
+            [pump.Static(flow_rate=[1.0], control_state=[control_state])],
+        )
+        model.link.add(source, node, name=f"link {i}")
+
+    assert model.pump.static.df is not None
+    for column in (
+        model.node.df["node_type"],
+        model.node.df["name"],
+        model.link.df["link_type"],
+        model.link.df["name"],
+        model.pump.static.df["control_state"],
+    ):
+        assert column.array.__arrow_array__().num_chunks <= 64  # ty: ignore[unresolved-attribute]
+
+    assert model.node.df["name"].tolist()[1:] == [f"pump {i}" for i in range(n)]
+    assert model.link.df["name"].tolist() == [f"link {i}" for i in range(n)]
+    control_state = model.pump.static.df["control_state"].fillna("missing")
+    assert control_state.tolist() == [state or "missing" for state in control_states]
 
 
 def test_empty_model_tables():
