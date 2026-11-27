@@ -1,6 +1,11 @@
+import matplotlib
 import pytest
 import ribasim
 import ribasim_testmodels
+
+# The tests don't show figures. The default Tk backend sometimes fails to load on the
+# Windows CI runners.
+matplotlib.use("Agg")
 
 
 # we can't call fixtures directly, so we keep separate versions
