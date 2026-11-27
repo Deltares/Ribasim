@@ -52,6 +52,7 @@ Issues and PRs are on https://github.com/Deltares/Ribasim and planned on the [Te
 
 - Before you start, find or create the issue and run `pixi run issue-status <number>`, so others can see what you work on. It assigns the issue to the person you work for and puts it "In progress" in the current iteration. If it says someone else is assigned, or that `gh` lacks the `project` scope, ask the person you work for.
 - A new issue says in one line where it came from, such as a review or a failing model.
+- Label the issues and PRs you create with the areas they touch (`--label`, see `gh label list`), such as `core`, `python`, `QGIS`, `allocation`, `performance` or `documentation`. Issues also get a type (`--type` `Bug`, `Feature` or `Task`), and PRs that break existing models get `breaking`.
 - Always open PRs as drafts (`gh pr create --draft`) that say `Closes #<number>`; the person you work for marks them ready and runs `pixi run issue-status <number> Review`. Closing the issue moves it to "Done".
 - Issues, PR descriptions and comments start with a concise version that says the details are folded below:
 
