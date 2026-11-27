@@ -207,6 +207,7 @@ function Model(
         progress_name = "Simulating",
         progress_steps = 100,
         save_everystep = false,
+        step_limiter = limit_flow!,
         callback,
         tstops,
         isoutofdomain,

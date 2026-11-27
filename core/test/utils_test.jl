@@ -362,6 +362,7 @@ end
 
     @test alg isa NordsieckBDF
     @test alg.step_limiter! == Ribasim.limit_flow!
+    @test model.integrator.opts.step_limiter! == Ribasim.limit_flow!
     @test alg.nlsolve == NLNewton()
     @test alg.linsolve ==
         Ribasim.config.RibasimLinearSolve(KLUFactorization(; check_pattern = false), true)

@@ -466,7 +466,11 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
         kwargs[:autodiff] = get_ad_type(solver)
     end
 
-    if function_accepts_kwarg(algotype, :step_limiter!)
+    # The `step_limiter` passed to `init` only runs after a step is accepted. NordsieckBDF
+    # builds its history from the state before that, so the next step would continue from
+    # the unlimited state. Its own (deprecated) `step_limiter!` runs inside the step, before
+    # the error estimate and the history update.
+    if algotype <: NordsieckBDF
         kwargs[:step_limiter!] = Ribasim.limit_flow!
     end
 
