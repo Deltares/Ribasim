@@ -775,3 +775,24 @@ end
         end
     end
 end
+
+@testitem "Time dependent cache with a Dual t" begin
+    using Ribasim.ForwardDiff: Dual
+
+    # The time derivative of Rosenbrock methods calls the right hand side with a Dual t and a
+    # separate Dual copy of the time dependent cache
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/transient_pump_outlet/ribasim.toml")
+    @test ispath(toml_path) skip = true
+    model = Ribasim.Model(toml_path)
+    (; p, t) = model.integrator
+    nan_copy(x::AbstractVector{Float64}) = fill!(similar(x, Dual{Nothing, Float64, 1}), Dual(NaN, NaN))
+    nan_copy(x::NamedTuple) = map(nan_copy, x)
+    cache = nan_copy(p.time_dependent_cache)
+    p_dual = Ribasim.Parameters(p.p_independent, cache, p.current_basin_properties, p.p_mutable)
+    t_dual = Dual(t, 1.0)
+    cache.t_prev_call[1] = t_dual + 1
+    Ribasim.check_new_t!(p_dual, t_dual)
+    for values in (cache.pump..., cache.outlet...)
+        @test !any(isnan, values)
+    end
+end

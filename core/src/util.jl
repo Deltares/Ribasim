@@ -1221,13 +1221,21 @@ function update_time_dependent_cache!(p::Parameters, t::Float64)::Nothing
     return nothing
 end
 
-update_time_dependent_cache!(p::Parameters, t::Number)::Nothing = nothing
+# For the time derivative of Rosenbrock methods the cache is a separate copy with Dual numbers,
+# where none of the Pump and Outlet values are evaluated yet
+function update_time_dependent_cache!(p::Parameters, t::Number)::Nothing
+    (; p_mutable, p_independent, time_dependent_cache) = p
+    p_mutable.new_time_dependent_cache || return nothing
+    update_time_dependent_cache!(p_independent.pump, time_dependent_cache.pump, p, t, true)
+    update_time_dependent_cache!(p_independent.outlet, time_dependent_cache.outlet, p, t, true)
+    return nothing
+end
 
 function update_time_dependent_cache!(
         node::Union{Pump, Outlet},
         cache::NamedTuple,
         p::Parameters,
-        t::Float64,
+        t::Number,
         refresh::Bool,
     )::Nothing
     (; time_dependent_flow_rate, time_varying) = node
