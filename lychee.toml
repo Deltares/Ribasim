@@ -19,4 +19,6 @@ exclude = [
     'quarto-diagram/mermaid\.css$',
     # Quarto adds a .png extension to this embedded GitHub attachment, which then 404s
     '^https://github\.com/Deltares/Ribasim/assets/',
+    # The project board of the team is not public, so it gives a 404 without a login
+    '^https://github\.com/orgs/Deltares/projects/138/',
 ]
