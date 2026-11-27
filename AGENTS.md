@@ -28,6 +28,7 @@ pixi run test-ribasim-python  # Python tests
 pixi run generate-testmodels  # write the test models used by the tests
 pixi run codegen              # regenerate the Python schemas from the Julia schemas
 pixi run check                # formatting and linting hooks (prek)
+pixi run lint-julia           # Julia static analysis (LintApp.jl, JuliaLint.toml)
 pixi run docs                 # preview the docs
 ```
 
@@ -47,10 +48,11 @@ When a change may affect the allocation problems, delete `generated_testmodels/`
 
 ## Issues and pull requests
 
-Issues and PRs are on https://github.com/Deltares/Ribasim.
+Issues and PRs are on https://github.com/Deltares/Ribasim and planned on the [Team Hydro Core board](https://github.com/orgs/Deltares/projects/138/views/3).
 
-- Always open PRs as drafts (`gh pr create --draft`); the person you work for marks them ready.
-- A PR without an issue says in one line where it came from, such as a review or a failing model.
+- Before you start, find or create the issue and run `pixi run issue-status <number>`, so others can see what you work on. It assigns the issue to the person you work for and puts it "In progress" in the current iteration. If it says someone else is assigned, or that `gh` lacks the `project` scope, ask the person you work for.
+- A new issue says in one line where it came from, such as a review or a failing model.
+- Always open PRs as drafts (`gh pr create --draft`) that say `Closes #<number>`; the person you work for marks them ready and runs `pixi run issue-status <number> Review`. Closing the issue moves it to "Done".
 - Issues, PR descriptions and comments start with a concise version that says the details are folded below:
 
   ```md

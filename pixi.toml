@@ -76,7 +76,15 @@ typecheck = "ty check"
 check = "prek run --all-files"
 # First one can fix issues, second one is to check if all are fixed
 fix-check = "prek run --all-files || prek run --all-files"
-lint = { depends-on = ["check"] }
+# Julia static analysis with LintApp.jl, configured by JuliaLint.toml
+instantiate-linting = { cmd = "julia --startup-file=no --project=utils/linting --eval 'using Pkg; Pkg.instantiate()'" }
+lint-julia = { cmd = "julia --startup-file=no --project=utils/linting --module LintApp --no-progress .", depends-on = [
+    "instantiate-linting",
+] }
+lint-julia-sarif = { cmd = "julia --startup-file=no --project=utils/linting --module LintApp --no-progress --format sarif --output-file julialint-results.sarif .", depends-on = [
+    "instantiate-linting",
+] }
+lint = { depends-on = ["check", "lint-julia"] }
 # Build
 build = { "cmd" = "julia --startup-file=no --project build/build.jl", depends-on = [
     "generate-testmodels",
@@ -182,6 +190,8 @@ migrate-model = "python utils/migrate_model.py"
 filter-model = "python utils/filter_model.py"
 # Release
 github-release = "python utils/github-release.py"
+# GitHub project board
+issue-status = "python utils/issue_status.py"
 
 # QGIS plugin installation, this doesn't need QGIS itself
 [tasks.install-ribasim-qgis]

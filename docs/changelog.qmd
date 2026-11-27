@@ -6,9 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- QGIS: Plot the fractional flow of a selected node, such as a Pump or a Junction, and of the flow an Observation node observes, together with the observed flow. [#3446](https://github.com/Deltares/Ribasim/pull/3446)
 - ContinuousControl can listen to flows set by other ContinuousControl or PidControl nodes, also via Junctions. Before, such a flow was read as 0 without an error. A circular dependency in the control of flows is now an error. [#3408](https://github.com/Deltares/Ribasim/issues/3408)
 - The reduced linear solve is now exact for chained control, so the Newton iterations of models where ContinuousControl listens to a flow set by ContinuousControl or PidControl converge as fast as those without.
 - Add `[logging] progress` TOML option and `RIBASIM_PROGRESS` environment variable, which takes precedence, to disable the progress bar, which avoids repeated progress lines in logs and documentation. [#3111](https://github.com/Deltares/Ribasim/issues/3111)
+- Python: `Model.plot` draws the Basin and FlowBoundary areas, toggled with `indicate_areas`, and the legend can be left out with `legend=False`.
 
 ### Changed
 - Python: building a model with `add` is faster, especially for large models: about 40% faster for 10 000 nodes. [#1245](https://github.com/Deltares/Ribasim/issues/1245)
@@ -24,13 +26,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 - Long simulations of large rivers no longer stop with `Unstable` after some years. The cumulative flows are now reset before their floating point rounding approaches `solver.abstol`, without restarting the solver. [#3442](https://github.com/Deltares/Ribasim/pull/3442)
-
-### Fixed
 - Stricter input validation: an unknown `node_id` in `Basin / subgrid` or `Basin / subgrid_time` now stops the model with a clear error, where the first only logged an error and dropped the subgrid element, and the second crashed. A ContinuousControl function with a single data point and a missing value in a required column now also give a clear error. [#3449](https://github.com/Deltares/Ribasim/pull/3449)
 - Allow repeated `subgrid_level` values in `Basin / subgrid` and `Basin / subgrid_time`, which give a flat segment in the relation from Basin level to subgrid level. Subgrid elements with such values were rejected before. [#3449](https://github.com/Deltares/Ribasim/pull/3449)
 - Allocation: the error for an infeasible allocation problem now lists the incompatible constraints, this list was empty. [#3449](https://github.com/Deltares/Ribasim/pull/3449)
 - Junction: a model with 512 or more separate groups of Junctions with rows in `Junction / static` no longer stops with an error when run with multiple threads. [#3480](https://github.com/Deltares/Ribasim/pull/3480)
 - Long simulations of large models initialize quickly again. In v2026.2.0-rc1 the initialization time grew quadratically with the number of Basins. A 3-year run with 20 000 Basins took 7 minutes to start instead of 20 seconds. [#3484](https://github.com/Deltares/Ribasim/pull/3484)
+- QGIS: The fractional flow plot follows the water through Junctions with rows in `Junction / static`, also into Junctions without rows, and takes the tracers of FlowBoundary, LevelBoundary and UserDemand nodes into account. Without concentration results it says that it needs them, instead of that it could not find a Basin. [#3446](https://github.com/Deltares/Ribasim/pull/3446)
+- Python: `Model.plot` lists the node types in the legend again, draws one direction marker per link instead of one per segment, and keeps node icons the same size at any DPI.
+- QGIS: FlowBoundary areas are orange, like the FlowBoundary node, instead of the old purple.
 
 ## [v2026.2.0-rc1] - 2026-11-11
 

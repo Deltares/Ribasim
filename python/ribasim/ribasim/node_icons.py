@@ -11,8 +11,11 @@ from typing import Any
 import matplotlib.patches as mpatches
 import numpy as np
 from matplotlib.axes import Axes
+from matplotlib.legend import Legend
+from matplotlib.legend_handler import HandlerBase
+from matplotlib.lines import Line2D
 from matplotlib.markers import MarkerStyle
-from matplotlib.offsetbox import AuxTransformBox
+from matplotlib.offsetbox import DrawingArea
 from matplotlib.patches import PathPatch
 from matplotlib.path import Path as MplPath
 from matplotlib.transforms import Affine2D
@@ -231,30 +234,73 @@ def draw_icon(ax: Axes, shape: str, color: str) -> None:
     ax.axis("off")
 
 
-def make_icon_box(node_type: str, size: float = 17.0) -> AuxTransformBox:
+def _icon_shape_and_color(node_type: str) -> tuple[str, str]:
+    """Return the icon shape code and color of *node_type*, a black dot if unknown."""
+    spec = NODE_ICON_BY_PASCAL.get(node_type)
+    if spec is None:
+        return "o", "k"
+    return spec.shape_code, spec.color
+
+
+def make_icon_box(node_type: str, size: float = 12.0) -> DrawingArea:
     """Create a vector OffsetBox containing the node icon as patches.
 
-    Returns an ``AuxTransformBox`` suitable for use inside an
-    ``AnnotationBbox``.  The patches are the same as those drawn by
-    ``draw_icon`` but scaled to *size* display-points so they remain a
-    constant screen size regardless of zoom.
+    Returns a ``DrawingArea`` suitable for use inside an ``AnnotationBbox``.
+    The patches are the same as those drawn by ``draw_icon`` but scaled to
+    *size* points, so they keep the same physical size regardless of zoom and
+    figure DPI.
 
     Parameters
     ----------
     node_type : str
         PascalCase node type name (e.g. ``"Basin"``).
     size : float
-        Box width/height in display points.
+        Box width/height in points.
     """
-    spec = NODE_ICON_BY_PASCAL.get(node_type)
-    if spec is None:
-        shape_code = "o"
-        color = "k"
-    else:
-        shape_code = spec.shape_code
-        color = spec.color
-
-    box = AuxTransformBox(Affine2D().scale(size))
+    shape_code, color = _icon_shape_and_color(node_type)
+    box = DrawingArea(size, size)
+    # Patches are defined around the origin in [-0.5, 0.5] space, the
+    # DrawingArea spans [0, size] points.
+    to_box = Affine2D().scale(size).translate(size / 2, size / 2) + box.get_transform()
     for patch in _create_icon_patches(shape_code, color, linewidth=STROKE_WIDTH_PLOT):
+        patch.set_transform(to_box)
         box.add_artist(patch)
     return box
+
+
+class NodeIconLegendEntry(Line2D):
+    """Invisible stand-in that adds a node type with its icon to the legend.
+
+    Node icons are drawn as ``AnnotationBbox`` artists, which Matplotlib does not
+    collect for the legend. Adding this empty line to the axes makes
+    ``ax.legend()`` and ``ax.get_legend_handles_labels()`` list the node type,
+    drawn by `HandlerNodeIcon`.
+    """
+
+    def __init__(self, node_type: str):
+        super().__init__([], [], label=node_type)
+        self.node_type = node_type
+
+
+class HandlerNodeIcon(HandlerBase):
+    """Legend handler that draws the icon of a `NodeIconLegendEntry`."""
+
+    def create_artists(
+        self, legend, orig_handle, xdescent, ydescent, width, height, fontsize, trans
+    ):
+        """Return the icon patches, centered in the legend handle box."""
+        shape_code, color = _icon_shape_and_color(orig_handle.node_type)
+        size = 1.5 * height
+        transform = (
+            Affine2D()
+            .scale(size)
+            .translate(width / 2 - xdescent, height / 2 - ydescent)
+            + trans
+        )
+        patches = _create_icon_patches(shape_code, color, linewidth=STROKE_WIDTH_PLOT)
+        for patch in patches:
+            patch.set_transform(transform)
+        return patches
+
+
+Legend.update_default_handler_map({NodeIconLegendEntry: HandlerNodeIcon()})
