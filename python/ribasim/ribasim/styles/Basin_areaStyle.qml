@@ -13,7 +13,7 @@
     <layer enabled="1" locked="0" class="GradientFill" id="{d4360ce4-7709-4e1c-a383-3489a024a12a}" pass="0">
      <Option type="Map">
       <Option name="angle" type="QString" value="0"/>
-      <Option name="color" type="QString" value="0,0,255,255,rgb:0,0,1,1"/>
+      <Option name="color" type="QString" value="0,114,178,255,rgb:0,0.44705882352941179,0.69803921568627447,1"/>
       <Option name="color1" type="QString" value="247,251,255,255,rgb:0.96862745098039216,0.98431372549019602,1,1"/>
       <Option name="color2" type="QString" value="8,48,107,255,rgb:0.03137254901960784,0.18823529411764706,0.41960784313725491,1"/>
       <Option name="color_type" type="QString" value="1"/>

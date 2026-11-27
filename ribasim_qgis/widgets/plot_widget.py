@@ -2,8 +2,10 @@
 
 import importlib.resources
 import json
+import re
 from collections import defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Collection
+from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
@@ -20,6 +22,9 @@ from qgis.PyQt.QtWidgets import (
     QWidget,
     QWidgetAction,
 )
+
+from ribasim_qgis.core.junctions import FLOW_RATE_NODE_TYPES, FlowGraph
+from ribasim_qgis.core.tracer_flow import TracerFlows
 
 # Keep optional imports always bound for static typing.
 go: Any = None
@@ -39,6 +44,7 @@ else:
 try:
     import plotly.graph_objs as go
     import plotly.offline as po
+    from plotly.colors import qualitative
     from plotly.subplots import make_subplots
 
     HAS_PLOTLY = True
@@ -140,6 +146,29 @@ VariableTraces = dict[str, Trace]
 # Full plot payload: file -> variable -> traces.
 PlotData = dict[str, dict[str, VariableTraces]]
 
+
+@dataclass
+class _FractionalFlows:
+    """The tracer flows of the selection in the fractional flow plot.
+
+    Attributes
+    ----------
+    time:
+        The times of the tracer flows.
+    tracers:
+        Substance -> tracer flow over time.
+    lines:
+        The flows to draw on top of the tracers, as ``(name, trace, color)``.
+    drawn:
+        The ``(file, variable)`` keys of these lines, to leave out of the extra rows.
+    """
+
+    time: np.ndarray
+    tracers: dict[str, np.ndarray]
+    lines: list[tuple[str, Trace, str]]
+    drawn: set[tuple[str, str]]
+
+
 _PLACEHOLDER_DEFAULT = "Select nodes and/or links on the map to plot timeseries."
 _PLACEHOLDER_WATER_BALANCE = (
     "Basin water balance requires exactly one Basin node selection."
@@ -147,19 +176,32 @@ _PLACEHOLDER_WATER_BALANCE = (
 _PLACEHOLDER_FRACTIONAL_STORAGE = (
     "Fractional storage requires exactly one Basin node selection."
 )
-_PLACEHOLDER_FRACTIONAL_FLOW = "Fractional flow requires exactly one link selection."
-_PLACEHOLDER_FRACTIONAL_FLOW_NO_BASIN = (
-    "Fractional flow: could not find a Basin on either side of the selected link."
+_PLACEHOLDER_FRACTIONAL_FLOW = (
+    "Fractional flow requires exactly one link or node selection, "
+    "other than a Basin, LevelBoundary or control node."
 )
-
-_TRAVERSABLE_NODE_TYPES: frozenset[str] = frozenset(
-    {
-        "TabulatedRatingCurve",
-        "Outlet",
-        "Pump",
-        "LinearResistance",
-        "ManningResistance",
-    }
+_PLACEHOLDER_FRACTIONAL_FLOW_NO_CONCENTRATION = (
+    "Fractional flow requires concentration results: "
+    "enable `experimental.concentration` and run the model."
+)
+_PLACEHOLDER_FRACTIONAL_FLOW_OBSERVATION = (
+    "Fractional flow requires an Observation node that observes "
+    "a flow_rate, inflow_rate or outflow_rate."
+)
+_PLACEHOLDER_FRACTIONAL_FLOW_UNKNOWN = (
+    "Fractional flow: could not determine where the water of the selection comes from."
+)
+# The name of a flow trace, like "Link #4" or "Pump #5 flow_rate".
+_FLOW_TRACE_NAME = re.compile(r"(?P<entity>\w+) #(?P<id>\d+)")
+# The flow of a selected node that the fractional flow plot splits, as its flow traces
+# name it.
+_NODE_FLOW_VARIABLE: dict[str, str] = dict.fromkeys(
+    FLOW_RATE_NODE_TYPES, "flow_rate"
+) | {"UserDemand": "inflow_rate", "Terminal": "inflow_rate"}
+_OBSERVATION_FLOW_VARIABLES: tuple[str, ...] = (
+    "flow_rate",
+    "inflow_rate",
+    "outflow_rate",
 )
 
 _DEFAULT_TRACERS: tuple[str, ...] = (
@@ -360,6 +402,9 @@ class PlotWidget(QWidget):
         concentration_for_node_getter: Callable[[int], dict[str, Trace] | None]
         | None = None,
         flow_for_link_getter: Callable[[int], Trace | None] | None = None,
+        junctions_in_static_getter: Callable[[], Collection[int]] | None = None,
+        input_concentration_getter: Callable[[int], dict[str, np.ndarray] | None]
+        | None = None,
     ):
         super().__init__(parent)
         layout = QVBoxLayout(self)
@@ -379,6 +424,8 @@ class PlotWidget(QWidget):
         self._iface = iface
         self._node_layer_getter = node_layer_getter
         self._link_layer_getter = link_layer_getter
+        self._junctions_in_static_getter = junctions_in_static_getter
+        self._input_concentration_getter = input_concentration_getter
 
         row.addWidget(QLabel("Select"))
 
@@ -1178,230 +1225,176 @@ class PlotWidget(QWidget):
 
     # --- Fractional flow helpers ---
 
-    def _get_link_endpoints(self, link_id: int) -> tuple[int, int] | None:
-        """Return (from_node_id, to_node_id) for *link_id* via the QGIS link layer."""
-        if self._link_layer_getter is None:
-            return None
-        layer = self._link_layer_getter()
-        if layer is None:
-            return None
-        from qgis.core import QgsFeatureRequest
+    def _junctions_in_static(self) -> Collection[int]:
+        """Return the Junctions with rows in Junction / static, which are not in a group."""
+        getter = self._junctions_in_static_getter
+        return frozenset() if getter is None else getter()
 
-        request = QgsFeatureRequest().setFilterExpression(f'"link_id" = {int(link_id)}')
-        for feat in layer.getFeatures(request):
-            return int(feat["from_node_id"]), int(feat["to_node_id"])
-        return None
-
-    def _get_node_type(self, node_id: int) -> str | None:
-        """Look up node_type for *node_id* via the QGIS node layer."""
-        if self._node_layer_getter is None:
-            return None
-        layer = self._node_layer_getter()
-        if layer is None:
-            return None
-        from qgis.core import QgsFeatureRequest
-
-        request = QgsFeatureRequest().setFilterExpression(f'"node_id" = {int(node_id)}')
-        for feat in layer.getFeatures(request):
-            return str(feat["node_type"])
-        return None
-
-    def _traverse_connector(
-        self, connector_node_id: int, current_link_id: int
-    ) -> tuple[int, int] | None:
-        """Traverse a connector node and return ``(far_node_id, link_id)``.
-
-        Returns the node on the other side of the connector together with the
-        link that connects them, or ``None`` when the layer is unavailable.
-        """
-        if self._link_layer_getter is None:
-            return None
-        layer = self._link_layer_getter()
-        if layer is None:
-            return None
-        from qgis.core import QgsFeatureRequest
-
-        expr = (
-            f'"from_node_id" = {int(connector_node_id)} '
-            f'OR "to_node_id" = {int(connector_node_id)}'
-        )
-        request = QgsFeatureRequest().setFilterExpression(expr)
-        for feat in layer.getFeatures(request):
-            lid = int(feat["link_id"])
-            if lid == current_link_id:
-                continue
-            from_id = int(feat["from_node_id"])
-            to_id = int(feat["to_node_id"])
-            far_node = to_id if from_id == connector_node_id else from_id
-            return far_node, lid
-        return None
-
-    def _resolve_junction_sources(
-        self, junction_id: int, arrival_link_id: int
-    ) -> list[tuple[int, int, int]]:
-        """Find Basin sources feeding a Junction node.
-
-        Returns a list of ``(basin_id, link_id, inflow_sign)`` tuples where
-        *inflow_sign* is ``+1`` when positive flow on *link_id* means flow
-        towards *junction_id*, and ``-1`` otherwise.
-
-        Traverses connectors and chained Junctions recursively.
-        """
-        if self._link_layer_getter is None:
-            return []
-        layer = self._link_layer_getter()
-        if layer is None:
-            return []
-        return self._collect_junction_sources(
-            junction_id, arrival_link_id, layer, set()
-        )
-
-    def _collect_junction_sources(
-        self,
-        junction_id: int,
-        arrival_link_id: int,
-        link_layer: Any,
-        visited: set[int],
-    ) -> list[tuple[int, int, int]]:
-        """Recursive helper for :meth:`_resolve_junction_sources`."""
-        from qgis.core import QgsFeatureRequest
-
-        visited = visited | {junction_id}
-        expr = (
-            f'"from_node_id" = {int(junction_id)} OR "to_node_id" = {int(junction_id)}'
-        )
-        request = QgsFeatureRequest().setFilterExpression(expr)
-        # Materialise the iterator so nested getFeatures calls on the same
-        # layer don't interfere with the outer iteration.
-        neighbours: list[tuple[int, int, int]] = []
-        for feat in link_layer.getFeatures(request):
-            lid = int(feat["link_id"])
-            if lid == arrival_link_id:
-                continue
-            from_id = int(feat["from_node_id"])
-            to_id = int(feat["to_node_id"])
-            if from_id == junction_id:
-                neighbours.append((to_id, lid, -1))
-            else:
-                neighbours.append((from_id, lid, 1))
-
-        sources: list[tuple[int, int, int]] = []
-        for far_node, lid, inflow_sign in neighbours:
-            # Traverse through connectors to reach the actual source node.
-            resolved_node, resolved_lid = far_node, lid
-            resolved_type = self._get_node_type(far_node)
-            while resolved_type in _TRAVERSABLE_NODE_TYPES:
-                step = self._traverse_connector(resolved_node, resolved_lid)
-                if step is None:
-                    break
-                resolved_node, resolved_lid = step
-                resolved_type = self._get_node_type(resolved_node)
-
-            if resolved_type == "Basin":
-                sources.append((resolved_node, lid, inflow_sign))
-            elif resolved_type == "Junction" and resolved_node not in visited:
-                sources.extend(
-                    self._collect_junction_sources(
-                        resolved_node,
-                        resolved_lid,
-                        link_layer,
-                        visited,
-                    )
-                )
-        return sources
-
-    def _build_junction_concentration(
-        self,
-        sources: list[tuple[int, int, int]],
-        n_timesteps: int,
-        flow_time: np.ndarray,
-    ) -> dict[str, Trace] | None:
-        """Build synthetic concentration for a Junction from its source links.
-
-        For each substance, the effective concentration is the flow-weighted
-        average of concentrations from the source Basins (using only inflow,
-        i.e. flow directed towards the Junction).
-        """
+    def _tracer_flows(self, n_time: int) -> TracerFlows | None:
+        """Return the tracer flows of the model, or ``None`` if it is not available."""
+        concentration_getter = self._concentration_for_node_getter
+        flow_getter = self._flow_for_link_getter
         if (
-            not sources
-            or self._concentration_for_node_getter is None
-            or self._flow_for_link_getter is None
+            self._node_layer_getter is None
+            or self._link_layer_getter is None
+            or concentration_getter is None
+            or flow_getter is None
         ):
             return None
-
-        # Gather (conc_dict, inflow_array) per source.
-        source_data: list[tuple[dict[str, Trace], np.ndarray]] = []
-        for basin_id, link_id, inflow_sign in sources:
-            conc = self._concentration_for_node_getter(basin_id)
-            flow_trace = self._flow_for_link_getter(link_id)
-            if conc is None or flow_trace is None:
-                continue
-            _, flow_arr = flow_trace
-            if len(flow_arr) != n_timesteps:
-                continue
-            inflow = flow_arr * inflow_sign  # positive = towards junction
-            source_data.append((conc, inflow))
-
-        if not source_data:
+        node_layer = self._node_layer_getter()
+        link_layer = self._link_layer_getter()
+        if node_layer is None or link_layer is None:
             return None
 
-        all_substances: set[str] = set()
-        for conc, _ in source_data:
-            all_substances.update(conc.keys())
+        def basin_concentration(node_id: int) -> dict[str, np.ndarray] | None:
+            traces = concentration_getter(node_id)
+            if traces is None:
+                return None
+            return {substance: values for substance, (_, values) in traces.items()}
 
-        # Total positive inflow at each timestep.
-        total_inflow = np.zeros(n_timesteps)
-        for _, inflow in source_data:
-            total_inflow += np.maximum(inflow, 0)
+        def flow(link_id: int) -> np.ndarray | None:
+            trace = flow_getter(link_id)
+            return None if trace is None else trace[1]
 
-        safe_total = np.where(total_inflow > 0, total_inflow, 1.0)
+        return TracerFlows(
+            FlowGraph(node_layer, link_layer, self._junctions_in_static()),
+            flow,
+            basin_concentration,
+            n_time,
+            self._available.get("concentration", ()),
+            self._input_concentration_getter,
+        )
 
-        result: dict[str, Trace] = {}
-        for substance in all_substances:
-            weighted = np.zeros(n_timesteps)
-            for conc_dict, inflow in source_data:
-                if substance in conc_dict:
-                    _, conc_arr = conc_dict[substance]
-                    if len(conc_arr) == n_timesteps:
-                        weighted += conc_arr * np.maximum(inflow, 0)
-            effective = np.where(total_inflow > 0, weighted / safe_total, 0.0)
-            result[substance] = (flow_time, effective)
-
-        return result or None
-
-    def _endpoint_concentration(
+    def _add_fractional_flow_traces(
         self,
-        node_id: int,
-        link_id: int,
-        n_timesteps: int,
+        fig,
         flow_time: np.ndarray,
-    ) -> dict[str, Trace] | None:
-        """Resolve a link endpoint to concentration data.
+        values: np.ndarray,
+        substance: str,
+        color: str,
+    ) -> None:
+        """Stack the positive part of a tracer flow above zero and the negative below.
 
-        Handles Basin (direct lookup), traversable connectors, and Junction
-        nodes (flow-weighted average of source Basin concentrations).
-        Connectors are traversed iteratively so that chains like
-        ``Basin → Junction → ManningResistance → ...`` are supported.
+        The negative part only has a trace if it occurs. The first trace has the
+        legend entry and the hover label with the signed value for both.
         """
-        cur_node, cur_link = node_id, link_id
-        while True:
-            node_type = self._get_node_type(cur_node)
-            if node_type == "Basin":
-                if self._concentration_for_node_getter is None:
-                    return None
-                return self._concentration_for_node_getter(cur_node)
-            if node_type == "Junction":
-                sources = self._resolve_junction_sources(cur_node, cur_link)
-                return self._build_junction_concentration(
-                    sources, n_timesteps, flow_time
+        x_data, positive = self._to_plotly_xy(flow_time, np.maximum(values, 0.0))
+        _, signed = self._to_plotly_xy(flow_time, values)
+        fig.add_trace(
+            go.Scatter(
+                x=x_data,
+                y=positive,
+                customdata=signed,
+                mode="lines",
+                stackgroup="positive",
+                hoveron="points+fills",
+                line={"width": 0, "color": color},
+                name=substance,
+                legendgroup=substance,
+                hovertemplate=f"{substance}: %{{customdata:.3e}}<extra></extra>",
+            ),
+            row=1,
+            col=1,
+        )
+        if np.any(values < 0.0):
+            _, negative = self._to_plotly_xy(flow_time, np.minimum(values, 0.0))
+            fig.add_trace(
+                go.Scatter(
+                    x=x_data,
+                    y=negative,
+                    mode="lines",
+                    stackgroup="negative",
+                    hoverinfo="skip",
+                    line={"width": 0, "color": color},
+                    name=substance,
+                    legendgroup=substance,
+                    showlegend=False,
+                ),
+                row=1,
+                col=1,
+            )
+
+    def _selected_fractional_flows(self) -> _FractionalFlows | str:
+        """Return the tracer flows of the selection, or else the placeholder text."""
+        # The flow traces of a link are named "Link #4", those of a node after the node,
+        # like "Pump #5 flow_rate", and those of an Observation node after that node.
+        flow_rate_traces = self._plot_data.get("flow", {}).get("flow_rate", {})
+        observation_data = self._plot_data.get("observation", {})
+        trace_names = [*flow_rate_traces]
+        for traces in observation_data.values():
+            trace_names.extend(traces)
+        selections = {
+            (match["entity"], int(match["id"]))
+            for match in map(_FLOW_TRACE_NAME.match, trace_names)
+            if match is not None
+        }
+        entity, entity_id = selections.pop() if len(selections) == 1 else ("", 0)
+        if entity not in ("Link", "Observation", *_NODE_FLOW_VARIABLE):
+            return _PLACEHOLDER_FRACTIONAL_FLOW
+        if "concentration" not in self._available:
+            return _PLACEHOLDER_FRACTIONAL_FLOW_NO_CONCENTRATION
+
+        if entity == "Link":
+            time, values = flow_rate_traces[f"Link #{entity_id}"]
+            tracer_flows = self._tracer_flows(len(time))
+            tracers = None if tracer_flows is None else tracer_flows.link(entity_id)
+            lines = [("flow_rate", (time, values), "black")]
+            drawn = set()
+        elif entity == "Observation":
+            # Split the simulated flow of the observed node, with the observed flow
+            # in black and the simulated flow in red, like in the standard plot.
+            name = f"Observation #{entity_id}"
+            variable = next(
+                (
+                    v
+                    for v in _OBSERVATION_FLOW_VARIABLES
+                    if f"{name} simulated {v}" in observation_data.get(v, {})
+                ),
+                None,
+            )
+            if variable is None:
+                return _PLACEHOLDER_FRACTIONAL_FLOW_OBSERVATION
+            traces = observation_data[variable]
+            time = traces[f"{name} simulated {variable}"][0]
+            tracer_flows = self._tracer_flows(len(time))
+            target = (
+                None
+                if tracer_flows is None
+                else tracer_flows.graph.observed_node(entity_id)
+            )
+            node_flows = (
+                None
+                if tracer_flows is None or target is None
+                else tracer_flows.node(target, variable)
+            )
+            tracers = None if node_flows is None else node_flows[1]
+            lines = [
+                (trace_name, traces[trace_name], color)
+                for trace_name, color in (
+                    (f"{name} simulated {variable}", "red"),
+                    (f"{name} observed {variable}", "black"),
                 )
-            if node_type in _TRAVERSABLE_NODE_TYPES:
-                far = self._traverse_connector(cur_node, cur_link)
-                if far is None:
-                    return None
-                cur_node, cur_link = far
-                continue
-            return None
+                if trace_name in traces
+            ]
+            drawn = {("observation", variable)}
+        else:
+            variable = _NODE_FLOW_VARIABLE[entity]
+            time = next(iter(flow_rate_traces.values()))[0]
+            tracer_flows = self._tracer_flows(len(time))
+            node_flows = (
+                None if tracer_flows is None else tracer_flows.node(entity_id, variable)
+            )
+            tracers = None if node_flows is None else node_flows[1]
+            lines = (
+                []
+                if node_flows is None
+                else [(variable, (time, node_flows[0]), "black")]
+            )
+            drawn = set()
+
+        if not tracers:
+            return _PLACEHOLDER_FRACTIONAL_FLOW_UNKNOWN
+        return _FractionalFlows(time, tracers, lines, drawn)
 
     def _redraw_fractional_flow(
         self, selected_keys: list[tuple[str, str]], config: dict[str, bool | list[str]]
@@ -1409,60 +1402,18 @@ class PlotWidget(QWidget):
         if not self._plot_data:
             self._show_placeholder(self._placeholder_for_current_preset())
             return
-
-        # Need exactly one link in flow data. Trace names that don't start
-        # with `"Link #"` originate from a node selection (e.g.
-        # `"TabulatedRatingCurve #5"`) and are ignored here.
-        flow_data = self._plot_data.get("flow", {})
-        flow_rate_traces = {
-            name: trace
-            for name, trace in flow_data.get("flow_rate", {}).items()
-            if name.startswith("Link #")
-        }
-        if len(flow_rate_traces) != 1:
-            self._show_placeholder(_PLACEHOLDER_FRACTIONAL_FLOW)
+        selection = self._selected_fractional_flows()
+        if isinstance(selection, str):
+            self._show_placeholder(selection)
             return
-
-        trace_name = next(iter(flow_rate_traces))
-        link_id = int(trace_name.removeprefix("Link #"))
-        flow_time, flow_values = flow_rate_traces[trace_name]
-
-        # Resolve both endpoints to Basins (traversing connectors).
-        endpoints = self._get_link_endpoints(link_id)
-        if endpoints is None:
-            self._show_placeholder(_PLACEHOLDER_FRACTIONAL_FLOW)
-            return
-
-        from_node_id, to_node_id = endpoints
-        n_timesteps = len(flow_values)
-
-        from_conc = self._endpoint_concentration(
-            from_node_id, link_id, n_timesteps, flow_time
-        )
-        to_conc = self._endpoint_concentration(
-            to_node_id, link_id, n_timesteps, flow_time
-        )
-
-        if not from_conc and not to_conc:
-            self._show_placeholder(_PLACEHOLDER_FRACTIONAL_FLOW_NO_BASIN)
-            return
-
-        available_substances: set[str] = set()
-        if from_conc:
-            available_substances.update(from_conc)
-        if to_conc:
-            available_substances.update(to_conc)
 
         selected_substances = self._selected_tracers(
-            selected_keys, available_substances
+            selected_keys, set(selection.tracers)
         )
 
-        # Build a boolean mask: True where flow is positive (from→to).
-        positive_mask = flow_values >= 0
-
-        # Extra traces — exclude concentration and flow files.
+        # The other selected variables in extra rows, without the flows drawn here.
         traces_by_unit = self._collect_standard_traces(
-            selected_keys,
+            [key for key in selected_keys if key not in selection.drawn],
             excluded_files={"concentration", "flow"},
         )
 
@@ -1475,38 +1426,13 @@ class PlotWidget(QWidget):
         )
         used = 0
 
+        colors = qualitative.Plotly
         for substance in reversed(selected_substances):
-            # Build per-timestep concentration from the appropriate basin.
-            from_vals = from_conc.get(substance) if from_conc else None
-            to_vals = to_conc.get(substance) if to_conc else None
-            if from_vals is None and to_vals is None:
+            values = selection.tracers.get(substance)
+            if values is None:
                 continue
-
-            conc = np.zeros_like(flow_values)
-            if from_vals is not None:
-                _ft, fv = from_vals
-                if len(fv) == len(flow_values):
-                    conc = np.where(positive_mask, fv, conc)
-            if to_vals is not None:
-                _tt, tv = to_vals
-                if len(tv) == len(flow_values):
-                    conc = np.where(~positive_mask, tv, conc)
-
-            fractional_values = conc * flow_values
-            x_data, y_data = self._to_plotly_xy(flow_time, fractional_values)
-            fig.add_trace(
-                go.Scatter(
-                    x=x_data,
-                    y=y_data,
-                    mode="lines",
-                    stackgroup="fractions",
-                    hoveron="points+fills",
-                    line={"width": 0},
-                    name=substance,
-                    hovertemplate=self._hover_template(substance),
-                ),
-                row=1,
-                col=1,
+            self._add_fractional_flow_traces(
+                fig, selection.time, values, substance, colors[used % len(colors)]
             )
             used += 1
 
@@ -1514,20 +1440,21 @@ class PlotWidget(QWidget):
             self._show_placeholder(_PLACEHOLDER_FRACTIONAL_FLOW)
             return
 
-        # Total flow_rate as a black line on top.
-        x_flow, y_flow = self._to_plotly_xy(flow_time, flow_values)
-        fig.add_trace(
-            go.Scatter(
-                x=x_flow,
-                y=y_flow,
-                mode="lines",
-                line={"color": "black", "width": 1.5},
-                name="flow_rate",
-                hovertemplate=self._hover_template("flow_rate"),
-            ),
-            row=1,
-            col=1,
-        )
+        # The flows that the tracers make up as lines on top.
+        for name, (x, y), color in selection.lines:
+            x_data, y_data = self._to_plotly_xy(x, y)
+            fig.add_trace(
+                go.Scatter(
+                    x=x_data,
+                    y=y_data,
+                    mode="lines",
+                    line={"color": color, "width": 1.5},
+                    name=name,
+                    hovertemplate=self._hover_template(name),
+                ),
+                row=1,
+                col=1,
+            )
 
         flow_units = self._units.get("flow", {})
         yaxis_title = flow_units.get("flow_rate", "m3 s-1")

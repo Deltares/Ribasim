@@ -27,3 +27,9 @@ No tables are required for Terminal nodes.
 # Equations
 
 The incoming node determines the flow into the Terminal node.
+
+# Behavior in allocation
+
+In [allocation](/concept/allocation.qmd) a Terminal can receive any amount of water.
+Allocation cannot steer the flow into a Terminal directly: it is determined by the node upstream of it.
+Water that flows into a Terminal leaves the model and can no longer be used to supply demands.

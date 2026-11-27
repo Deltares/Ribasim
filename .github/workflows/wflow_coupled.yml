@@ -64,7 +64,7 @@ jobs:
           git config --global \
             url."https://x-access-token:${HYDROMT_RIBASIM_TOKEN}@github.com/Deltares-research/hydromt_ribasim".insteadOf \
             "https://github.com/Deltares-research/hydromt_ribasim"
-      - uses: prefix-dev/setup-pixi@ad1da6449d9e506fd127fd67ab2d054a769f6a94 # v0.11.2
+      - uses: prefix-dev/setup-pixi@9936258fee697aff89b3fed6ca1f80a382ef694e # v0.11.3
         with:
           pixi-version: "latest"
           environments: wflow-coupled

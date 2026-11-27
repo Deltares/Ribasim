@@ -49,6 +49,7 @@ export algorithm,
     table_types,
     showexperimental,
     use_reduced_implicit_solve,
+    show_progress,
     reduced_implicit_solve_algorithms
 
 "Schema.Basin.State -> :Basin"
@@ -106,7 +107,7 @@ node_id_relation(::Type{Schema.Basin.ConcentrationExternal}) = :subset
 node_id_relation(::Type{Schema.Basin.ConcentrationState}) = :subset
 node_id_relation(::Type{Schema.FlowBoundary.Concentration}) = :subset
 node_id_relation(::Type{Schema.LevelBoundary.Concentration}) = :subset
-node_id_relation(::Type{Schema.UserDemand.Concentration}) = :subset
+node_id_relation(::Type{Schema.Junction.Static}) = :subset
 
 "[:Basin, Terminal, ...]"
 const node_types::Vector{Symbol} = filter(
@@ -210,13 +211,15 @@ end
 end
 
 @option struct Results <: TableOption
-    compression::Bool = false
+    compression::Bool = true
     compression_level::Int = 1
+    significant_bits::Int = 20
     subgrid::Bool = false
 end
 
 @option struct Logging <: TableOption
     verbosity::LogLevel = Info
+    progress::Union{Bool, Nothing} = nothing
 end
 
 @option struct RoutePriority <: TableOption
@@ -316,6 +319,12 @@ function validate_config(toml::Toml)::Nothing
 
     if toml.solver.discrete_control_interval < 0
         @error "The discrete_control_interval cannot be negative." toml.solver.discrete_control_interval
+        is_valid = false
+    end
+
+    if isnothing(Ribasim.parse_interpolation_type(toml.interpolation.flow_boundary))
+        options = join(Symbol.(instances(Ribasim.InterpolationType.T)), ", ")
+        @error "Invalid interpolation type '$(toml.interpolation.flow_boundary)' for flow_boundary, the options are: $options."
         is_valid = false
     end
 
@@ -462,6 +471,16 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
     end
 
     return algotype(; kwargs...)
+end
+
+"""
+Whether to show the progress bar. The `RIBASIM_PROGRESS` environment variable takes precedence,
+since whether a progress bar is useful depends on where the output goes. If it is not set,
+the `[logging] progress` setting is used, defaulting to true.
+"""
+function show_progress(logging::Logging)::Bool
+    default = something(logging.progress, true)
+    return Base.get_bool_env("RIBASIM_PROGRESS", default; throw = true)::Bool
 end
 
 """

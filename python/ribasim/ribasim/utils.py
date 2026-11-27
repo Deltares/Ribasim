@@ -4,6 +4,8 @@ from warnings import catch_warnings, filterwarnings
 
 import numpy as np
 import pandas as pd
+import shapely
+from numpy.typing import NDArray
 from pandera.typing import Series
 from pydantic import BaseModel, NonNegativeInt
 
@@ -12,6 +14,26 @@ def _pascal_to_snake(pascal_str):
     # Insert a '_' before all uppercase letters that are not at the start of the string
     # and convert the string to lowercase
     return re.sub(r"(?<!^)(?=[A-Z])", "_", pascal_str).lower()
+
+
+def _line_midpoint_direction(
+    lines: NDArray[np.object_],
+) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
+    """Return the x, y halfway along each line, and the direction of the line there.
+
+    The direction is the angle [degrees] counterclockwise from the positive x-axis.
+    """
+    length = shapely.length(lines)
+    half = 0.5 * length
+    mid = shapely.line_interpolate_point(lines, half)
+    # Points just before and after the midpoint give the local direction, also
+    # for lines with many vertices.
+    eps = 1e-6 * length
+    before = shapely.line_interpolate_point(lines, half - eps)
+    after = shapely.line_interpolate_point(lines, half + eps)
+    dx = shapely.get_x(after) - shapely.get_x(before)
+    dy = shapely.get_y(after) - shapely.get_y(before)
+    return shapely.get_x(mid), shapely.get_y(mid), np.degrees(np.arctan2(dy, dx))
 
 
 class MissingOptionalModule:
@@ -84,6 +106,20 @@ def _concat(dfs, **kwargs):
             category=FutureWarning,
         )
         return pd.concat(dfs, **kwargs)
+
+
+def _combine_string_chunks(df: pd.DataFrame, max_chunks: int = 64) -> None:
+    """Merge the chunks of Arrow-backed string columns in place, once there are many.
+
+    Every concatenation appends a chunk to such a column, and operations on it slow
+    down with the number of chunks. Merging copies the column, so it is only done
+    once more than `max_chunks` have piled up.
+    """
+    for column, dtype in df.dtypes.items():
+        if isinstance(dtype, pd.StringDtype) and dtype.storage.startswith("pyarrow"):
+            chunked = cast(Any, df[column].array).__arrow_array__()
+            if chunked.num_chunks > max_chunks:
+                df[column] = pd.array(df[column].to_numpy(), dtype=dtype)
 
 
 class UsedIDs(BaseModel):

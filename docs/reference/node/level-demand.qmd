@@ -43,3 +43,15 @@ table_from_schema(
     restrictions = Dict(:demand_priority => "positive"),
 )
 ```
+
+# Behavior in allocation
+
+A LevelDemand only has an effect with [allocation](/concept/allocation.qmd).
+For each connected Basin, allocation tries to keep the level between the minimum and maximum level of each demand priority.
+When the level is below the minimum level, the Basin has a demand for the water needed to reach it, which is met in the order of its demand priority.
+When the level is above the maximum level, the water above it is available to supply other demands.
+When there is not enough water for all Basins with the same priority, allocation divides the shortage so that the levels end up a similar distance below their minimum levels.
+
+In [`allocation.nc`](/reference/usage.qmd#sec-results) these demands are listed under the Basin, not the LevelDemand node.
+They are positive when the Basin is below its minimum level, and negative when the Basin has water to spare above its maximum level.
+Flow demands and level demands cannot have the same demand priority within a subnetwork.

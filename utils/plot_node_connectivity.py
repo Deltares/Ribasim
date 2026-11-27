@@ -71,9 +71,8 @@ def _plot_connectivity(node_types: list[str]) -> Figure:
                         model.link.add(central, neighbor)
 
     fig, ax = plt.subplots(figsize=(5, 30 if len(node_types) > 1 else 4))
-    model.plot(ax=ax, indicate_subnetworks=False, aspect_ratio_bound=0.05)
+    model.plot(ax=ax, indicate_subnetworks=False, aspect_ratio_bound=0.05, legend=False)
     ax.set_aspect("auto")
-    ax.get_legend().remove()
     if len(node_types) == 1:
         for collection in ax.collections:
             if isinstance(collection, LineCollection):
@@ -106,7 +105,7 @@ def _plot_connectivity(node_types: list[str]) -> Figure:
         is_upstream = node_id in upstream_ids
         ax.add_artist(
             AnnotationBbox(
-                make_icon_box(node["node_type"], size=44),
+                make_icon_box(node["node_type"], size=32),  # points
                 (node.geometry.x, node.geometry.y),
                 frameon=False,
                 pad=0,

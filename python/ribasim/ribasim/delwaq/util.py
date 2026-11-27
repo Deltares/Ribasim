@@ -212,7 +212,11 @@ def run_delwaq(
             cwd=model_dir.absolute(),
         )
     elif system == "Linux":
-        _run_subprocess([binfolder / "run_delwaq.sh", inp_path.absolute()])
+        # delwaq resolves its input and output files relative to the working directory
+        _run_subprocess(
+            [binfolder / "run_delwaq.sh", inp_path.absolute()],
+            cwd=model_dir.absolute(),
+        )
     else:
         raise OSError(f"No support for running Delwaq automatically on {system}.")
 

@@ -12,6 +12,8 @@ These pages contain the test models, node descriptions and Ribasim Python API do
 
 [![](/assets/node-icons/Basin.svg){height=80}<br>Basin](node/basin.qmd)
 
+[![](/assets/node-icons/Junction.svg){height=80}<br>Junction](node/junction.qmd)
+
 :::
 
 ### Connector
@@ -71,8 +73,6 @@ These pages contain the test models, node descriptions and Ribasim Python API do
 ### Other
 
 ::: {layout-ncol=3 style="text-align: center;"}
-
-[![](/assets/node-icons/Junction.svg){height=80}<br>Junction](node/junction.qmd)
 
 [![](/assets/node-icons/Observation.svg){height=80}<br>Observation](node/observation.qmd)
 

@@ -52,4 +52,5 @@ thread count is invalid.
 A value larger than one enables Julia's process-wide signal handlers. Julia requires these handlers
 for garbage collection safepoints when using multiple Julia threads, but they can conflict with
 signal handling in the embedding application. The default is one thread with Julia signal handling
-disabled.
+disabled. The Ribasim CLI is not affected by this, it calls `ribasim_enable_julia_signal_handlers` to
+let Julia handle Ctrl-C, so the results are written before stopping.

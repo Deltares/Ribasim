@@ -112,8 +112,9 @@ When your model exits with a message like so:
 the solver kept shrinking the timestep until it gave up.
 The convergence bottlenecks are logged in this case as well, and they name the node to start with.
 
+The results end at the last `saveat` before the error.
 To see what happened just before the model gave up, rerun with `saveat = 0` in the [solver](/reference/usage.qmd#sec-solver-settings) settings.
-All output up to the moment of the error is written, so the last few rows of `basin.nc`, `flow.nc` and `solver_stats.nc` show the state of the model as it went unstable.
+Then the results go up to the last timestep, so the last few rows of `basin.nc`, `flow.nc` and `solver_stats.nc` show the state of the model as it went unstable.
 The model might then instead exit with
 
 ```julia

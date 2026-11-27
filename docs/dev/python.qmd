@@ -47,7 +47,7 @@ Install the [Python](https://marketplace.visualstudio.com/items?itemName=ms-pyth
 
 ## Linting
 
-To run our linting suite locally, execute:
+To run our linting suite locally, which also lints the Julia code, execute:
 
 ```sh
 pixi run lint

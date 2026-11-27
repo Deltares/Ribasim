@@ -586,6 +586,34 @@ end
 - Only affects routing, not how much is allocated
 - Higher weight = less preferred route (higher cost)
 
+### Flow Change Objective
+
+**Mathematical formulation:**
+$$\min \sum_{i=1}^n w_i \left| Q_i - Q_i^\text{prev} \right|, \quad w_i = 1 + 0.01 \frac{i - 1}{n - 1}$$
+
+over the allocation controlled nodes $i$, ordered by node type and node ID.
+
+**Code implementation:**
+
+```julia
+# From add_flow_change!, which update_control_states! calls every allocation timestep
+flow_change = JuMP.@variable(problem, [node_ids], lower_bound = 0.0)
+JuMP.@constraint(
+    problem,
+    [node_id = node_ids, sign = (-1, 1)],
+    flow_change[node_id] ≥ sign * allocation_controlled_flows[node_id],
+)
+# From set_flow_change_rhs!, called in set_simulation_data!:
+# flow_change - sign * flow ≥ -sign * previous_flow
+JuMP.set_normalized_rhs(constraints[node_id, sign], -sign * previous_flow)
+```
+
+**Key points:**
+- Optimized last, so it only chooses between solutions that are equally good for all other objectives
+- The previous flow is `flow_rate` of the node, which is where allocation writes its result
+- The slightly increasing weights make the objective itself generically have a unique optimum
+- The structure only depends on which nodes are allocation controlled; the previous flows are right hand sides
+
 ### Low Storage Factor Objective
 
 **Mathematical formulation:**
@@ -818,7 +846,7 @@ function update_flow_variable_bounds!(
         lower, upper = -Inf, Inf
         for node_id in flow_link
             node_lower, node_upper = connector_flow_capacity_bounds(
-                allocation_model, node_id, p, t, Δt_allocation,
+                node_id, p, t, Δt_allocation, scaling.flow,
             )
             lower = max(lower, node_lower)
             upper = min(upper, node_upper)
@@ -833,7 +861,7 @@ end
 
 `connector_flow_capacity_bounds` dispatches on the node type:
 
-- **Pump and Outlet**: the tightest `min_flow_rate` and `max_flow_rate` over $[t, t + \Delta t]$, since allocation assigns a single flow rate for the whole timestep;
+- **Pump and Outlet**: the tightest `min_flow_rate` and `max_flow_rate` over $[t, t + \Delta t]$, since allocation assigns a single flow rate for the whole timestep. Both are multiplied by `level_reduction_factor`: the product of the level based reduction factors of the physical layer (`min_upstream_level`, `max_downstream_level` and for an Outlet the level difference), evaluated at the levels at the start of the allocation timestep. If this leaves less than `MIN_SCALED_CAPACITY` (in units of the flow scaling), the node is treated as closed: a level that rests at its limit leaves a capacity too small for the solver tolerances, which makes the problem infeasible next to a FlowDemand;
 - **LinearResistance, ManningResistance and non-allocation-controlled TabulatedRatingCurve**: `linearized_flow_bounds`, see below;
 - **allocation controlled TabulatedRatingCurve**: $[0, Q(h_{a,\max})]$ where $h_{a,\max}$ is the highest reachable upstream level;
 - **UserDemand**: $[0, \infty)$, tightened afterwards by `update_user_demand_flow_bounds!`;
@@ -925,7 +953,6 @@ update_flow_variable_bounds!(allocation_model, p, t, Δt)
 update_user_demand_flow_bounds!(allocation_model, p_independent)
 update_flow_demand_variable_bounds!(allocation_model, p_independent)
 normalize_flow_demand_objectives!(allocation_model)
-warm_start!(allocation_model, p, t, Δt, du)
 ```
 
 The order matters: `set_demands!` must run before the flow bounds are set, because `update_user_demand_flow_bounds!` reads the demands from the bounds of the allocated variables, and `update_flow_demand_variable_bounds!` in turn reads the finalized flow variable bounds.
@@ -959,7 +986,7 @@ function optimize_multi_objective!(
                 )
             end
             JuMP.@objective(problem, Min, expression)
-            JuMP.optimize!(problem)
+            optimize_cold!(problem)
             latest_constraint =
                 isempty(temporary_constraints) ? nothing : last(temporary_constraints)
             parse_termination_status(
@@ -987,6 +1014,7 @@ end
 - An expression can be non-retained. It is optimized as a deterministic tie-break, but is not constrained for the next expression.
 - Temporary constraints are removed after all objectives are solved
 - The termination status is checked after every objective optimization; an infeasible or other non-optimal solve stops allocation immediately
+- If all objective expressions are zero, for instance when all demands are zero in a subnetwork without Basins, the problem is solved once without an objective, so that there are results to read
 
 # Scaling for Numerical Stability
 
@@ -999,7 +1027,7 @@ The optimization uses scaling factors to improve numerical conditioning:
     mean_half_storage::Float64 = 0.0 # Initialization-time reference storage (m³)
 end
 
-function update_scaling!(p::Parameters, Δt::Float64)
+function update_scaling!(p::Parameters, t::Float64, Δt::Float64, t_known::Float64)
     (; p_independent, current_basin_properties) = p
     (; allocation_models) = p_independent.allocation
     (; current_storage) = current_basin_properties
@@ -1007,16 +1035,25 @@ function update_scaling!(p::Parameters, Δt::Float64)
         (; node_ids_in_subnetwork, scaling) = allocation_model
         (; basin_ids_subnetwork) = node_ids_in_subnetwork
 
-        storage_sum = sum(current_storage[id.idx] for id in basin_ids_subnetwork)
-        scaling.storage =
-            (scaling.mean_half_storage + storage_sum / length(basin_ids_subnetwork)) / 2
-        scaling.flow = scaling.storage / Δt
+        if isempty(basin_ids_subnetwork)
+            # Without a Basin the storage scale is not used, so scale by the flows. If these
+            # are all zero, keep the previous scaling.
+            flow = typical_boundary_flow(p_independent, node_ids_in_subnetwork, t, t_known)
+            isnothing(flow) || (scaling.flow = flow)
+            scaling.storage = scaling.flow * Δt
+        else
+            storage_sum = sum(current_storage[id.idx] for id in basin_ids_subnetwork)
+            scaling.storage =
+                (scaling.mean_half_storage + storage_sum / length(basin_ids_subnetwork)) / 2
+            scaling.flow = scaling.storage / Δt
+        end
     end
     return
 end
 ```
 
 `mean_half_storage` is computed once when the allocation problem is built, as the mean over the Basins in the subnetwork of half their maximum storage.
+A subnetwork without a Basin is scaled by its flows instead: `typical_boundary_flow` gives the order of magnitude (power of 10) of the geometric mean of the nonzero FlowBoundary flow rates and UserDemand and FlowDemand demands in the subnetwork. Unlike the arithmetic mean, the geometric mean is not dominated by a single large value, like a demand that is much larger than the available flow. As in the optimization, the FlowBoundary flow rates are read at the intervention time `t_known`, so that a future change of a boundary flow doesn't change the scaling.
 
 **Key concepts:**
 - Storage variables are divided by `scaling.storage`
@@ -1233,50 +1270,13 @@ function allocate_flows_to_subnetwork(
 end
 ```
 
-# Warm Start
+# Solving from scratch
 
-To improve solver performance, the optimization can be warm-started with flow rates from the physical layer:
+Every optimization solves the problem from scratch with `optimize_cold!`, without start values or the basis of the previous solve. HiGHS only uses presolve when there is no basis. For large subnetworks presolve removes nearly all rows, because most flows follow from linearized flow-level relations.
 
-```julia
-function warm_start!(
-    allocation_model::AllocationModel,
-    integrator::DEIntegrator,
-    Δt_allocation::Float64,
-)::Nothing
-    (; p, t) = integrator
-    (; problem, scaling, node_ids_in_subnetwork) = allocation_model
-    (; basin_ids_subnetwork) = node_ids_in_subnetwork
-    flow = problem[:flow]
-    storage_change = problem[:basin_storage_change]
-    du = get_du(integrator)
-    (; link_to_state_idx) = p.p_independent
+Start values make HiGHS construct a basis, which is slow for large subnetworks. Reusing the basis of the previous solve needs fewer iterations and has a lower median solve time, but on large subnetworks some solves take much longer and more of them end in status `Unknown`, so we prefer the more robust solve from scratch.
 
-    # Extrapolate the current instantaneous flow rates from the physical layer
-    for link in only(flow.axes)
-        state_index = get_state_index(getaxes(du), link_to_state_idx, link)
-        if !isnothing(state_index)
-            JuMP.set_start_value(flow[link], du[state_index] / scaling.flow)
-        end
-    end
-
-    # Extrapolate the current instantaneous storage rates from the physical layer
-    for node_id in basin_ids_subnetwork
-        JuMP.set_start_value(
-            storage_change[node_id],
-            formulate_dstorage_wrt_time(du, p.p_independent, t, node_id) * Δt_allocation /
-                scaling.storage,
-        )
-    end
-
-    return nothing
-end
-```
-
-**Key concepts:**
-- Starting values guide the solver to a good initial solution
-- Can significantly reduce solver iterations
-- Based on extrapolating current physical state forward
-- Not every flow link corresponds to a state of the physical layer, hence the `isnothing` check
+A solve from scratch can also end in status `Unknown` or a solver error, when its solution just violates the feasibility tolerance after unscaling. A solve that doesn't reach the optimum is first retried with slightly relaxed constraints on the previous objectives, and if that fails or there are no previous objectives, with looser feasibility tolerances. The looser tolerances are the last resort, because the next objectives can't reach a bound found with them, so each of those solves then needs a retry as well.
 
 # Output and Communication with Physical Layer
 
@@ -1374,7 +1374,7 @@ function analyze_infeasibility(
         for constraint in violated_constraints
     )
     constraint_to_slack = JuMP.relax_with_penalty!(problem, constraint_to_penalty)
-    JuMP.optimize!(problem)
+    optimize_cold!(problem)
 
     # Report which constraints are in conflict
     for irreducible_infeasible_subset in data_infeasibility.iis
@@ -1427,7 +1427,6 @@ end
 **Tips for performance:**
 - Use scaling to keep values O(1)
 - Minimize number of priorities (each adds objectives)
-- Warm start with physical layer flows
 - Simplify network topology where possible
 
 ## Allocation Timestep Selection

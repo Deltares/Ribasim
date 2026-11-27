@@ -12,7 +12,7 @@ crs = "EPSG:4326"      # required
 input_dir = "input"     # required
 results_dir = "results" # required
 
-ribasim_version = "2026.1.2" # required
+ribasim_version = "2026.2.0-rc1" # required
 
 # Specific tables can also go into NetCDF files rather than the database.
 # For large tables this can benefit from better compressed file sizes.
@@ -64,10 +64,12 @@ specialize = false  # optional, default false
 [logging]
 # defines the logging level of Ribasim
 verbosity = "info" # optional, default "info", can also be "debug", "warn" or "error"
+progress = true    # optional, show a progress bar, default true, overridden by the RIBASIM_PROGRESS environment variable
 
 [results]
 compression = true    # optional, default true, using deflate compression
 compression_level = 1 # optional, default 1 (0-9)
+significant_bits = 20 # optional, default 20 (1-52), 0 for lossless
 subgrid = false       # optional, default false
 
 [experimental]

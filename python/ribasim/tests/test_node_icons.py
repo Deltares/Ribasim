@@ -1,6 +1,9 @@
 from pathlib import Path
 
 import lxml.etree as ET
+import matplotlib.pyplot as plt
+import pytest
+from matplotlib.offsetbox import AnnotationBbox
 from ribasim.geometry.node import NodeModel
 from ribasim.node_icons import (
     ICON_SCALE,
@@ -51,3 +54,13 @@ def test_make_icon_box_all_node_types() -> None:
     for spec in NODE_ICON_DATA:
         box = make_icon_box(spec.node_type)
         assert box.get_children(), f"No patches for {spec.node_type}"
+
+
+def test_make_icon_box_size_in_points() -> None:
+    """The icon size is in points, so it is the same at any DPI (here 200)."""
+    fig, ax = plt.subplots(dpi=200)
+    box = make_icon_box("Basin", size=20.0)
+    ax.add_artist(AnnotationBbox(box, (0.5, 0.5)))
+    fig.canvas.draw()
+    # fig.dpi includes the device pixel ratio of HiDPI screens.
+    assert box.get_window_extent().width * 72 / fig.dpi == pytest.approx(20.0)

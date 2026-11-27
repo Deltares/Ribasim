@@ -6,6 +6,7 @@
 *.jl.mem
 
 /generated_testmodels
+/julialint-results.sarif
 build/ribasim/
 build/cli/target
 
