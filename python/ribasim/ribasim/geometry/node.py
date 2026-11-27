@@ -522,12 +522,7 @@ class NodeModel(ParentModel, ChildModel):
                 model.node.df = df
 
         model.node._used_node_ids.add(node_id)
-        # Unlike `self[node_id]`, this doesn't have to index the new table to look up the row
-        return NodeData(
-            node_id=int(node_id),
-            node_type=self.__class__.__name__,
-            geometry=node.geometry,
-        )
+        return self[node_id]
 
     def __getitem__(self, index: int) -> NodeData:
         # Unlike TableModel, support only indexing single rows.

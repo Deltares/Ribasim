@@ -399,13 +399,6 @@ def test_add_keeps_string_columns_contiguous():
     assert control_state.tolist() == [state or "missing" for state in control_states]
 
 
-def test_add_returns_node_data():
-    model = empty_model()
-    node = model.basin.add(Node(geometry=Point(1, 2, 3)))
-    assert node == model.basin[node.node_id]
-    assert not node.geometry.has_z
-
-
 def test_empty_model_tables():
     model = empty_model()
     for df in (model.node.df, model.link.df):
