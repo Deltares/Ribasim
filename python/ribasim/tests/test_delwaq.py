@@ -4,7 +4,9 @@ import shutil
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pytest
+import ribasim
 import xarray as xr
 from ribasim import Model
 from ribasim.delwaq import add_tracer, generate, parse, run_delwaq
@@ -26,11 +28,14 @@ delwaq_dir = Path(__file__).parent
 )
 def test_offline_delwaq_coupling(tmp_path):
     repo_dir = delwaq_dir.parents[2]
-    toml_path = repo_dir / "generated_testmodels/basic/ribasim.toml"
+    # Copy the model, since parse overwrites the results
+    shutil.copytree(repo_dir / "generated_testmodels/basic", tmp_path / "model")
+    toml_path = tmp_path / "model/ribasim.toml"
     model_dir = tmp_path / "delwaq"
     results_dir = toml_path.parent / "results"
 
     model = Model.read(toml_path)
+    core = xr.load_dataset(results_dir / "concentration.nc")
 
     # With evaporation of mass disabled
     model.solver.evaporate_mass = False
@@ -74,9 +79,26 @@ def test_offline_delwaq_coupling(tmp_path):
 
     model.write(tmp_path / "basic/ribasim.toml")
 
-    # Ensure concentration.nc uses the expected dimension order
-    with xr.open_dataset(results_dir / "concentration.nc") as uds:
-        assert uds["concentration"].dims == ("time", "substance", "node_id")
+    # parse writes concentration.nc like the core, with the records at the same times
+    delwaq = xr.load_dataset(results_dir / "concentration.nc")
+    assert delwaq["concentration"].dims == ("time", "substance", "node_id")
+    assert delwaq.attrs.keys() == core.attrs.keys()
+    for name in ("time", "node_id", "concentration"):
+        assert delwaq[name].dtype == core[name].dtype
+    # The dtype of strings includes the length of the longest
+    assert delwaq.substance.dtype.kind == core.substance.dtype.kind
+    for name in ("time", "node_id", "substance", "concentration"):
+        assert delwaq[name].attrs == core[name].attrs
+    assert (delwaq.time == core.time).all()
+    assert (delwaq.node_id == core.node_id).all()
+    # Delwaq has all tracers of the core except ResidenceTime
+    assert set(delwaq.substance.to_numpy()) == set(core.substance.to_numpy()) - {
+        "ResidenceTime"
+    }
+    # Both start with the initial condition
+    initial = delwaq.concentration.sel(substance="Initial").isel(time=0)
+    assert np.allclose(initial, 1.0)
+    assert np.allclose(core.concentration.sel(substance="Initial").isel(time=0), 1.0)
 
 
 @pytest.mark.skipif(
@@ -90,7 +112,9 @@ def test_offline_delwaq_coupling(tmp_path):
 )
 def test_offline_delwaq_coupling_evaporate_mass(tmp_path):
     repo_dir = delwaq_dir.parents[2]
-    toml_path = repo_dir / "generated_testmodels/basic/ribasim.toml"
+    # Copy the model, since parse overwrites the results
+    shutil.copytree(repo_dir / "generated_testmodels/basic", tmp_path / "model")
+    toml_path = tmp_path / "model/ribasim.toml"
     model_dir = tmp_path / "delwaq"
 
     model = Model.read(toml_path)
@@ -162,6 +186,88 @@ def test_offline_delwaq_coupling_user_demand(tmp_path):
     assert np.allclose(df["Continuity"], 1.0)
     # Without the return flows, a UserDemand would be a source of water in Basin #6
     assert np.allclose(df["FlowBoundary"] + df["Initial"], 1.0)
+
+
+def test_parse_without_delwaq(basic, tmp_path):
+    """Parse maps the Delwaq segments back to Basins and writes them like the core."""
+    toml_path = tmp_path / "basic/ribasim.toml"
+    basic.write(toml_path)
+    results_dir = toml_path.parent / "results"
+    results_dir.mkdir()
+    for name in ("basin_state.nc", "basin.nc", "flow.nc"):
+        (results_dir / name).touch()
+
+    # Delwaq output with the segments in another order than the Basins
+    folder = tmp_path / "delwaq"
+    folder.mkdir()
+    segment_node_id = [9, 3, 1, 6]
+    substances = sorted(
+        [
+            "Continuity",
+            "Initial",
+            "LevelBoundary",
+            "FlowBoundary",
+            "Drainage",
+            "Precipitation",
+            "SurfaceRunoff",
+            "Basic",
+            "Cl",
+            "Tracer",
+        ]
+    )
+    xr.Dataset(
+        {
+            "ribasim_node_id": ("ribasim_nNodes", segment_node_id),
+            "substances": ("substance", substances),
+        },
+        coords={"node_id": ("ribasim_nNodes", [1, 2, 3, 4])},
+    ).to_netcdf(folder / "ribasim.nc")
+    time = pd.date_range("2020-01-01", periods=3, freq="D")
+
+    def value(substance: str, node_id, t) -> np.ndarray:
+        return 100.0 * substances.index(substance) + 10.0 * node_id + t
+
+    t, node_id = np.meshgrid(np.arange(3), segment_node_id, indexing="ij")
+    xr.Dataset(
+        {
+            f"ribasim_{substance}": (
+                ("nTimesDlwq", "ribasim_nNodes"),
+                value(substance, node_id, t).astype(np.float32),
+            )
+            for substance in substances
+        },
+        coords={"nTimesDlwq": time},
+    ).to_netcdf(folder / "delwaq_map.nc")
+
+    model = parse(toml_path, folder, to_input=True)
+
+    with xr.open_dataset(results_dir / "concentration.nc") as ds:
+        assert ds.attrs == {
+            "Conventions": "CF-1.12",
+            "references": "https://ribasim.org",
+            "ribasim_version": ribasim.__version__,
+            "title": "Ribasim results: concentration",
+        }
+        assert ds["concentration"].dims == ("time", "substance", "node_id")
+        assert ds["concentration"].dtype == np.float64
+        assert ds["concentration"].attrs["units"] == "g m-3"
+        encoding = ds["concentration"].encoding
+        assert encoding["zlib"]
+        assert encoding["shuffle"]
+        assert encoding["chunksizes"] == (3, 1, 4)
+        assert ds["node_id"].dtype == np.int32
+        assert list(ds.node_id.to_numpy()) == [1, 3, 6, 9]
+        assert (ds.time.to_numpy() == time.to_numpy()).all()
+        assert list(ds.substance.to_numpy()) == substances
+        for substance in substances:
+            expected = value(substance, ds.node_id.to_numpy(), np.arange(3)[:, None])
+            assert (ds.concentration.sel(substance=substance) == expected).all()
+
+    df = model.basin.concentration_external.df
+    assert df is not None
+    assert len(df) == 3 * len(substances) * 4
+    row = df[(df.node_id == 6) & (df.substance == "Cl")].iloc[-1]
+    assert row.concentration == value("Cl", 6, 2)
 
 
 @pytest.mark.parametrize("name", ["Foo;123", "π", 'Double"Quote'])

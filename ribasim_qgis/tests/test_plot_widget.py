@@ -19,6 +19,7 @@ from ribasim_qgis.core.netcdf import NetCDFResult
 from ribasim_qgis.core.tracer_flow import (
     InputConcentrations,
     TracerFlows,
+    interval_mean,
     read_input_concentrations,
 )
 from ribasim_qgis.widgets.dataset_widget import DatasetWidget
@@ -1220,18 +1221,25 @@ def test_plot_widget_fractional_flow_plots_multiplied_values(monkeypatch):
     # Positive flows don't need a stack for negative values.
     assert all(trace.stackgroup == "positive" for trace in stacked)
 
-    # Verify multiplication: concentration * flow_rate
+    # Verify multiplication: concentration * flow_rate, where the concentrations are the
+    # mean of the start and end of each interval, and the start of the last
     for trace in fig.data:
         if trace.name == "LevelBoundary":
-            assert np.allclose(trace.y, np.array([4.0, 10.0]))
+            assert np.allclose(trace.y, np.array([4.5, 10.0]))
         elif trace.name == "FlowBoundary":
-            assert np.allclose(trace.y, np.array([6.0, 10.0]))
+            assert np.allclose(trace.y, np.array([5.5, 10.0]))
         elif trace.name == "flow_rate":
             assert trace.line.color == "black"
             assert np.allclose(trace.y, np.array([10.0, 20.0]))
 
     assert fig.layout.yaxis.title.text == "m3 s-1"
     assert fig.layout.hovermode == "x unified"
+
+
+def test_interval_mean():
+    """The concentrations at the start of each interval become means over it."""
+    assert np.allclose(interval_mean(np.array([0.0, 1.0, 3.0])), [0.5, 2.0, 3.0])
+    assert np.allclose(interval_mean(np.array([2.0])), [2.0])
 
 
 def test_plot_widget_fractional_flow_sign_flip(monkeypatch):

@@ -24,7 +24,7 @@ from qgis.PyQt.QtWidgets import (
 )
 
 from ribasim_qgis.core.junctions import FLOW_RATE_NODE_TYPES, FlowGraph
-from ribasim_qgis.core.tracer_flow import TracerFlows
+from ribasim_qgis.core.tracer_flow import TracerFlows, interval_mean
 
 # Keep optional imports always bound for static typing.
 go: Any = None
@@ -1250,7 +1250,10 @@ class PlotWidget(QWidget):
             traces = concentration_getter(node_id)
             if traces is None:
                 return None
-            return {substance: values for substance, (_, values) in traces.items()}
+            return {
+                substance: interval_mean(values)
+                for substance, (_, values) in traces.items()
+            }
 
         def flow(link_id: int) -> np.ndarray | None:
             trace = flow_getter(link_id)

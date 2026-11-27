@@ -543,6 +543,9 @@ When an allocation optimization problem turns out to be infeasible, a scaling an
 
 If the [experimental concentration feature](/reference/usage.qmd#experimental-features) is enabled, the results are written to file.
 This file records the Basin concentrations for each substance over time.
+Like the storage and level in `basin.nc`, these are instantaneous values at the time of each record, starting with the initial condition.
+The concentrations at the end time are not written.
+`ribasim.delwaq.parse` writes the results of Delwaq to this file in the same way, see [Delwaq](/guide/delwaq.qmd).
 The schema below is identical to the [external Basin concentration input](/reference/node/basin.qmd#concentration-external).
 
 **NetCDF structure:**

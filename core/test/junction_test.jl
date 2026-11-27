@@ -107,12 +107,12 @@ end
     basin_data = Ribasim.basin_data(model) |> DataFrame
 
     # The mass of a tracer in a Basin that only receives water via the Junction nodes is the
-    # concentration of the water that flows in times the volume that flowed in. The concentration is given at
-    # the end of each period, so the storage of the next saved time is used.
+    # concentration of the water that flows in times the volume that flowed in. Like the storage,
+    # the concentration is given at the saved time, which starts with the initial state.
     function mass_per_inflow_volume(node_id, basin_idx, substance)
         storage = filter(:node_id => ==(node_id), basin_data).storage
         inflow_volume = storage[2:end] .- storage[1]
-        c = concentration[basin_idx, findfirst(==(substance), substances), 1:(end - 1)]
+        c = concentration[basin_idx, findfirst(==(substance), substances), 2:end]
         return c .* storage[2:end] ./ inflow_volume
     end
 

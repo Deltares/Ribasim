@@ -553,6 +553,7 @@ function SavedResults(p_independent::ParametersIndependent, config::Config, save
             internal_flow_rate = zeros(length(internal_flow_links)),
         ),
         level_prev = zeros(nbasin),
+        concentration_prev = zeros(nbasin, length(substance)),
     )
 
     # The memory of the first time chunk is reused for all next ones
