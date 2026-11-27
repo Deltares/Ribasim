@@ -726,3 +726,73 @@ end
     @test relaxed_root(1.0e-8, 1.0e-8) ≈ sqrt(1.0e-8)
     @test relaxed_root(-1.0e-8, 1.0e-8) ≈ -sqrt(1.0e-8)
 end
+
+@testitem "Contiguous profiles and rating curves equal their interpolations" begin
+    using Ribasim.ForwardDiff: Dual
+
+    # Points within, at and above the points of an interpolation
+    function test_points(points)
+        x = collect(points)
+        for (a, b) in zip(points[1:(end - 1)], points[2:end])
+            append!(x, range(a, b; length = 7))
+        end
+        append!(x, last(points) .+ [1.0e-6, 0.5, 10.0])
+        return x
+    end
+
+    for model_name in ("basic", "tabulated_rating_curve")
+        toml_path = normpath(@__DIR__, "../../generated_testmodels/$model_name/ribasim.toml")
+        @test ispath(toml_path) skip = true
+        model = Ribasim.Model(toml_path)
+        (; basin, tabulated_rating_curve) = model.integrator.p.p_independent
+
+        for i in eachindex(basin.node_id)
+            storage_to_level = basin.storage_to_level[i]
+            level_to_area = basin.level_to_area[i]
+            for storage in test_points(storage_to_level.t)
+                level, area = Ribasim.basin_level_and_area(basin.profiles, i, storage)
+                @test level === storage_to_level(storage)
+                @test area === level_to_area(level)
+                # The Jacobian evaluates the profiles with Dual numbers
+                storage_dual = Dual(storage, 1.0)
+                level_dual = Ribasim.basin_level(basin.profiles, i, storage_dual)
+                @test level_dual === storage_to_level(storage_dual)
+                @test Ribasim.basin_area(basin.profiles, i, level_dual) === level_to_area(level_dual)
+            end
+            # Below the profile the interpolations are used
+            @test isnothing(Ribasim.basin_level_and_area(basin.profiles, i, -1.0))
+        end
+
+        for node_idx in eachindex(tabulated_rating_curve.node_id)
+            k = tabulated_rating_curve.interpolation_index[node_idx]
+            qh = tabulated_rating_curve.interpolations[k]
+            for level in test_points(qh.t)
+                @test Ribasim.rating_curve_flow(tabulated_rating_curve, node_idx, level) === qh(level)
+                level_dual = Dual(level, 1.0)
+                @test Ribasim.rating_curve_flow(tabulated_rating_curve, node_idx, level_dual) ===
+                    qh(level_dual)
+            end
+        end
+    end
+end
+
+@testitem "Time dependent cache with a Dual t" begin
+    using Ribasim.ForwardDiff: Dual
+
+    # The time derivative of Rosenbrock methods calls the right hand side with a Dual t and a
+    # separate Dual copy of the time dependent cache
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/transient_pump_outlet/ribasim.toml")
+    @test ispath(toml_path) skip = true
+    model = Ribasim.Model(toml_path)
+    (; p, t) = model.integrator
+    nan_copy(x::AbstractVector{Float64}) = fill!(similar(x, Dual{Nothing, Float64, 1}), Dual(NaN, NaN))
+    nan_copy(x::NamedTuple) = map(nan_copy, x)
+    cache = nan_copy(p.time_dependent_cache)
+    p_dual = Ribasim.Parameters(p.p_independent, cache, p.current_basin_properties, p.p_mutable)
+    t_dual = Dual(t, 1.0)
+    cache.t_prev_call[1] = t_dual + 1
+    Ribasim.check_new_t!(p_dual, t_dual)
+    for values in (cache.pump..., cache.outlet...)
+        @test !any(isnan, values)
+    end
+end

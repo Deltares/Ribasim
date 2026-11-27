@@ -756,9 +756,9 @@ function apply_discrete_control!(integrator; initialize::Bool = false)::Nothing
         for compound_variable in compound_variables_node
             value = compound_variable_value(compound_variable, current_storage, du.flow, p, t)
 
-            # Loop over the threshold interpolations associated with the current compound variable
-            for (threshold_low, threshold_high) in
-                zip(compound_variable.threshold_low, compound_variable.threshold_high)
+            # Loop over the thresholds associated with the current compound variable
+            for threshold_idx in eachindex(compound_variable.threshold_high)
+                threshold_low, threshold_high = threshold_values(compound_variable, threshold_idx, t)
                 truth_value_old = truth_state_node[truth_state_idx]
 
                 # Hysteresis: if the condition was true before, only switch to false
@@ -767,11 +767,11 @@ function apply_discrete_control!(integrator; initialize::Bool = false)::Nothing
                     # No threshold has been crossed yet, so the initial value decides, where a
                     # value between the thresholds falls to the side it is closest to. Without
                     # hysteresis this reduces to the same strict inequality as below.
-                    truth_value_new = (value > (threshold_low(t) + threshold_high(t)) / 2)
+                    truth_value_new = (value > (threshold_low + threshold_high) / 2)
                 elseif truth_value_old
-                    truth_value_new = (value >= threshold_low(t))
+                    truth_value_new = (value >= threshold_low)
                 else
-                    truth_value_new = (value > threshold_high(t))
+                    truth_value_new = (value > threshold_high)
                 end
 
                 if truth_value_old != truth_value_new
@@ -890,6 +890,21 @@ function set_new_control_state!(
     return false, false
 end
 
+"The thresholds of a compound variable at time t, only evaluating the interpolations if they vary in time"
+function threshold_values(
+        compound_variable::CompoundVariable,
+        threshold_idx::Int,
+        t::Float64,
+    )::Tuple{Float64, Float64}
+    threshold_low = compound_variable.threshold_low_value[threshold_idx]
+    threshold_high = compound_variable.threshold_high_value[threshold_idx]
+    if isnan(threshold_low) || isnan(threshold_high)
+        threshold_low = compound_variable.threshold_low[threshold_idx](t)
+        threshold_high = compound_variable.threshold_high[threshold_idx](t)
+    end
+    return threshold_low, threshold_high
+end
+
 function compound_variable_value(
         compound_variable::CompoundVariable,
         storage::AbstractVector,
@@ -901,9 +916,9 @@ function compound_variable_value(
 
     value = zero(typeof(t))
     for subvariable in compound_variable.subvariables
-        (; listen_node_id, variable, weight, look_ahead) = subvariable
+        (; listen_node_id, variable, weight, look_ahead, type) = subvariable
 
-        sub_value = if variable == "level"
+        sub_value = if type == ListenVariableType.Level
             if listen_node_id.is_basin
                 # Basin level
                 get_level(storage[listen_node_id.idx], p, listen_node_id, t)
@@ -913,9 +928,9 @@ function compound_variable_value(
             else
                 error("Cannot obtain variable `$variable` from $listen_node_id.")
             end
-        elseif variable == "storage"
+        elseif type == ListenVariableType.Storage
             storage[listen_node_id.idx]
-        elseif variable == "flow_rate"
+        elseif type == ListenVariableType.FlowRate
             if listen_node_id.type == NodeType.FlowBoundary
                 # Flow boundary flow rate
                 flow_boundary.flow_rate[listen_node_id.idx](t + look_ahead)
@@ -937,9 +952,9 @@ function compound_variable_value(
             else
                 error("Cannot obtain variable `$variable` from $listen_node_id.")
             end
-        elseif startswith(variable, "concentration_external.")
+        elseif type == ListenVariableType.ConcentrationExternal
             basin.concentration_data.concentration_external[listen_node_id.idx][variable](t)
-        elseif startswith(variable, "concentration.")
+        elseif type == ListenVariableType.Concentration
             substance = Symbol(last(split(variable, ".")))
             var_idx = find_index(substance, basin.concentration_data.substances)
             basin.concentration_data.concentration_state[var_idx, listen_node_id.idx]
@@ -961,9 +976,10 @@ function set_control_params!(p::Parameters, node_id::NodeID, control_state::Stri
     apply_parameter_update!.(itp_update_constant)
     apply_parameter_update!.(itp_update_linear)
     apply_parameter_update!.(itp_update_lookup)
-    # The time dependent cache holds the values of the replaced time series, so renew it at
-    # the next call of the right hand side, also at the same t
+    # The time dependent cache holds the values of the replaced time series, so renew all of them
+    # at the next call of the right hand side, also at the same t and if they are constant in time
     if !(isempty(itp_update_constant) && isempty(itp_update_linear) && isempty(itp_update_lookup))
+        p.p_mutable.refresh_time_dependent_cache = true
         p.time_dependent_cache.t_prev_call[1] = -1.0
     end
 
